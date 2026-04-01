@@ -1,0 +1,65 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Player Stats</title>
+  <link rel="stylesheet" href="style.css">
+  <script src="https://cdn.jsdelivr.net/npm/chart.js" defer></script>
+  <script src="common.js" defer></script>
+</head>
+
+<body>
+
+  <div class="container">
+
+    <div class="header">
+      <h1>👤 Player Stats</h1>
+    </div>
+
+    <div class="page-nav"></div>
+
+    <div id="statusMessage" class="status-message"></div>
+
+    <div class="card player-card">
+      <h2 id="playerName">-</h2>
+      <div class="player-meta">
+        <div><strong>SteamID:</strong> <span id="steamid">-</span></div>
+        <div><strong>Kills:</strong> <span id="kills">-</span></div>
+        <div><strong>Deaths:</strong> <span id="deaths">-</span></div>
+        <div><strong>HS:</strong> <span id="hs">-</span></div>
+        <div><strong>K/D:</strong> <span id="kd">-</span></div>
+        <div><strong>Skill:</strong> <span id="skill">-</span></div>
+        <div><strong>Último mapa:</strong> <span id="lastMap">-</span></div>
+      </div>
+    </div>
+
+    <div class="card">
+      <h2>📈 Evolução de Kills</h2>
+      <canvas id="killsChart" height="100"></canvas>
+    </div>
+
+    <div class="card">
+      <h2>🕒 Histórico recente</h2>
+      <table>
+        <thead>
+          <tr>
+            <th>Data</th>
+            <th>Mapa</th>
+            <th>Kills</th>
+            <th>Deaths</th>
+            <th>HS</th>
+            <th>Skill</th>
+          </tr>
+        </thead>
+        <tbody id="historyTable"></tbody>
+      </table>
+    </div>
+
+  </div>
+
+  <script src="player.js" defer></script>
+</body>
+
+</html>

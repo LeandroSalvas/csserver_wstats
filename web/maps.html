@@ -1,0 +1,39 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Mapas - CS 1.6 Stats</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+  <div class="container">
+    <div class="header">
+      <h1>🗺️ Ranking por mapa</h1>
+    </div>
+
+    <div class="page-nav"></div>
+
+    <div id="statusMessage" class="status-message"></div>
+
+    <div class="card">
+      <h2>Mapas disponíveis</h2>
+
+      <table>
+        <thead>
+          <tr>
+            <th>#</th>
+            <th>Mapa</th>
+            <th>Partidas</th>
+          </tr>
+        </thead>
+        <tbody id="mapsTable"></tbody>
+      </table>
+    </div>
+  </div>
+
+  <script src="common.js" defer></script>
+  <script src="maps.js" defer></script>
+</body>
+</html>

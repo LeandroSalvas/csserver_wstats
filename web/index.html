@@ -1,0 +1,100 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+<meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+<title>CS 1.6 Stats</title>
+<link rel="stylesheet" href="style.css">
+</head>
+
+<body>
+
+<div class="container">
+
+  <div class="header">
+    <h1>🎮 CS 1.6 Server Stats</h1>
+  </div>
+
+<div class="page-nav"></div>
+
+  <div id="statusMessage" class="status-message"></div>
+
+  <div class="card server-box">
+    <h2 id="hostname">Servidor</h2>
+
+    <div class="server-info">
+      <div>🎮 <span id="currentMap">-</span></div>
+      <div>👥 <span id="playersOnline">-</span>/<span id="maxPlayers">-</span></div>
+      <div><span id="serverStatus" class="server-status-online">Online</span></div>
+    </div>
+  </div>
+
+  <div class="stats-grid">
+
+    <div class="stat-box">
+      <h2 id="players">-</h2>
+      Players
+    </div>
+
+    <div class="stat-box">
+      <h2 id="kills">-</h2>
+      Total Kills
+    </div>
+
+    <div class="stat-box">
+      <h2 id="maps">-</h2>
+      Maps
+    </div>
+
+
+  </div>
+
+  <div class="card">
+
+    <h2>🏆 Top Players</h2>
+
+    <!-- PODIUM -->
+    <div class="podium">
+
+      <div class="podium-player second" id="p2">
+        <h3>🥈</h3>
+        <div class="name">-</div>
+        <div class="stat">-</div>
+      </div>
+
+      <div class="podium-player first" id="p1">
+        <h3>🥇</h3>
+        <div class="name">-</div>
+        <div class="stat">-</div>
+      </div>
+
+      <div class="podium-player third" id="p3">
+        <h3>🥉</h3>
+        <div class="name">-</div>
+        <div class="stat">-</div>
+      </div>
+
+    </div>
+
+    <table>
+      <thead>
+        <tr>
+          <th>#</th>
+          <th>Player</th>
+          <th>Kills</th>
+          <th>Deaths</th>
+          <th>KD</th>
+          <th>Skill</th>
+        </tr>
+      </thead>
+
+      <tbody id="ranking"></tbody>
+    </table>
+
+  </div>
+
+</div>
+
+<script src="common.js" defer></script>
+<script src="app.js" defer></script>

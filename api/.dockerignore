@@ -1,0 +1,10 @@
+node_modules
+npm-debug.log
+
+# Arquivo de teste com senha hardcoded (não precisa ir pra imagem)
+rcon-test.js
+
+# Variáveis de ambiente não devem entrar no build
+.env
+.env.*
+

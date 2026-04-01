@@ -1,0 +1,74 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Estatísticas Avançadas - CS 1.6 Stats</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+  <div class="container">
+    <div class="header">
+      <h1>📊 Estatísticas Avançadas</h1>
+    </div>
+
+    <div class="page-nav"></div>
+
+    <div id="statusMessage" class="status-message"></div>
+
+    <div class="card">
+      <h2>Top Headshots</h2>
+      <table>
+        <thead>
+          <tr>
+            <th>#</th>
+            <th>Player</th>
+            <th>HS</th>
+            <th>Kills</th>
+            <th>Deaths</th>
+            <th>Accuracy</th>
+            <th>Skill</th>
+          </tr>
+        </thead>
+        <tbody id="headshotsTable"></tbody>
+      </table>
+    </div>
+
+    <div class="card">
+      <h2>Top Accuracy</h2>
+      <table>
+        <thead>
+          <tr>
+            <th>#</th>
+            <th>Player</th>
+            <th>Accuracy</th>
+            <th>HS</th>
+            <th>Kills</th>
+            <th>Deaths</th>
+            <th>Skill</th>
+          </tr>
+        </thead>
+        <tbody id="accuracyTable"></tbody>
+      </table>
+    </div>
+
+    <div class="card">
+      <h2>Top Kill Streak</h2>
+      <table>
+        <thead>
+          <tr>
+            <th>#</th>
+            <th>Player</th>
+            <th>Streak</th>
+          </tr>
+        </thead>
+        <tbody id="streakTable"></tbody>
+      </table>
+    </div>
+  </div>
+
+  <script src="common.js" defer></script>
+  <script src="advanced.js" defer></script>
+</body>
+</html>

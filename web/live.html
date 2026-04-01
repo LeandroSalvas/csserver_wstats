@@ -1,0 +1,86 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Live Match - CS 1.6</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+  <div class="container">
+    <div class="header">
+      <h1>📡 Live Match</h1>
+    </div>
+
+    <div class="page-nav"></div>
+
+    <div id="statusMessage" class="status-message"></div>
+
+    <div class="card">
+      <h2 id="liveHostname">Servidor</h2>
+
+      <div class="live-summary">
+        <div class="live-box">
+          <span class="live-label">🎮 Mapa atual</span>
+          <strong id="liveMap">-</strong>
+        </div>
+
+        <div class="live-box">
+          <span class="live-label">👥 Players online</span>
+          <strong id="liveCount">0</strong>
+        </div>
+      </div>
+    </div>
+
+    <div class="scoreboard">
+      <div class="scoreboard-team scoreboard-t">
+        <div class="scoreboard-team-header">
+          <span>Terrorists</span>
+          <span id="tCount">0 players</span>
+        </div>
+
+        <table>
+          <thead>
+            <tr>
+              <th>Player</th>
+              <th>Status</th>
+              <th>Score</th>
+              <th>Deaths</th>
+	      <th>KD</th>
+            </tr>
+          </thead>
+          <tbody id="tPlayers"></tbody>
+        </table>
+      </div>
+
+      <div class="scoreboard-team scoreboard-ct">
+        <div class="scoreboard-team-header">
+          <span>Counter-Terrorists</span>
+          <span id="ctCount">0 players</span>
+        </div>
+
+        <table>
+          <thead>
+            <tr>
+              <th>Player</th>
+              <th>Status</th>
+              <th>Score</th>
+              <th>Deaths</th>
+	      <th>KD</th>
+            </tr>
+          </thead>
+          <tbody id="ctPlayers"></tbody>
+        </table>
+      </div>
+    </div>
+    <div class="card">
+  <h2>🔫 Kill Feed</h2>
+  <div id="killFeed" class="kill-feed">
+    <div class="kill-feed-empty">Nenhuma kill recente.</div>
+  </div>
+</div>
+  </div>
+
+  <script src="common.js" defer></script>
+  <script src="live.js" defer></script>

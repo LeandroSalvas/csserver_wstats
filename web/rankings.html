@@ -1,0 +1,48 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Rankings - CS 1.6 Stats</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+  <div class="container">
+    <div class="header">
+      <h1>🏆 Rankings por período</h1>
+    </div>
+
+    <div class="page-nav"></div>
+
+    <div id="statusMessage" class="status-message"></div>
+
+    <div class="card">
+      <div style="display:flex; gap:10px; margin-bottom:20px; flex-wrap:wrap;">
+        <button onclick="loadRanking('weekly')">Semanal</button>
+        <button onclick="loadRanking('monthly')">Mensal</button>
+      </div>
+
+      <h2 id="rankingTitle">Ranking semanal</h2>
+
+      <table>
+        <thead>
+          <tr>
+            <th>#</th>
+            <th>Player</th>
+            <th>Kills</th>
+            <th>Deaths</th>
+            <th>HS</th>
+            <th>KD</th>
+            <th>Skill</th>
+          </tr>
+        </thead>
+        <tbody id="rankingTable"></tbody>
+      </table>
+    </div>
+  </div>
+
+  <script src="common.js" defer></script>
+  <script src="rankings.js" defer></script>
+</body>
+</html>
