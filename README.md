@@ -1,4 +1,4 @@
-# CS Counter-Strike 1.6 Stats
+# A CS Server With Status Pannel Running in Docker 
 
 Projeto de monitoramento e API para servidor de Counter-Strike 1.6.
 
