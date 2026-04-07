@@ -1,6 +1,6 @@
 async function loadSystemPageStatus() {
   try {
-    setStatus('Atualizando status do sistema...')
+    setStatus(i18nUtils.t('status.updatingSystem'))
 
     const health = await fetchJson('/health')
     const apiLabel = health.status === 'ok'
@@ -33,7 +33,7 @@ async function loadSystemPageStatus() {
     setStatusChip('systemDb', 'Offline')
     setStatusChip('systemRedis', 'Offline')
     setStatusChip('systemCs', 'Offline')
-    setStatus(`Não foi possível carregar status do sistema: ${err.message}`, 'error')
+    setStatus(`${i18nUtils.t('errors.loadSystem')}: ${err.message}`, 'error')
   }
 }
 
@@ -45,4 +45,4 @@ function refreshSystemPage() {
 window.addEventListener('focus', refreshSystemPage)
 setInterval(refreshSystemPage, 15000)
 
-refreshSystemPage()
+loadSystemPageStatus()

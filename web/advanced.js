@@ -3,7 +3,7 @@ function renderAdvancedRows(tableId, rows, columns, formatRow) {
   if (!tbody) return
 
   if (!Array.isArray(rows) || rows.length === 0) {
-    showEmptyRow(tbody, columns, 'Nenhum dado disponível')
+    showEmptyRow(tbody, columns, i18nUtils.t('labels.noData'))
     return
   }
 
@@ -28,7 +28,7 @@ async function loadAdvancedStats() {
   showSkeletonRows(accuracyTable, 7, 4)
   showSkeletonRows(streakTable, 3, 4)
 
-  setStatus('Carregando estatísticas avançadas...')
+  setStatus(i18nUtils.t('status.loadingAdvanced'))
 
   try {
     const [headshots, accuracy, streaks] = await Promise.all([
@@ -66,10 +66,10 @@ async function loadAdvancedStats() {
     clearStatus()
   } catch (err) {
     console.error('Erro ao carregar estatísticas avançadas:', err)
-    setStatus(`Não foi possível carregar estatísticas avançadas: ${err.message}`, 'error')
-    showEmptyRow(headshotsTable, 7, 'Falha ao carregar dados')
-    showEmptyRow(accuracyTable, 7, 'Falha ao carregar dados')
-    showEmptyRow(streakTable, 3, 'Falha ao carregar dados')
+    setStatus(`${i18nUtils.t('errors.loadAdvanced')}: ${err.message}`, 'error')
+    showEmptyRow(headshotsTable, 7, i18nUtils.t('errors.failToLoad'))
+    showEmptyRow(accuracyTable, 7, i18nUtils.t('errors.failToLoad'))
+    showEmptyRow(streakTable, 3, i18nUtils.t('errors.failToLoad'))
   }
 }
 

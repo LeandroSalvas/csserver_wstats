@@ -4,8 +4,8 @@
 <head>
 <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>CS 1.6 Stats</title>
-<link rel="stylesheet" href="style.css">
+  <title>CS 1.6 Stats</title>
+  <link rel="stylesheet" href="style.css">
 </head>
 
 <body>
@@ -14,6 +14,7 @@
 
   <div class="header">
     <h1>🎮 CS 1.6 Server Stats</h1>
+    <div class="lang-toggle-slot"></div>
   </div>
 
 <div class="page-nav"></div>
@@ -21,7 +22,7 @@
   <div id="statusMessage" class="status-message"></div>
 
   <div class="card server-box">
-    <h2 id="hostname">Servidor</h2>
+    <h2 id="hostname" data-i18n="server.hostname">Servidor</h2>
 
     <div class="server-info">
       <div>🎮 <span id="currentMap">-</span></div>
@@ -34,17 +35,17 @@
 
     <div class="stat-box">
       <h2 id="players">-</h2>
-      Players
+      <span data-i18n="labels.players">Players</span>
     </div>
 
     <div class="stat-box">
       <h2 id="kills">-</h2>
-      Total Kills
+      <span data-i18n="labels.kills">Total Kills</span>
     </div>
 
     <div class="stat-box">
       <h2 id="maps">-</h2>
-      Maps
+      <span data-i18n="labels.maps">Maps</span>
     </div>
 
 
@@ -52,7 +53,7 @@
 
   <div class="card">
 
-    <h2>🏆 Top Players</h2>
+    <h2 data-i18n="labels.topPlayers">🏆 Top Players</h2>
 
     <!-- PODIUM -->
     <div class="podium">
@@ -80,12 +81,12 @@
     <table>
       <thead>
         <tr>
-          <th>#</th>
-          <th>Player</th>
-          <th>Kills</th>
-          <th>Deaths</th>
-          <th>KD</th>
-          <th>Skill</th>
+          <th data-i18n="labels.rank">#</th>
+          <th data-i18n="labels.player">Player</th>
+          <th data-i18n="labels.kills">Kills</th>
+          <th data-i18n="labels.deaths">Deaths</th>
+          <th data-i18n="labels.kd">KD</th>
+          <th data-i18n="labels.skill">Skill</th>
         </tr>
       </thead>
 
@@ -96,5 +97,6 @@
 
 </div>
 
+<script src="i18n/translations.js" defer></script>
 <script src="common.js" defer></script>
 <script src="app.js" defer></script>

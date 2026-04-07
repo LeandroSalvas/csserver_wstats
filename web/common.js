@@ -15,7 +15,6 @@
 const API = '/api'
 const statusEl = document.getElementById('statusMessage')
 
-// app.js helper block
 function setStatus(message, type = 'info') {
   if (!statusEl) return
   statusEl.textContent = message
@@ -32,13 +31,27 @@ function setStatusChip(elementId, value) {
   const element = document.getElementById(elementId)
   if (!element) return
 
-  const normalized = value === 'Online' || value === 'OK'
+  let normalized = value === 'Online' || value === 'OK'
     ? 'status-ok'
-    : value === 'Aguardando' || value === 'Não usado'
+    : value === 'Aguardando' || value === 'Waiting'
       ? 'status-pending'
       : 'status-error'
 
-  element.innerText = value
+  let text = value
+  if (value === 'Online' || value === 'OK') {
+    text = i18nUtils.t('status.online')
+  } else if (value === 'Aguardando' || value === 'Waiting') {
+    text = i18nUtils.t('status.pending')
+  } else if (value === 'Não usado' || value === 'Not used') {
+    text = i18nUtils.t('status.notUsed')
+    normalized = 'status-pending'
+  } else if (value === 'Offline') {
+    text = i18nUtils.t('status.offline')
+  } else if (value === 'Degradado' || value === 'Degraded') {
+    text = i18nUtils.t('status.degraded')
+  }
+
+  element.innerText = text
   element.className = `status-pill ${normalized}`
 }
 
@@ -51,14 +64,14 @@ async function fetchJson(path) {
 }
 
 const pageNavItems = [
-  { href: 'index.html', label: '🏠 Home' },
-  { href: 'maps.html', label: '🗺️ Ver ranking por mapa' },
-  { href: 'rankings.html', label: '🏆 Rankings' },
-  { href: 'advanced.html', label: '📈 Avançadas' },
-  { href: 'connect.html', label: '🔗 Conectar' },
-  { href: 'live.html', label: '📡 Live Match' },
-  { href: 'admin.html', label: '🛠️ Painel RCON' },
-  { href: 'system.html', label: '🛡️ Sistema' }
+  { href: 'index.html', labelKey: 'nav.home' },
+  { href: 'maps.html', labelKey: 'nav.maps' },
+  { href: 'rankings.html', labelKey: 'nav.rankings' },
+  { href: 'advanced.html', labelKey: 'nav.advanced' },
+  { href: 'connect.html', labelKey: 'nav.connect' },
+  { href: 'live.html', labelKey: 'nav.live' },
+  { href: 'admin.html', labelKey: 'nav.admin' },
+  { href: 'system.html', labelKey: 'nav.system' }
 ]
 
 function renderPageNav() {
@@ -73,7 +86,7 @@ function renderPageNav() {
     pageNavItems.forEach((item) => {
       const link = document.createElement('a')
       link.href = item.href
-      link.textContent = item.label
+      link.textContent = i18nUtils.t(item.labelKey)
 
       if (item.href.split('/').pop() === currentPage) {
         link.classList.add('active')
@@ -82,6 +95,23 @@ function renderPageNav() {
 
       container.appendChild(link)
     })
+  })
+}
+
+function renderLanguageToggle() {
+  const slots = document.querySelectorAll('.lang-toggle-slot')
+  slots.forEach((slot) => {
+    slot.innerHTML = ''
+    const btn = document.createElement('button')
+    btn.className = 'lang-toggle'
+    btn.innerHTML = i18nUtils.getToggleHtml()
+    btn.onclick = () => {
+      i18nUtils.setLang(i18nUtils.currentLang === 'pt' ? 'en' : 'pt')
+      renderPageNav()
+      renderLanguageToggle()
+      applyActiveNav()
+    }
+    slot.appendChild(btn)
   })
 }
 
@@ -107,9 +137,10 @@ function showSkeletonRows(tbody, columns = 4, rows = 4) {
   }
 }
 
-function showEmptyRow(table, columns = 6, text = 'Nenhum dado disponível') {
+function showEmptyRow(table, columns = 6, text) {
   if (!table) return
-  table.innerHTML = `\n    <tr class="empty-row">\n      <td colspan="${columns}">${text}</td>\n    </tr>\n  `
+  const emptyText = text || i18nUtils.t('labels.noData')
+  table.innerHTML = `\n    <tr class="empty-row">\n      <td colspan="${columns}">${emptyText}</td>\n    </tr>\n  `
 }
 
 function applyActiveNav() {
@@ -151,18 +182,20 @@ function animateTableUpdate(table) {
 
 function setServerStatusElement(element, online) {
   if (!element) return
-  element.innerText = online ? 'Online' : 'Offline'
+  element.innerText = online ? i18nUtils.t('status.online') : i18nUtils.t('status.offline')
   element.classList.toggle('server-status-online', online)
   element.classList.toggle('server-status-offline', !online)
 }
 
-/* Execução imediata para renderizar e aplicar navegação ativa quando o DOM estiver pronto */
-if (document.readyState === 'loading') {
-  document.addEventListener('DOMContentLoaded', () => {
-    renderPageNav()
-    applyActiveNav()
-  })
-} else {
+function initCommon() {
+  i18nUtils.init()
   renderPageNav()
+  renderLanguageToggle()
   applyActiveNav()
+}
+
+if (document.readyState === 'loading') {
+  document.addEventListener('DOMContentLoaded', initCommon)
+} else {
+  initCommon()
 }

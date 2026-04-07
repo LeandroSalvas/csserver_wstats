@@ -4,7 +4,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>CS 1.6 Sistema</title>
+<title data-i18n="system.title">CS 1.6 Sistema</title>
 <link rel="stylesheet" href="style.css">
 </head>
 
@@ -12,37 +12,39 @@
 
 <div class="container">
   <div class="header">
-    <h1>🛡️ Status do Sistema</h1>
+    <h1>🛡️ <span data-i18n="system.title">Status do Sistema</span></h1>
+    <div class="lang-toggle-slot"></div>
   </div>
 
   <div class="page-nav"></div>
 
   <div class="system-status-grid">
       <div class="status-item">
-        <div class="status-title">API</div>
-        <div id="systemApi" class="status-pill status-pending">Aguardando</div>
+        <div class="status-title" data-i18n="system.api">API</div>
+        <div id="systemApi" class="status-pill status-pending" data-i18n="status.pending">Aguardando</div>
       </div>
       <div class="status-item">
-        <div class="status-title">Banco de Dados</div>
-        <div id="systemDb" class="status-pill status-pending">Aguardando</div>
+        <div class="status-title" data-i18n="system.database">Banco de Dados</div>
+        <div id="systemDb" class="status-pill status-pending" data-i18n="status.pending">Aguardando</div>
       </div>
       <div class="status-item">
-        <div class="status-title">Redis</div>
-        <div id="systemRedis" class="status-pill status-pending">Aguardando</div>
+        <div class="status-title" data-i18n="system.redis">Redis</div>
+        <div id="systemRedis" class="status-pill status-pending" data-i18n="status.pending">Aguardando</div>
       </div>
       <div class="status-item">
-        <div class="status-title">Servidor CS</div>
-        <div id="systemCs" class="status-pill status-pending">Aguardando</div>
+        <div class="status-title" data-i18n="system.gameServer">Servidor CS</div>
+        <div id="systemCs" class="status-pill status-pending" data-i18n="status.pending">Aguardando</div>
       </div>
     </div>
 
   <div class="card">
-    <h2>Informações</h2>
-    <p>Esta página mostra o estado atual dos principais subsistemas: API, banco de dados, cache Redis e servidor Counter-Strike.</p>
-    <p>Os indicadores atualizam automaticamente enquanto a página estiver visível.</p>
+    <h2 data-i18n="system.info">Informações</h2>
+    <p data-i18n="system.infoDescription">Esta página mostra o estado atual dos principais subsistemas: API, banco de dados, cache Redis e servidor Counter-Strike.</p>
+    <p data-i18n="system.infoAutoUpdate">Os indicadores atualizam automaticamente enquanto a página estiver visível.</p>
   </div>
 </div>
 
+<script src="i18n/translations.js" defer></script>
 <script src="common.js" defer></script>
 <script src="system.js" defer></script>
 </body>

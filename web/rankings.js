@@ -2,12 +2,14 @@ async function loadRanking(period) {
   const title = document.getElementById('rankingTitle')
   const table = document.getElementById('rankingTable')
 
-  setStatus('Carregando ranking...')
+  setStatus(i18nUtils.t('status.loadingRanking'))
   showSkeletonRows(table, 7, 4)
 
   try {
     const players = await fetchJson(`/ranking/${period}`)
-    title.innerText = period === 'weekly' ? 'Ranking semanal' : 'Ranking mensal'
+    title.innerText = period === 'weekly' 
+      ? i18nUtils.t('labels.rankingWeekly') 
+      : i18nUtils.t('labels.rankingMonthly')
     clearStatus()
 
     if (!Array.isArray(players) || players.length === 0) {
@@ -35,7 +37,7 @@ async function loadRanking(period) {
     animateTableUpdate(table)
   } catch (err) {
     console.error('Erro ao carregar ranking:', err)
-    setStatus(`Erro ao carregar ranking: ${err.message}`, 'error')
+    setStatus(`${i18nUtils.t('errors.loadRanking')}: ${err.message}`, 'error')
     showEmptyRow(table)
   }
 }

@@ -31,13 +31,20 @@ body.body-font-default {
 }
 
 .header {
-  text-align: center;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 20px;
   margin-bottom: 30px;
 }
 
 .header h1 {
   margin: 0;
   font-size: 28px;
+}
+
+.lang-toggle-slot {
+  display: inline-flex;
 }
 
 .container {
@@ -892,6 +899,29 @@ button:hover {
 .page-nav a:hover {
   background: rgba(96,165,250,0.18);
   transform: translateY(-1px);
+}
+
+.lang-toggle {
+  display: inline-flex;
+  align-items: center;
+  padding: 10px 16px;
+  border-radius: 999px;
+  background: rgba(139,92,246,0.12);
+  border: 1px solid rgba(139,92,246,0.24);
+  color: #a78bfa;
+  cursor: pointer;
+  transition: background 0.2s ease, transform 0.2s ease;
+  font-family: inherit;
+  font-size: inherit;
+}
+
+.lang-toggle:hover {
+  background: rgba(139,92,246,0.18);
+  transform: translateY(-1px);
+}
+
+.lang-toggle b {
+  color: #c4b5fd;
 }
 
 .status-message {

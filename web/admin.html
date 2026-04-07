@@ -3,27 +3,29 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Painel RCON - CS 1.6</title>
+  <title data-i18n="admin.title">Painel RCON - CS 1.6</title>
   <link rel="stylesheet" href="style.css">
 </head>
 <body class="body-font-default">
   <div class="container">
     <div class="header">
-      <h1>🛠️ Painel RCON</h1>
+      <h1>🛠️ <span data-i18n="admin.title">Painel RCON</span></h1>
+      <div class="lang-toggle-slot"></div>
     </div>
 
     <div class="page-nav"></div>
 
     <div class="card" id="loginCard">
-      <h2>Autenticação RCON</h2>
+      <h2 data-i18n="admin.authTitle">Autenticação RCON</h2>
       <div style="display:flex; gap:10px; flex-wrap:wrap; align-items:center;">
         <input
           type="password"
           id="rconPassword"
+          data-i18n-placeholder="admin.passwordPlaceholder"
           placeholder="Digite a senha RCON"
           class="admin-input"
         />
-        <button id="loginBtn">Conectar</button>
+        <button id="loginBtn" data-i18n="admin.connect">Conectar</button>
       </div>
       <p id="loginStatus" style="margin-top:12px;"></p>
     </div>
@@ -32,18 +34,19 @@
       <div class="admin-grid">
         <div class="card">
           <div style="display:flex; justify-content:space-between; gap:10px; align-items:center; flex-wrap:wrap;">
-            <h2 style="margin:0;">Console RCON</h2>
-            <button id="logoutBtn">Desconectar</button>
+            <h2 style="margin:0;" data-i18n="admin.console">Console RCON</h2>
+            <button id="logoutBtn" data-i18n="admin.disconnect">Desconectar</button>
           </div>
 
           <div style="display:flex; gap:10px; flex-wrap:wrap; margin-top:16px;">
             <input
               type="text"
               id="rconCommand"
+              data-i18n-placeholder="admin.commandPlaceholder"
               placeholder="Ex.: status, users, changelevel de_dust2, amx_map de_inferno"
               class="admin-input"
             />
-            <button id="sendBtn">Executar</button>
+            <button id="sendBtn" data-i18n="admin.execute">Executar</button>
           </div>
 
           <div style="margin-top:12px; display:flex; gap:10px; flex-wrap:wrap;">
@@ -52,20 +55,21 @@
             <button class="quick-cmd" data-cmd="stats">stats</button>
           </div>
 
-          <h3 style="margin-top:20px;">Resposta</h3>
+          <h3 style="margin-top:20px;" data-i18n="admin.response">Resposta</h3>
           <pre id="rconOutput" class="console-output"></pre>
         </div>
 
         <div class="card">
-          <h2 style="margin-top:0;">Histórico de comandos</h2>
+          <h2 style="margin-top:0;" data-i18n="admin.historyTitle">Histórico de comandos</h2>
           <div id="commandHistory" class="history-list"></div>
 
-          <h2 style="margin-top:24px;">Referência de comandos</h2>
+          <h2 style="margin-top:24px;" data-i18n="admin.referenceTitle">Referência de comandos</h2>
 
           <input
             type="text"
             id="commandSearch"
             class="admin-input"
+            data-i18n-placeholder="admin.searchPlaceholder"
             placeholder="Buscar comando..."
             style="margin-bottom: 14px;"
           />
@@ -76,6 +80,7 @@
     </div>
   </div>
 
+  <script src="i18n/translations.js" defer></script>
   <script src="common.js" defer></script>
   <script src="admin.js" defer></script>
 </body>

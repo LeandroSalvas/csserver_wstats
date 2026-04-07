@@ -3,14 +3,15 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Ranking do mapa - CS 1.6 Stats</title>
+  <title data-i18n="labels.rankingMap">Ranking do mapa - CS 1.6 Stats</title>
   <link rel="stylesheet" href="style.css">
 </head>
 <body>
 
   <div class="container">
     <div class="header">
-      <h1 id="mapTitle">🗺️ Ranking do mapa</h1>
+      <h1 id="mapTitle" data-i18n="labels.rankingMap">🗺️ Ranking do mapa</h1>
+      <div class="lang-toggle-slot"></div>
     </div>
 
     <div class="page-nav"></div>
@@ -18,18 +19,18 @@
     <div id="statusMessage" class="status-message"></div>
 
     <div class="card">
-      <h2>Top jogadores</h2>
+      <h2 data-i18n="labels.topJogadores">Top jogadores</h2>
 
       <table>
         <thead>
           <tr>
-            <th>#</th>
-            <th>Player</th>
-            <th>Kills</th>
-            <th>Deaths</th>
-            <th>HS</th>
-            <th>KD</th>
-            <th>Skill</th>
+            <th data-i18n="labels.rank">#</th>
+            <th data-i18n="labels.player">Player</th>
+            <th data-i18n="labels.kills">Kills</th>
+            <th data-i18n="labels.deaths">Deaths</th>
+            <th data-i18n="labels.hs">HS</th>
+            <th data-i18n="labels.kd">KD</th>
+            <th data-i18n="labels.skill">Skill</th>
           </tr>
         </thead>
         <tbody id="mapRanking"></tbody>
@@ -37,6 +38,7 @@
     </div>
   </div>
 
+  <script src="i18n/translations.js" defer></script>
   <script src="common.js" defer></script>
   <script src="map.js" defer></script>
 </body>

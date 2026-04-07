@@ -3,4 +3,5 @@
 # Lixo do macOS (evita arquivos tipo "._arquivo")
 ._*
 .DS_Store
+AGENTS.md
 

@@ -1,13 +1,11 @@
 <!DOCTYPE html>
 <html lang="pt-BR">
-
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Player Stats</title>
+  <title data-i18n="player.title">Player Stats</title>
   <link rel="stylesheet" href="style.css">
   <script src="https://cdn.jsdelivr.net/npm/chart.js" defer></script>
-  <script src="common.js" defer></script>
 </head>
 
 <body>
@@ -15,7 +13,8 @@
   <div class="container">
 
     <div class="header">
-      <h1>👤 Player Stats</h1>
+      <h1>👤 <span data-i18n="player.title">Player Stats</span></h1>
+      <div class="lang-toggle-slot"></div>
     </div>
 
     <div class="page-nav"></div>
@@ -25,32 +24,32 @@
     <div class="card player-card">
       <h2 id="playerName">-</h2>
       <div class="player-meta">
-        <div><strong>SteamID:</strong> <span id="steamid">-</span></div>
-        <div><strong>Kills:</strong> <span id="kills">-</span></div>
-        <div><strong>Deaths:</strong> <span id="deaths">-</span></div>
-        <div><strong>HS:</strong> <span id="hs">-</span></div>
-        <div><strong>K/D:</strong> <span id="kd">-</span></div>
-        <div><strong>Skill:</strong> <span id="skill">-</span></div>
-        <div><strong>Último mapa:</strong> <span id="lastMap">-</span></div>
+        <div><strong data-i18n="player.steamid">SteamID:</strong> <span id="steamid">-</span></div>
+        <div><strong data-i18n="labels.kills">Kills:</strong> <span id="kills">-</span></div>
+        <div><strong data-i18n="labels.deaths">Deaths:</strong> <span id="deaths">-</span></div>
+        <div><strong data-i18n="labels.hs">HS:</strong> <span id="hs">-</span></div>
+        <div><strong data-i18n="labels.kd">K/D:</strong> <span id="kd">-</span></div>
+        <div><strong data-i18n="labels.skill">Skill:</strong> <span id="skill">-</span></div>
+        <div><strong data-i18n="player.lastMap">Último mapa:</strong> <span id="lastMap">-</span></div>
       </div>
     </div>
 
     <div class="card">
-      <h2>📈 Evolução de Kills</h2>
+      <h2 data-i18n="labels.killsEvolution">📈 Evolução de Kills</h2>
       <canvas id="killsChart" height="100"></canvas>
     </div>
 
     <div class="card">
-      <h2>🕒 Histórico recente</h2>
+      <h2 data-i18n="labels.recentHistory">🕒 Histórico recente</h2>
       <table>
         <thead>
           <tr>
-            <th>Data</th>
-            <th>Mapa</th>
-            <th>Kills</th>
-            <th>Deaths</th>
-            <th>HS</th>
-            <th>Skill</th>
+            <th data-i18n="labels.data">Data</th>
+            <th data-i18n="labels.map">Mapa</th>
+            <th data-i18n="labels.kills">Kills</th>
+            <th data-i18n="labels.deaths">Deaths</th>
+            <th data-i18n="labels.hs">HS</th>
+            <th data-i18n="labels.skill">Skill</th>
           </tr>
         </thead>
         <tbody id="historyTable"></tbody>
@@ -59,6 +58,8 @@
 
   </div>
 
+  <script src="i18n/translations.js" defer></script>
+  <script src="common.js" defer></script>
   <script src="player.js" defer></script>
 </body>
 

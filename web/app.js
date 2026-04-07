@@ -2,7 +2,7 @@ let top10NeedsLoadingUi = true
 
 async function loadSystemStatus() {
   try {
-    setStatus('Atualizando status do sistema...')
+    setStatus(i18nUtils.t('status.updatingSystem'))
     const health = await fetchJson('/health')
 
     const apiLabel = health.status === 'ok'
@@ -27,7 +27,7 @@ async function loadSystemStatus() {
     setStatusChip('systemDb', 'Offline')
     setStatusChip('systemRedis', 'Offline')
     setStatusChip('systemCs', 'Offline')
-    setStatus(`Não foi possível carregar status do sistema: ${err.message}`, 'error')
+    setStatus(`${i18nUtils.t('errors.loadSystem')}: ${err.message}`, 'error')
   }
 }
 
@@ -46,7 +46,7 @@ function updatePodium(players) {
 
     if (data) {
       nameEl.innerText = data.name
-      statEl.innerText = `Kills: ${data.kills}`
+      statEl.innerText = `${i18nUtils.t('labels.kills')}: ${data.kills}`
     } else {
       nameEl.innerText = '-'
       statEl.innerText = '-'
@@ -56,15 +56,9 @@ function updatePodium(players) {
 
 async function loadTop10() {
   const table = document.getElementById('ranking')
-  const p1Name = document.querySelector('#p1 .name')
-  const p1Stat = document.querySelector('#p1 .stat')
-  const p2Name = document.querySelector('#p2 .name')
-  const p2Stat = document.querySelector('#p2 .stat')
-  const p3Name = document.querySelector('#p3 .name')
-  const p3Stat = document.querySelector('#p3 .stat')
 
   if (top10NeedsLoadingUi) {
-    setStatus('Atualizando ranking...')
+    setStatus(i18nUtils.t('status.loadingRanking'))
     showSkeletonRows(table, 6, 4)
   }
 
@@ -103,8 +97,8 @@ async function loadTop10() {
   } catch (err) {
     top10NeedsLoadingUi = true
     console.error('Erro ao carregar top10:', err)
-    setStatus(`Erro ao carregar ranking: ${err.message}`, 'error')
-    showEmptyRow(table, 6, 'Falha ao carregar ranking')
+    setStatus(`${i18nUtils.t('errors.loadRanking')}: ${err.message}`, 'error')
+    showEmptyRow(table, 6, i18nUtils.t('errors.failToLoad'))
     animateTableUpdate(table.closest('table'))
   }
 }
@@ -118,7 +112,7 @@ async function loadStats() {
     document.getElementById('maps').innerText = s.maps
   } catch (err) {
     console.error('Erro ao carregar stats:', err)
-    setStatus(`Não foi possível carregar estatísticas: ${err.message}`, 'error')
+    setStatus(`${i18nUtils.t('errors.loadFailed')} stats: ${err.message}`, 'error')
   }
 }
 
@@ -134,8 +128,8 @@ async function loadServer() {
     setStatusChip('systemCs', 'Online')
   } catch (err) {
     console.error('Erro ao carregar status do servidor:', err)
-    setStatus(`Não foi possível carregar status do servidor: ${err.message}`, 'error')
-    document.getElementById('hostname').innerText = 'Offline'
+    setStatus(`${i18nUtils.t('errors.loadServer')}: ${err.message}`, 'error')
+    document.getElementById('hostname').innerText = i18nUtils.t('status.offline')
     document.getElementById('currentMap').innerText = '-'
     document.getElementById('playersOnline').innerText = '0'
     document.getElementById('maxPlayers').innerText = '0'

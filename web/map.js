@@ -4,17 +4,17 @@ const mapName = params.get('map')
 async function loadMapRanking() {
   const title = document.getElementById('mapTitle')
   const table = document.getElementById('mapRanking')
-  setStatus('Carregando ranking do mapa...')
+  setStatus(i18nUtils.t('status.loadingMap'))
   showSkeletonRows(table, 7, 4)
 
   if (!mapName) {
-    setStatus('Nome do mapa não informado.', 'error')
+    setStatus(i18nUtils.t('errors.mapNotProvided'), 'error')
     showEmptyRow(table)
     return
   }
 
   try {
-    title.innerText = `🗺️ Ranking do mapa: ${mapName}`
+    title.innerText = `${i18nUtils.t('labels.rankingMap')}: ${mapName}`
     const players = await fetchJson(`/map-ranking/${encodeURIComponent(mapName)}`)
     clearStatus()
 
@@ -43,7 +43,7 @@ async function loadMapRanking() {
     animateTableUpdate(table)
   } catch (err) {
     console.error('Erro ao carregar ranking do mapa:', err)
-    setStatus(`Erro ao carregar ranking do mapa: ${err.message}`, 'error')
+    setStatus(`${i18nUtils.t('errors.loadMap')}: ${err.message}`, 'error')
     showEmptyRow(table)
   }
 }

@@ -3,14 +3,15 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Rankings - CS 1.6 Stats</title>
+  <title data-i18n="nav.rankings">Rankings - CS 1.6 Stats</title>
   <link rel="stylesheet" href="style.css">
 </head>
 <body>
 
   <div class="container">
     <div class="header">
-      <h1>🏆 Rankings por período</h1>
+      <h1>🏆 <span data-i18n="labels.ranking">Rankings por período</span></h1>
+      <div class="lang-toggle-slot"></div>
     </div>
 
     <div class="page-nav"></div>
@@ -19,22 +20,22 @@
 
     <div class="card">
       <div style="display:flex; gap:10px; margin-bottom:20px; flex-wrap:wrap;">
-        <button onclick="loadRanking('weekly')">Semanal</button>
-        <button onclick="loadRanking('monthly')">Mensal</button>
+        <button onclick="loadRanking('weekly')" data-i18n="labels.weekly">Semanal</button>
+        <button onclick="loadRanking('monthly')" data-i18n="labels.monthly">Mensal</button>
       </div>
 
-      <h2 id="rankingTitle">Ranking semanal</h2>
+      <h2 id="rankingTitle" data-i18n="labels.rankingWeekly">Ranking semanal</h2>
 
       <table>
         <thead>
           <tr>
-            <th>#</th>
-            <th>Player</th>
-            <th>Kills</th>
-            <th>Deaths</th>
-            <th>HS</th>
-            <th>KD</th>
-            <th>Skill</th>
+            <th data-i18n="labels.rank">#</th>
+            <th data-i18n="labels.player">Player</th>
+            <th data-i18n="labels.kills">Kills</th>
+            <th data-i18n="labels.deaths">Deaths</th>
+            <th data-i18n="labels.hs">HS</th>
+            <th data-i18n="labels.kd">KD</th>
+            <th data-i18n="labels.skill">Skill</th>
           </tr>
         </thead>
         <tbody id="rankingTable"></tbody>
@@ -42,6 +43,7 @@
     </div>
   </div>
 
+  <script src="i18n/translations.js" defer></script>
   <script src="common.js" defer></script>
   <script src="rankings.js" defer></script>
 </body>

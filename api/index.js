@@ -3,11 +3,21 @@ const mysql = require('mysql2/promise')
 const session = require('express-session')
 const { createClient } = require('redis')
 const connectRedis = require('connect-redis')
+const rateLimit = require('express-rate-limit')
+const crypto = require('crypto')
 const Rcon = require('rcon')
 const fs = require('fs')
 
 const app = express()
 app.use(express.json())
+
+const loginLimiter = rateLimit({
+  windowMs: 60 * 1000,
+  max: 5,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { success: false, error: 'Muitas tentativas. Tente novamente em 1 minuto.' }
+})
 
 let redisClient = null
 
@@ -100,7 +110,8 @@ if (sessionStoreType === 'redis') {
     cookie: {
       httpOnly: true,
       sameSite: 'lax',
-      secure: false
+      secure: false,
+      maxAge: 60 * 60 * 1000
     }
   }))
 } else {
@@ -111,7 +122,8 @@ if (sessionStoreType === 'redis') {
     cookie: {
       httpOnly: true,
       sameSite: 'lax',
-      secure: false
+      secure: false,
+      maxAge: 60 * 60 * 1000
     }
   }))
 }
@@ -767,13 +779,13 @@ function runRconCommand(password, command) {
 }
 
 function requireAdmin(req, res, next) {
-  if (!req.session?.rconAuthenticated || !req.session?.rconPassword) {
+  if (!req.session?.adminToken) {
     return res.status(401).json({ error: 'Não autenticado' })
   }
   next()
 }
 
-app.post('/admin/login', async (req, res) => {
+app.post('/admin/login', loginLimiter, async (req, res) => {
   try {
     const { password } = req.body || {}
 
@@ -781,12 +793,20 @@ app.post('/admin/login', async (req, res) => {
       return res.status(400).json({ error: 'Senha RCON obrigatória' })
     }
 
-    // testa a senha com um comando simples
-    const response = await runRconCommand(password, 'status')
+    const rconPassword = process.env.RCON_PASSWORD
+    if (!rconPassword) {
+      console.error('RCON_PASSWORD não configurado no ambiente')
+      return res.status(500).json({ success: false, error: 'RCON não configurado no servidor' })
+    }
 
-    req.session.rconAuthenticated = true
-    req.session.rconPassword = password
+    if (password !== rconPassword) {
+      return res.status(401).json({ success: false, error: 'Senha incorreta' })
+    }
 
+    req.session.adminToken = crypto.randomBytes(32).toString('hex')
+    req.session.adminLoggedInAt = Date.now()
+
+    const response = await runRconCommand(rconPassword, 'status').catch(() => 'ok')
     res.json({
       success: true,
       message: 'Autenticado com sucesso',
@@ -809,7 +829,12 @@ app.post('/admin/command', requireAdmin, async (req, res) => {
       return res.status(400).json({ error: 'Comando obrigatório' })
     }
 
-    const response = await runRconCommand(req.session.rconPassword, command.trim())
+    const rconPassword = process.env.RCON_PASSWORD
+    if (!rconPassword) {
+      return res.status(500).json({ success: false, error: 'RCON não configurado' })
+    }
+
+    const response = await runRconCommand(rconPassword, command.trim())
 
     res.json({
       success: true,
@@ -834,7 +859,7 @@ app.post('/admin/logout', (req, res) => {
 //ROTA DE SESSÃO
 app.get('/admin/session', (req, res) => {
   res.json({
-    authenticated: !!req.session?.rconAuthenticated
+    authenticated: !!req.session?.adminToken
   })
 })
 

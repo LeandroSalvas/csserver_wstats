@@ -8,7 +8,7 @@ async function loadPlayer() {
   const p = res
 
   if (!p) {
-    throw new Error('Jogador não encontrado')
+    throw new Error(i18nUtils.t('errors.playerNotFound'))
   }
 
   document.getElementById('playerName').innerText = p.name || '-'
@@ -72,18 +72,18 @@ async function loadLastMap() {
 
 async function loadPlayerData() {
   if (!steamid) {
-    setStatus('SteamID não informado na URL.', 'error')
+    setStatus(i18nUtils.t('errors.steamidNotProvided'), 'error')
     return
   }
 
-  setStatus('Carregando dados do jogador...')
+  setStatus(i18nUtils.t('status.loadingPlayer'))
 
   try {
     await Promise.all([loadPlayer(), loadPlayerHistory(), loadLastMap()])
     clearStatus()
   } catch (err) {
     console.error('Erro ao carregar player:', err)
-    setStatus(`Erro ao carregar dados: ${err.message}`, 'error')
+    setStatus(`${i18nUtils.t('errors.loadPlayer')}: ${err.message}`, 'error')
   }
 }
 
@@ -99,7 +99,7 @@ function renderChart(labels, killsData) {
     data: {
       labels,
       datasets: [{
-        label: 'Kills',
+        label: i18nUtils.t('labels.kills'),
         data: killsData,
         tension: 0.25,
         borderColor: '#60a5fa',

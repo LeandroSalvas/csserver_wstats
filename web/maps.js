@@ -1,6 +1,6 @@
 async function loadMaps() {
   const table = document.getElementById('mapsTable')
-  setStatus('Carregando mapas...')
+  setStatus(i18nUtils.t('status.loadingMaps'))
   showSkeletonRows(table, 3, 4)
 
   try {
@@ -8,7 +8,7 @@ async function loadMaps() {
     clearStatus()
 
     if (!Array.isArray(maps) || maps.length === 0) {
-      showEmptyRow(table, 3, 'Nenhum mapa encontrado')
+      showEmptyRow(table, 3, i18nUtils.t('labels.noMaps'))
       return
     }
 
@@ -28,8 +28,8 @@ async function loadMaps() {
     animateTableUpdate(table)
   } catch (err) {
     console.error('Erro ao carregar mapas:', err)
-    setStatus(`Erro ao carregar mapas: ${err.message}`, 'error')
-    showEmptyRow(table, 3, 'Falha ao carregar mapas')
+    setStatus(`${i18nUtils.t('errors.loadMaps')}: ${err.message}`, 'error')
+    showEmptyRow(table, 3, i18nUtils.t('labels.failLoadMaps'))
   }
 }
 

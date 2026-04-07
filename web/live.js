@@ -1,7 +1,6 @@
 let liveInitialized = false
 let liveLastFetchFailed = false
 let previousKills = []
-/** Estado anterior do scoreboard por time (nome → stats) para animar só quando muda */
 const previousScoreboard = { T: new Map(), CT: new Map() }
 
 function getWeaponEmoji(weapon) {
@@ -65,7 +64,6 @@ function escapeAttr(s) {
     .replace(/>/g, "&gt;")
 }
 
-/** Score / Deaths: animação dígito a dígito (estilo Solari) */
 function renderFlapDigitsInt(value, prev, staggerMs) {
   const str = String(value)
   const prevStr = prev !== undefined && prev !== null ? String(prev) : null
@@ -91,7 +89,6 @@ function renderFlapDigitsInt(value, prev, staggerMs) {
     .join("")
 }
 
-/** KD: valor inteiro na célula (com decimais), animação única */
 function renderFlapNumericCell(value, prev, staggerMs) {
   const str = String(value)
   const prevStr = prev !== undefined && prev !== null ? String(prev) : null
@@ -112,7 +109,7 @@ function renderPlayers(elementId, players, teamKey) {
   if (!players.length) {
     tbody.innerHTML = `
       <tr>
-        <td colspan="5">Nenhum jogador neste time.</td>
+        <td colspan="5">${i18nUtils.t('labels.noPlayersThisTeam')}</td>
       </tr>
     `
     previousScoreboard[teamKey] = new Map()
@@ -143,7 +140,7 @@ function renderPlayers(elementId, players, teamKey) {
           <td>
             <span class="sf-status-stack">
               <span class="sf-status-emoji" aria-hidden="true">${player.alive ? "🟢" : "🔴"}</span>
-              <span class="sf-status-text">${player.alive ? "Alive" : "Dead"}</span>
+              <span class="sf-status-text">${player.alive ? i18nUtils.t('live.alive') : i18nUtils.t('live.dead')}</span>
             </span>
           </td>
           <td>${scoreHtml}</td>
@@ -189,7 +186,7 @@ function renderKillFeed(kills) {
 
   if (!newKills.length) {
     previousKills = []
-    container.innerHTML = `<div class="kill-feed-empty">Nenhuma kill recente.</div>`
+    container.innerHTML = `<div class="kill-feed-empty">${i18nUtils.t('labels.noRecentKills')}</div>`
     return
   }
 
@@ -244,7 +241,7 @@ async function loadLivePanel() {
 
   const showLoadingUi = !liveInitialized || liveLastFetchFailed
   if (showLoadingUi) {
-    setStatus('Carregando dados ao vivo...')
+    setStatus(i18nUtils.t('status.loadingLive'))
     showSkeletonRows(tBody, 5, 3)
     showSkeletonRows(ctBody, 5, 3)
   }
@@ -257,28 +254,28 @@ async function loadLivePanel() {
 
     const players = Array.isArray(data.players) ? data.players : []
 
-    document.getElementById('liveHostname').innerText = data.hostname || 'Servidor'
+    document.getElementById('liveHostname').innerText = data.hostname || i18nUtils.t('server.hostname')
     document.getElementById('liveMap').innerText = data.map || '-'
     document.getElementById('liveCount').innerText = players.length
 
     const tPlayers = players.filter((p) => p.team === 'T')
     const ctPlayers = players.filter((p) => p.team === 'CT')
 
-    document.getElementById('tCount').innerText = `${tPlayers.length} players`
-    document.getElementById('ctCount').innerText = `${ctPlayers.length} players`
+    document.getElementById('tCount').innerText = `${tPlayers.length} ${i18nUtils.t('live.playersCount')}`
+    document.getElementById('ctCount').innerText = `${ctPlayers.length} ${i18nUtils.t('live.playersCount')}`
 
     renderPlayers('tPlayers', tPlayers, 'T')
     renderPlayers('ctPlayers', ctPlayers, 'CT')
   } catch (err) {
     liveLastFetchFailed = true
     console.error('Erro ao carregar live panel:', err)
-    setStatus(`Erro ao carregar live: ${err.message}`, 'error')
+    setStatus(`${i18nUtils.t('errors.loadLive')}: ${err.message}`, 'error')
 
-    document.getElementById('liveHostname').innerText = 'Servidor offline'
+    document.getElementById('liveHostname').innerText = i18nUtils.t('status.offline')
     document.getElementById('liveMap').innerText = '-'
     document.getElementById('liveCount').innerText = '0'
-    document.getElementById('tCount').innerText = '0 players'
-    document.getElementById('ctCount').innerText = '0 players'
+    document.getElementById('tCount').innerText = `0 ${i18nUtils.t('live.playersCount')}`
+    document.getElementById('ctCount').innerText = `0 ${i18nUtils.t('live.playersCount')}`
 
     renderPlayers('tPlayers', [], 'T')
     renderPlayers('ctPlayers', [], 'CT')
