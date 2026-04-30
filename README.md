@@ -1,7 +1,7 @@
 # CS Server Stats
 
-> Sistema de monitoramento para servidores de Counter-Strike 1.6.
-> Monitoring system for Counter-Strike 1.6 servers.
+> Servidor de Counter-Strike 1.6 com painel de estatísticas integrado.
+> Counter-Strike 1.6 server with integrated statistics dashboard.
 
 ---
 
@@ -9,7 +9,7 @@
 
 ### Visão geral
 
-CS Server Stats é um painel de monitoramento para servidores de Counter-Strike 1.6 com API Node.js, frontend vanilla JavaScript, MariaDB para dados, Redis para cache/sessão e Nginx para servir a interface web. Coleta, armazena e exibe estatísticas de partidas em tempo real e histórico de jogadores.
+CS Server Stats é um servidor completo de Counter-Strike 1.6 com painel de estatísticas integrado. O servidor roda com AMX Mod X configurado, coleta e armazena estatísticas de partidas em tempo real, e expõe um painel web com rankings, perfis de jogadores, placar ao vivo e killfeed. Toda a stack é orquestrada com Docker Compose: servidor de jogo, MariaDB, Redis, API Node.js e frontend Nginx.
 
 ### Arquitetura
 
@@ -17,13 +17,22 @@ O projeto é orquestrado com Docker Compose e consiste em 5 serviços:
 
 | Serviço | Descrição |
 |---------|-----------|
-| `cs16` | Servidor de jogo com AMX Mod X configurado |
+| `cs16` | Servidor de jogo Counter-Strike 1.6 com AMX Mod X e stats plugin |
 | `db` | MariaDB para armazenamento de estatísticas |
 | `redis` | Cache e armazenamento de sessões |
 | `api` | Backend Node.js (Express) com endpoints REST |
 | `web` | Frontend estático servido via Nginx com proxy reverso para a API |
 
 ### Funcionalidades
+
+#### Servidor de Jogo
+
+- Counter-Strike 1.6 pronto para rodar com AMX Mod X
+- Configurações de servidor centralizadas (`server.cfg`, `users.ini`, `mapcycle.txt`, `motd.txt`)
+- Suporte a bots PodBod
+- Stats plugin integrado para coleta automática de dados
+
+#### Painel Web
 
 - Status do servidor e estatísticas em tempo real
 - Rankings de jogadores (geral, semanal, mensal e por mapa)
@@ -108,7 +117,7 @@ Abra o navegador em `http://<seu-host>:8080`
 
 #### Arquivos de configuração do CS
 
-Os arquivos em `config/` são montados automaticamente no container do jogo:
+Os arquivos em `config/` definem o comportamento do servidor de jogo e são montados diretamente no container:
 
 | Arquivo | Montado em |
 |---------|------------|
@@ -119,7 +128,7 @@ Os arquivos em `config/` são montados automaticamente no container do jogo:
 
 #### Arquivos live
 
-Os arquivos em `live/` são compartilhados entre o servidor CS e a API:
+Os arquivos em `live/` são compartilhados entre o plugin do servidor CS e a API para exibir dados em tempo real:
 
 | Arquivo | Descrição |
 |---------|-----------|
@@ -254,7 +263,7 @@ Confira as variáveis `MYSQL_*` no `.env`. O banco pode levar alguns segundos pa
 docker compose logs api
 docker exec csserver_wstats-db-1 mysql -u root -p<senha> -e "USE csstats; SELECT COUNT(*) FROM csstats;"
 ```
-Se a tabela `csstats` está vazia, o servidor CS precisa estar rodando com o plugin de stats AMX Mod X ativo. Os dados são preenchidos quando jogadores se conectam e jogam.
+Se a tabela `csstats` está vazia, verifique se o servidor de jogo está rodando corretamente. O stats plugin integrado ao AMX Mod X coleta os dados automaticamente quando os jogadores se conectam e jogam.
 
 ---
 
@@ -262,7 +271,7 @@ Se a tabela `csstats` está vazia, o servidor CS precisa estar rodando com o plu
 
 ### Overview
 
-CS Server Stats is a monitoring dashboard for Counter-Strike 1.6 servers with a Node.js API, vanilla JavaScript frontend, MariaDB for data storage, Redis for cache/sessions, and Nginx serving the web interface. It collects, stores, and displays real-time match statistics and player history.
+CS Server Stats is a complete Counter-Strike 1.6 server with an integrated statistics dashboard. The server runs with AMX Mod X configured, collects and stores real-time match statistics, and exposes a web panel with rankings, player profiles, live scoreboard and killfeed. The entire stack is orchestrated with Docker Compose: game server, MariaDB, Redis, Node.js API, and Nginx frontend.
 
 ### Architecture
 
@@ -270,13 +279,22 @@ The project is orchestrated with Docker Compose and consists of 5 services:
 
 | Service | Description |
 |---------|-------------|
-| `cs16` | Game server with AMX Mod X configured |
+| `cs16` | Counter-Strike 1.6 game server with AMX Mod X and stats plugin |
 | `db` | MariaDB for stats storage |
 | `redis` | Cache and session store |
 | `api` | Node.js (Express) backend with REST endpoints |
 | `web` | Static frontend served via Nginx with reverse proxy to the API |
 
 ### Features
+
+#### Game Server
+
+- Counter-Strike 1.6 ready to run with AMX Mod X
+- Centralized server configuration (`server.cfg`, `users.ini`, `mapcycle.txt`, `motd.txt`)
+- PodBod bot support
+- Integrated stats plugin for automatic data collection
+
+#### Web Panel
 
 - Real-time server status and player statistics
 - Player rankings (overall, weekly, monthly, and per-map)
@@ -361,7 +379,7 @@ Open your browser at `http://<your-host>:8080`
 
 #### CS Server config files
 
-Files in `config/` are automatically mounted into the game container:
+Files in `config/` define the game server behavior and are mounted directly into the container:
 
 | File | Mounted at |
 |------|------------|
@@ -372,7 +390,7 @@ Files in `config/` are automatically mounted into the game container:
 
 #### Live files
 
-Files in `live/` are shared between the CS server and the API:
+Files in `live/` are shared between the CS server plugin and the API for real-time display:
 
 | File | Description |
 |------|-------------|
@@ -507,4 +525,4 @@ Verify the `MYSQL_*` variables in `.env`. The database may take a few seconds to
 docker compose logs api
 docker exec csserver_wstats-db-1 mysql -u root -p<password> -e "USE csstats; SELECT COUNT(*) FROM csstats;"
 ```
-If the `csstats` table is empty, the CS server needs to be running with the AMX Mod X stats plugin active. Data is populated when players connect and play.
+If the `csstats` table is empty, verify the game server is running correctly. The integrated AMX Mod X stats plugin collects data automatically when players connect and play.
