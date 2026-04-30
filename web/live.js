@@ -5,44 +5,44 @@ const previousScoreboard = { T: new Map(), CT: new Map() }
 
 function getWeaponEmoji(weapon) {
   const map = {
-    p228: "🔫",
-    scout: "🎯",
-    hegrenade: "💣",
-    xm1014: "💥",
-    c4: "💣",
-    mac10: "🔫",
-    aug: "🔫",
-    smokegrenade: "💨",
-    elite: "🔫",
-    fiveseven: "🔫",
-    ump45: "🔫",
-    sg550: "🎯",
-    galil: "🔫",
-    famas: "🔫",
-    usp: "🔫",
-    glock18: "🔫",
-    awp: "🎯",
-    mp5navy: "🔫",
-    m249: "🔫",
-    m3: "💥",
-    m4a1: "🔫",
-    tmp: "🔫",
-    g3sg1: "🎯",
-    flashbang: "💥",
-    deagle: "🔫",
-    sg552: "🔫",
-    ak47: "🔫",
-    knife: "🔪",
-    p90: "🔫",
-    world: "☠️",
-    worldspawn: "☠️"
+    p228: "\u{1F52B}",
+    scout: "\u{1F3AF}",
+    hegrenade: "\u{1F4A3}",
+    xm1014: "\u{1F4A5}",
+    c4: "\u{1F4A3}",
+    mac10: "\u{1F52B}",
+    aug: "\u{1F52B}",
+    smokegrenade: "\u{1F4A8}",
+    elite: "\u{1F52B}",
+    fiveseven: "\u{1F52B}",
+    ump45: "\u{1F52B}",
+    sg550: "\u{1F3AF}",
+    galil: "\u{1F52B}",
+    famas: "\u{1F52B}",
+    usp: "\u{1F52B}",
+    glock18: "\u{1F52B}",
+    awp: "\u{1F3AF}",
+    mp5navy: "\u{1F52B}",
+    m249: "\u{1F52B}",
+    m3: "\u{1F4A5}",
+    m4a1: "\u{1F52B}",
+    tmp: "\u{1F52B}",
+    g3sg1: "\u{1F3AF}",
+    flashbang: "\u{1F4A5}",
+    deagle: "\u{1F52B}",
+    sg552: "\u{1F52B}",
+    ak47: "\u{1F52B}",
+    knife: "\u{1F52A}",
+    p90: "\u{1F52B}",
+    world: "\u2620\uFE0F",
+    worldspawn: "\u2620\uFE0F"
   }
 
-  return map[(weapon || "").toLowerCase()] || "🔫"
+  return map[(weapon || "").toLowerCase()] || "\u{1F52B}"
 }
 
 function getHeadshotEmoji(isHeadshot) {
-  return isHeadshot ? "🎯" : ""
+  return isHeadshot ? "\u{1F3AF}" : ""
 }
 
 function killKey(kill, index) {
@@ -118,6 +118,7 @@ function renderPlayers(elementId, players, teamKey) {
     return
   }
 
+  const rows = []
   players
     .sort((a, b) => b.score - a.score)
     .forEach((player, rowIdx) => {
@@ -134,12 +135,12 @@ function renderPlayers(elementId, players, teamKey) {
 
       nextMap.set(player.name, { score: player.score, deaths: player.deaths, kd })
 
-      tbody.innerHTML += `
+      rows.push(`
         <tr>
           <td title="${nameAttr}">${name}</td>
           <td>
             <span class="sf-status-stack">
-              <span class="sf-status-emoji" aria-hidden="true">${player.alive ? "🟢" : "🔴"}</span>
+              <span class="sf-status-emoji" aria-hidden="true">${player.alive ? "\u{1F7E2}" : "\u{1F534}"}</span>
               <span class="sf-status-text">${player.alive ? i18nUtils.t('live.alive') : i18nUtils.t('live.dead')}</span>
             </span>
           </td>
@@ -147,8 +148,10 @@ function renderPlayers(elementId, players, teamKey) {
           <td>${deathsHtml}</td>
           <td>${kdHtml}</td>
         </tr>
-      `
+      `)
     })
+
+  tbody.innerHTML = rows.join('')
 
   previousScoreboard[teamKey] = nextMap
 
@@ -165,11 +168,11 @@ function createKillFeedItem(kill, index) {
   const hsEmoji = getHeadshotEmoji(kill.headshot)
 
   item.innerHTML = `
-    <span class="kill-killer">${kill.killer}</span>
-    <span class="kill-arrow">→</span>
-    <span class="kill-victim">${kill.victim}</span>
-    <span class="kill-weapon" title="${kill.weapon || "weapon"}">${weaponEmoji}</span>
-    ${hsEmoji ? `<span class="kill-hs" title="Headshot">${hsEmoji}</span>` : ""}
+    <span class="kill-killer">${escapeHtmlText(kill.killer)}</span>
+    <span class="kill-arrow">\u2192</span>
+    <span class="kill-victim">${escapeHtmlText(kill.victim)}</span>
+    <span class="kill-weapon" title="${escapeAttr(kill.weapon || 'weapon')}">${weaponEmoji}</span>
+    ${hsEmoji ? `<span class="kill-hs" title="Headshot">${hsEmoji}</span>` : ''}
   `
 
   requestAnimationFrame(() => {
@@ -291,8 +294,10 @@ async function loadKillFeed() {
   }
 }
 
-loadLivePanel()
-loadKillFeed()
+document.addEventListener('DOMContentLoaded', () => {
+  loadLivePanel()
+  loadKillFeed()
+})
 
 setInterval(loadLivePanel, 5000)
 setInterval(loadKillFeed, 2000)

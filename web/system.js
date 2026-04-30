@@ -42,7 +42,11 @@ function refreshSystemPage() {
   loadSystemPageStatus()
 }
 
-window.addEventListener('focus', refreshSystemPage)
+let systemFocusDebounceTimer = null
+window.addEventListener('focus', () => {
+  if (systemFocusDebounceTimer) clearTimeout(systemFocusDebounceTimer)
+  systemFocusDebounceTimer = setTimeout(refreshSystemPage, 500)
+})
 setInterval(refreshSystemPage, 15000)
 
-loadSystemPageStatus()
+document.addEventListener('DOMContentLoaded', loadSystemPageStatus)

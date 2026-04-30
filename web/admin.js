@@ -286,15 +286,17 @@ commandInput.addEventListener('keydown', (e) => {
   if (e.key === 'Enter') sendCommand()
 })
 
-document.querySelectorAll('.quick-cmd').forEach((btn) => {
-  btn.addEventListener('click', () => {
-    sendCommand(btn.dataset.cmd)
+document.addEventListener('DOMContentLoaded', () => {
+  document.querySelectorAll('.quick-cmd').forEach((btn) => {
+    btn.addEventListener('click', () => {
+      sendCommand(btn.dataset.cmd)
+    })
   })
-})
 
-commandSearch.addEventListener('input', (e) => {
-  renderCommandReference(e.target.value)
-})
+  commandSearch.addEventListener('input', (e) => {
+    renderCommandReference(e.target.value)
+  })
 
-checkSession()
-renderCommandReference()
+  checkSession()
+  renderCommandReference()
+})

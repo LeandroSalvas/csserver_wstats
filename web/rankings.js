@@ -7,8 +7,8 @@ async function loadRanking(period) {
 
   try {
     const players = await fetchJson(`/ranking/${period}`)
-    title.innerText = period === 'weekly' 
-      ? i18nUtils.t('labels.rankingWeekly') 
+    title.innerText = period === 'weekly'
+      ? i18nUtils.t('labels.rankingWeekly')
       : i18nUtils.t('labels.rankingMonthly')
     clearStatus()
 
@@ -22,7 +22,7 @@ async function loadRanking(period) {
       const row = document.createElement('tr')
       row.innerHTML = `
         <td>${i + 1}</td>
-        <td><a href="player.html?steamid=${encodeURIComponent(p.steamid)}">${p.name}</a></td>
+        <td><a href="player.html?steamid=${encodeURIComponent(p.steamid)}">${escapeHtml(p.name)}</a></td>
         <td>${p.kills}</td>
         <td>${p.deaths}</td>
         <td>${p.hs}</td>
@@ -42,4 +42,10 @@ async function loadRanking(period) {
   }
 }
 
-loadRanking('weekly')
+document.addEventListener('DOMContentLoaded', () => {
+  const btnWeekly = document.getElementById('btnWeekly')
+  const btnMonthly = document.getElementById('btnMonthly')
+  if (btnWeekly) btnWeekly.addEventListener('click', () => loadRanking('weekly'))
+  if (btnMonthly) btnMonthly.addEventListener('click', () => loadRanking('monthly'))
+  loadRanking('weekly')
+})

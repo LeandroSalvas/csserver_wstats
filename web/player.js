@@ -1,6 +1,8 @@
 const params = new URLSearchParams(window.location.search)
 const steamid = params.get('steamid')
 
+console.log('[player.js] steamid:', steamid)
+
 let chartInstance = null
 
 async function loadPlayer() {
@@ -22,14 +24,10 @@ async function loadPlayer() {
 
 async function loadPlayerHistory() {
   const table = document.getElementById('historyTable')
-  showSkeletonRows(table, 6, 4)
+  showSkeletonRows(table, 5, 4)
 
   const res = await fetchJson(`/player-history-daily/${encodeURIComponent(steamid)}`)
   const history = res
-
-  if (Array.isArray(history) && history.length > 0) {
-    document.getElementById('lastMap').innerText = history[history.length - 1].map || '-'
-  }
 
   const labels = []
   const killsData = []
@@ -39,19 +37,26 @@ async function loadPlayerHistory() {
     return
   }
 
+  const sorted = Array.from(history).sort((a, b) => (a.day || '').localeCompare(b.day || ''))
+
+  sorted.forEach((row) => {
+    const cleanDate = (row.day || '').substring(0, 10)
+    const [year, month, day] = cleanDate.split('-')
+    const date = `${day}/${month}/${year}`
+    labels.push(date)
+    killsData.push(row.kills ?? 0)
+  })
+
   const fragment = document.createDocumentFragment()
 
   history.forEach((row) => {
     const cleanDate = (row.day || '').substring(0, 10)
     const [year, month, day] = cleanDate.split('-')
     const date = `${day}/${month}/${year}`
-    labels.push(date)
-    killsData.push(row.kills ?? 0)
 
     const tr = document.createElement('tr')
     tr.innerHTML = `
       <td>${date}</td>
-      <td>${row.map || '-'}</td>
       <td>${row.kills ?? 0}</td>
       <td>${row.deaths ?? 0}</td>
       <td>${row.hs ?? 0}</td>
@@ -60,6 +65,7 @@ async function loadPlayerHistory() {
     fragment.appendChild(tr)
   })
 
+  table.innerHTML = ''
   table.appendChild(fragment)
   animateTableUpdate(table)
   renderChart(labels, killsData)
@@ -71,6 +77,7 @@ async function loadLastMap() {
 }
 
 async function loadPlayerData() {
+  console.log('[player.js] loadPlayerData called, steamid:', steamid)
   if (!steamid) {
     setStatus(i18nUtils.t('errors.steamidNotProvided'), 'error')
     return
@@ -92,6 +99,11 @@ function renderChart(labels, killsData) {
 
   if (chartInstance) {
     chartInstance.destroy()
+  }
+
+  if (typeof Chart === 'undefined') {
+    console.error('Chart.js não carregado')
+    return
   }
 
   chartInstance = new Chart(ctx, {
@@ -138,4 +150,10 @@ function renderChart(labels, killsData) {
   })
 }
 
-loadPlayerData()
+try {
+  document.addEventListener('DOMContentLoaded', () => {
+    loadPlayerData()
+  })
+} catch (err) {
+  console.error('Erro ao inicializar player.js:', err)
+}

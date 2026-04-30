@@ -83,7 +83,7 @@ async function loadTop10() {
       row.className = index === 0 ? 'top1' : index === 1 ? 'top2' : index === 2 ? 'top3' : ''
       row.innerHTML = `
         <td>${index + 1}</td>
-        <td><a href="player.html?steamid=${encodeURIComponent(p.steamid)}">${p.name}</a></td>
+        <td><a href="player.html?steamid=${encodeURIComponent(p.steamid)}">${escapeHtml(p.name)}</a></td>
         <td>${p.kills}</td>
         <td>${p.deaths}</td>
         <td>${p.kd}</td>
@@ -146,7 +146,13 @@ function refreshAll() {
   loadSystemStatus()
 }
 
-window.addEventListener('focus', refreshAll)
+let focusDebounceTimer = null
+window.addEventListener('focus', () => {
+  if (focusDebounceTimer) clearTimeout(focusDebounceTimer)
+  focusDebounceTimer = setTimeout(refreshAll, 500)
+})
 setInterval(refreshAll, 15000)
 
-refreshAll()
+document.addEventListener('DOMContentLoaded', () => {
+  refreshAll()
+})

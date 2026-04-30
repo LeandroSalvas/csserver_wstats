@@ -13,18 +13,31 @@
  */
 
 const API = '/api'
-const statusEl = document.getElementById('statusMessage')
+
+function escapeHtml(s) {
+  return String(s ?? '')
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+}
+
+function getStatusEl() {
+  return document.getElementById('statusMessage')
+}
 
 function setStatus(message, type = 'info') {
-  if (!statusEl) return
-  statusEl.textContent = message
-  statusEl.className = `status-message visible ${type}`
+  const el = getStatusEl()
+  if (!el) return
+  el.textContent = message
+  el.className = `status-message visible ${type}`
 }
 
 function clearStatus() {
-  if (!statusEl) return
-  statusEl.textContent = ''
-  statusEl.className = 'status-message'
+  const el = getStatusEl()
+  if (!el) return
+  el.textContent = ''
+  el.className = 'status-message'
 }
 
 function setStatusChip(elementId, value) {
@@ -140,7 +153,7 @@ function showSkeletonRows(tbody, columns = 4, rows = 4) {
 function showEmptyRow(table, columns = 6, text) {
   if (!table) return
   const emptyText = text || i18nUtils.t('labels.noData')
-  table.innerHTML = `\n    <tr class="empty-row">\n      <td colspan="${columns}">${emptyText}</td>\n    </tr>\n  `
+  table.innerHTML = `\n    <tr class="empty-row">\n      <td colspan="${columns}">${escapeHtml(emptyText)}</td>\n    </tr>\n  `
 }
 
 function applyActiveNav() {
@@ -188,6 +201,7 @@ function setServerStatusElement(element, online) {
 }
 
 function initCommon() {
+  console.log('[common.js] initCommon called')
   i18nUtils.init()
   renderPageNav()
   renderLanguageToggle()

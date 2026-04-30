@@ -2,14 +2,24 @@ const express = require('express')
 const mysql = require('mysql2/promise')
 const session = require('express-session')
 const { createClient } = require('redis')
-const connectRedis = require('connect-redis')
+const { RedisStore } = require('connect-redis')
 const rateLimit = require('express-rate-limit')
 const crypto = require('crypto')
 const Rcon = require('rcon')
 const fs = require('fs')
+const cors = require('cors')
 
 const app = express()
 app.use(express.json())
+
+const corsOrigins = process.env.CORS_ALLOWED_ORIGINS
+  ? process.env.CORS_ALLOWED_ORIGINS.split(',').map(o => o.trim()).filter(Boolean)
+  : ['http://localhost:8080', 'http://192.168.15.54:8080']
+
+app.use(cors({
+  origin: corsOrigins,
+  credentials: true
+}))
 
 const loginLimiter = rateLimit({
   windowMs: 60 * 1000,
@@ -17,6 +27,14 @@ const loginLimiter = rateLimit({
   standardHeaders: true,
   legacyHeaders: false,
   message: { success: false, error: 'Muitas tentativas. Tente novamente em 1 minuto.' }
+})
+
+const commandLimiter = rateLimit({
+  windowMs: 60 * 1000,
+  max: 30,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { success: false, error: 'Muitos comandos. Tente novamente em 1 minuto.' }
 })
 
 let redisClient = null
@@ -63,20 +81,13 @@ app.get('/health', async (req, res) => {
 })
 
 const sessionStoreType = (process.env.SESSION_STORE || 'redis').toLowerCase()
-const sessionSecret = process.env.SESSION_SECRET || 'dev-insecure-session-secret'
+const sessionSecret = process.env.SESSION_SECRET
+if (!sessionSecret) {
+  console.error('SESSION_SECRET não configurado. Defina uma string longa e aleatória.')
+  process.exit(1)
+}
 
 if (sessionStoreType === 'redis') {
-  const RedisStore =
-    connectRedis.RedisStore ||
-    (connectRedis.default && connectRedis.default.RedisStore) ||
-    connectRedis.default ||
-    (typeof connectRedis === 'function' ? connectRedis(session) : null)
-
-  if (!RedisStore) {
-    console.error('connect-redis: não foi possível resolver o RedisStore (export inesperado)')
-    process.exit(1)
-  }
-
   const redisHost = process.env.REDIS_HOST || 'redis'
   const redisPort = process.env.REDIS_PORT || '6379'
   const redisPassword = process.env.REDIS_PASSWORD || ''
@@ -98,7 +109,6 @@ if (sessionStoreType === 'redis') {
   redisClient.on('ready', () => console.log('Redis: pronto'))
 
   redisClient.connect().catch((err) => {
-    // Não derruba a API: o client vai tentar reconectar e a API continua respondendo.
     console.error('Falha ao conectar no Redis (vai continuar tentando):', err)
   })
 
@@ -110,7 +120,7 @@ if (sessionStoreType === 'redis') {
     cookie: {
       httpOnly: true,
       sameSite: 'lax',
-      secure: false,
+      secure: process.env.NODE_ENV === 'production',
       maxAge: 60 * 60 * 1000
     }
   }))
@@ -122,7 +132,7 @@ if (sessionStoreType === 'redis') {
     cookie: {
       httpOnly: true,
       sameSite: 'lax',
-      secure: false,
+      secure: process.env.NODE_ENV === 'production',
       maxAge: 60 * 60 * 1000
     }
   }))
@@ -134,24 +144,27 @@ let lastMap = null
 
 const Gamedig = require('gamedig')
 
-async function getCurrentMap(){
+const GAMEDIG_HOST = process.env.GAMEDIG_HOST || 'cs16'
+const GAMEDIG_PORT = parseInt(process.env.GAMEDIG_PORT || '27015', 10)
 
-try{
+async function getCurrentMap() {
 
-const state = await Gamedig.query({
-type: 'cs16',
-host: 'cs16',
-port: 27015
-})
+  try {
 
-return state.map
+    const state = await Gamedig.query({
+      type: 'cs16',
+      host: GAMEDIG_HOST,
+      port: GAMEDIG_PORT
+    })
 
-}catch(err){
+    return state.map
 
-console.log("Erro ao obter mapa:", err.message)
-return "unknown"
+  } catch (err) {
 
-}
+    console.error('Erro ao obter mapa:', err.message)
+    return 'unknown'
+
+  }
 
 }
 
@@ -174,8 +187,6 @@ app.get('/top10', async (req, res) => {
     `)
 
     res.json(rows)
-
-    //io.emit("update")
 
   } catch (err) {
     console.error(err)
@@ -324,26 +335,21 @@ app.get('/topkd', async (req, res) => {
 app.get('/stats', async (req, res) => {
   try {
     const [[players]] = await db.query(
-      "SELECT COUNT(*) total FROM csstats"
+      'SELECT COUNT(*) total FROM csstats'
     )
 
     const [[kills]] = await db.query(
-      "SELECT COALESCE(SUM(kills), 0) total FROM csstats"
+      'SELECT COALESCE(SUM(kills), 0) total FROM csstats'
     )
 
     const [[maps]] = await db.query(
       "SELECT COUNT(DISTINCT map) total FROM csstats_snapshots"
     )
 
-    //const [[sessions]] = await db.query(
-    //  "SELECT COUNT(*) total FROM csstats_snapshots"
-    //)
-
     res.json({
       players: players.total,
       kills: kills.total,
       maps: maps.total,
-      //sessions: sessions.total
     })
   } catch (err) {
     console.error(err)
@@ -352,81 +358,95 @@ app.get('/stats', async (req, res) => {
 })
 
 // MAPS
+const SNAPSHOT_STALE_MS = 10 * 60 * 1000
+
+async function saveSnapshotBatch(players, map) {
+  if (!players.length) return
+
+  const values = players.map(p => [p.steamid, p.name, map, p.kills, p.deaths, p.hs, p.skill])
+  const placeholders = values.map(() => '(?,?,?,?,?,?,?)').join(',')
+  const flatValues = values.flat()
+
+  await db.query(
+    `INSERT INTO csstats_snapshots (steamid,name,map,kills,deaths,hs,skill) VALUES ${placeholders}`,
+    flatValues
+  )
+  console.log(`snapshot salvo: ${players.length} jogadores (${map})`)
+}
+
+function pruneLastState() {
+  const now = Date.now()
+  for (const [steamid, entry] of Object.entries(lastState)) {
+    if (!entry._lastUpdated || (now - entry._lastUpdated) > SNAPSHOT_STALE_MS) {
+      delete lastState[steamid]
+    }
+  }
+}
+
 async function snapshot() {
+  try {
 
-const map = await getCurrentMap()
+    const map = await getCurrentMap()
 
-const [players] = await db.query(`
-SELECT steamid, name, kills, deaths, hs, skill
-FROM csstats
-`)
+    const [players] = await db.query(`
+      SELECT steamid, name, kills, deaths, hs, skill
+      FROM csstats
+    `)
 
-// 🔥 Detectar troca de mapa
-if(lastMap !== map){
+    if (lastMap !== map) {
 
-console.log("Mapa mudou:", map)
+      console.log('Mapa mudou:', map)
 
-// salva snapshot de todos jogadores
-for(const p of players){
+      await saveSnapshotBatch(players, map)
+      for (const p of players) {
+        p._lastUpdated = Date.now()
+        lastState[p.steamid] = p
+      }
 
-await saveSnapshot(p, map)
-lastState[p.steamid] = p
+      lastMap = map
+      pruneLastState()
+      return
+    }
 
-}
+    const changedPlayers = []
+    for (const p of players) {
 
-lastMap = map
-return
-}
+      const prev = lastState[p.steamid]
 
-// 🔥 Detectar mudança de stats
-for(const p of players){
+      if (!prev) {
 
-const prev = lastState[p.steamid]
+        changedPlayers.push(p)
+        p._lastUpdated = Date.now()
+        lastState[p.steamid] = p
+        continue
 
-// jogador novo
-if(!prev){
+      }
 
-await saveSnapshot(p, map)
-lastState[p.steamid] = p
-continue
+      const changed =
+        p.kills !== prev.kills ||
+        p.deaths !== prev.deaths ||
+        p.hs !== prev.hs ||
+        p.skill !== prev.skill
 
-}
+      if (changed) {
 
-// stats mudaram
-const changed =
-p.kills !== prev.kills ||
-p.deaths !== prev.deaths ||
-p.hs !== prev.hs ||
-p.skill !== prev.skill
+        changedPlayers.push(p)
+        p._lastUpdated = Date.now()
+        lastState[p.steamid] = p
 
-if(changed){
+      }
 
-await saveSnapshot(p, map)
-lastState[p.steamid] = p
+    }
 
-}
+    if (changedPlayers.length) {
+      await saveSnapshotBatch(changedPlayers, map)
+    }
 
-}
+    pruneLastState()
 
-}
-
-async function saveSnapshot(p, map){
-
-await db.query(`
-INSERT INTO csstats_snapshots
-(steamid,name,map,kills,deaths,hs,skill)
-VALUES (?,?,?,?,?,?,?)
-`,[
-p.steamid,
-p.name,
-map,
-p.kills,
-p.deaths,
-p.hs,
-p.skill
-])
-
-console.log(`snapshot salvo: ${p.name} (${map})`)
+  } catch (err) {
+    console.error('Erro no snapshot:', err)
+  }
 
 }
 
@@ -508,25 +528,27 @@ app.get('/map-ranking/:map', async (req, res) => {
 })
 
 
-app.get('/map/:map', async (req,res)=>{
-
-const [rows] = await db.query(`
-SELECT 
-name,
-steamid,
-MAX(kills) as kills,
-MAX(deaths) as deaths,
-MAX(hs) as hs,
-MAX(skill) as skill
-FROM csstats_snapshots
-WHERE map = ?
-GROUP BY steamid
-ORDER BY kills DESC
-LIMIT 10
-`,[req.params.map])
-
-res.json(rows)
-
+app.get('/map/:map', async (req, res) => {
+  try {
+    const [rows] = await db.query(`
+      SELECT
+        name,
+        steamid,
+        MAX(kills) as kills,
+        MAX(deaths) as deaths,
+        MAX(hs) as hs,
+        MAX(skill) as skill
+      FROM csstats_snapshots
+      WHERE map = ?
+      GROUP BY steamid
+      ORDER BY kills DESC
+      LIMIT 10
+    `, [req.params.map])
+    res.json(rows)
+  } catch (err) {
+    console.error('Error fetching map data:', err)
+    res.status(500).json({ error: err.message })
+  }
 })
 
 
@@ -649,15 +671,31 @@ app.get('/player-history-daily/:steamid', async (req, res) => {
         FROM csstats_snapshots
         WHERE steamid = ?
         GROUP BY DATE(created_at)
+      ),
+      deltas AS (
+        SELECT
+          day,
+          total_kills - COALESCE(LAG(total_kills) OVER (ORDER BY day), 0) AS kills,
+          total_deaths - COALESCE(LAG(total_deaths) OVER (ORDER BY day), 0) AS deaths,
+          total_hs - COALESCE(LAG(total_hs) OVER (ORDER BY day), 0) AS hs,
+          total_kills,
+          total_deaths,
+          total_hs,
+          skill
+        FROM daily
       )
       SELECT
         day,
-        total_kills - COALESCE(LAG(total_kills) OVER (ORDER BY day), 0) AS kills,
-        total_deaths - COALESCE(LAG(total_deaths) OVER (ORDER BY day), 0) AS deaths,
-        total_hs - COALESCE(LAG(total_hs) OVER (ORDER BY day), 0) AS hs,
+        kills,
+        deaths,
+        hs,
+        total_kills,
+        total_deaths,
+        total_hs,
         skill
-      FROM daily
-      ORDER BY day ASC
+      FROM deltas
+      WHERE kills > 0 OR deaths > 0 OR hs > 0
+      ORDER BY day DESC
       LIMIT 60
     `, [req.params.steamid])
 
@@ -688,33 +726,33 @@ app.get('/player-last-map/:steamid', async (req, res) => {
   }
 })
 
-app.get('/server', async (req,res)=>{
+app.get('/server', async (req, res) => {
 
-try{
+  try {
 
-const state = await Gamedig.query({
-type: 'cs16',
-host: 'cs16',
-port: 27015
-})
+    const state = await Gamedig.query({
+      type: 'cs16',
+      host: GAMEDIG_HOST,
+      port: GAMEDIG_PORT
+    })
 
-res.json({
-map: state.map,
-players: state.players.length,
-maxplayers: state.maxplayers,
-hostname: state.name
-})
+    res.json({
+      map: state.map,
+      players: state.players.length,
+      maxplayers: state.maxplayers,
+      hostname: state.name
+    })
 
-}catch(err){
+  } catch (err) {
 
-res.json({
-map:"unknown",
-players:0,
-maxplayers:0,
-hostname:"offline"
-})
+    res.json({
+      map: 'unknown',
+      players: 0,
+      maxplayers: 0,
+      hostname: 'offline'
+    })
 
-}
+  }
 
 })
 
@@ -735,7 +773,7 @@ function runRconCommand(password, command) {
       if (settled) return
       settled = true
       if (responseTimer) clearTimeout(responseTimer)
-      try { client.disconnect() } catch {}
+      try { client.disconnect() } catch (e) { console.error('RCON disconnect error:', e.message) }
       resolve(text && text.trim() ? text.trim() : 'Comando enviado com sucesso, sem retorno textual.')
     }
 
@@ -743,7 +781,7 @@ function runRconCommand(password, command) {
       if (settled) return
       settled = true
       if (responseTimer) clearTimeout(responseTimer)
-      try { client.disconnect() } catch {}
+      try { client.disconnect() } catch (e) { console.error('RCON disconnect error:', e.message) }
       reject(err)
     }
 
@@ -821,7 +859,7 @@ app.post('/admin/login', loginLimiter, async (req, res) => {
   }
 })
 
-app.post('/admin/command', requireAdmin, async (req, res) => {
+app.post('/admin/command', commandLimiter, requireAdmin, async (req, res) => {
   try {
     const { command } = req.body || {}
 
@@ -883,7 +921,7 @@ app.get('/live/killfeed', (req, res) => {
 
 app.get('/live/state', (req, res) => {
   try {
-const filePath = '/home/cs16/cstrike/addons/amxmodx/data/live/live_scoreboard.json'
+    const filePath = '/home/cs16/cstrike/addons/amxmodx/data/live/live_scoreboard.json'
 
     if (!fs.existsSync(filePath)) {
       return res.json({

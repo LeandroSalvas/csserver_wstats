@@ -3,7 +3,6 @@
 # Lixo do macOS (evita arquivos tipo "._arquivo")
 ._*
 .DS_Store
-AGENTS.md
 
 live_killfeed.json
 live_scoreboard.json

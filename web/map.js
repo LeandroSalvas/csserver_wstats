@@ -28,7 +28,7 @@ async function loadMapRanking() {
       const row = document.createElement('tr')
       row.innerHTML = `
         <td>${i + 1}</td>
-        <td><a href="player.html?steamid=${encodeURIComponent(p.steamid)}">${p.name}</a></td>
+        <td><a href="player.html?steamid=${encodeURIComponent(p.steamid)}">${escapeHtml(p.name)}</a></td>
         <td>${p.kills}</td>
         <td>${p.deaths}</td>
         <td>${p.hs}</td>
@@ -48,4 +48,4 @@ async function loadMapRanking() {
   }
 }
 
-loadMapRanking()
+document.addEventListener('DOMContentLoaded', loadMapRanking)

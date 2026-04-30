@@ -39,7 +39,7 @@ async function loadAdvancedStats() {
 
     renderAdvancedRows('headshotsTable', headshots, 7, (item, index) => `
       <td>${index + 1}</td>
-      <td><a href="player.html?steamid=${encodeURIComponent(item.steamid)}">${item.name}</a></td>
+      <td><a href="player.html?steamid=${encodeURIComponent(item.steamid)}">${escapeHtml(item.name)}</a></td>
       <td>${item.hs}</td>
       <td>${item.kills}</td>
       <td>${item.deaths}</td>
@@ -49,7 +49,7 @@ async function loadAdvancedStats() {
 
     renderAdvancedRows('accuracyTable', accuracy, 7, (item, index) => `
       <td>${index + 1}</td>
-      <td><a href="player.html?steamid=${encodeURIComponent(item.steamid)}">${item.name}</a></td>
+      <td><a href="player.html?steamid=${encodeURIComponent(item.steamid)}">${escapeHtml(item.name)}</a></td>
       <td>${item.accuracy.toFixed ? item.accuracy.toFixed(2) : item.accuracy}%</td>
       <td>${item.hs}</td>
       <td>${item.kills}</td>
@@ -59,7 +59,7 @@ async function loadAdvancedStats() {
 
     renderAdvancedRows('streakTable', streaks, 3, (item, index) => `
       <td>${index + 1}</td>
-      <td><a href="player.html?steamid=${encodeURIComponent(item.steamid)}">${item.name}</a></td>
+      <td><a href="player.html?steamid=${encodeURIComponent(item.steamid)}">${escapeHtml(item.name)}</a></td>
       <td>${item.streak}</td>
     `)
 
@@ -73,4 +73,4 @@ async function loadAdvancedStats() {
   }
 }
 
-loadAdvancedStats()
+document.addEventListener('DOMContentLoaded', loadAdvancedStats)
