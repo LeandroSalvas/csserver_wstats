@@ -47,6 +47,13 @@ docker compose down
 - `./scripts/servers.sh compose` regenerates the committed `docker-compose.servers.yml` override; `prune [ids]` deletes config/live dirs of removed servers and, if confirmed (or `--metrics`), also deletes their Prometheus series via the Admin API (`--web.enable-admin-api`, bound to `127.0.0.1:9090`) so Grafana stops showing removed servers.
 - `.env` sets `COMPOSE_FILE=docker-compose.yml:docker-compose.servers.yml`, so plain `docker compose ...` works after generation.
 
+### API upgrades (`scripts/smoke-test.sh` / `scripts/upgrade.sh`)
+- The API runs **Node 26** + **Express 5** (Dockerfile `node:26`; `npm ci --omit=dev` requires the committed `api/package-lock.json`). The host has no Node — lockfile and `node --check` run inside `node:26` (done automatically by `upgrade.sh`).
+- `./scripts/smoke-test.sh` validates the running API; exit 0 = healthy. Block 1: composition (Node major + `npm ls` deps + robustez markers + graceful shutdown via a disposable container). Block 2: functional (health, rankings, 400s/404, metrics `cs16_`, SSE `: ping`, admin login/logout + CSRF, 6th login → 429). Block 3: redis/session (new `sess:*` keys, persistence across api restart, degradation with redis stopped). Expected versions are **derived from the current source** (Dockerfile/package.json), so the same script validates upgrades and rollbacks. Flags: `--fase a|b`, `--rollback` (skips rate-limit/SIGTERM/robustez).
+- `./scripts/upgrade.sh --fase a|b` runs an upgrade with automatic rollback: snapshot (`csserver_wstats-api:rollback-<ts>` + HEAD recorded in `.rollback-state`, gitignored) → apply changes → lockfile → build → `up -d api` → health gate → smoke. On smoke failure it restores image + code (`git reset --hard`) and revalidates with `smoke-test.sh --rollback`. `--no-auto-rollback` stops for manual inspection; `upgrade.sh rollback [tag]` and `upgrade.sh list` manage snapshots. Nothing besides the `api` service is touched.
+- Express 5 / rate-limit v8 notes: keep the per-route try/catch (a global 4-arg `errorHandler` catches anything that escapes); use `limit:` not `max:`; graceful shutdown ends SSE clients, then `server.close()` → db pool + redis `quit()` → exit 0; `process.on('unhandledRejection'/'uncaughtException')` logs and `exit(1)`s.
+- The smoke login/rate-limit tests consume the shared 60s `loginLimiter` window (all host requests share 127.0.0.1), so block 3 retries until the window passes; running a full smoke briefly locks out login for the host IP.
+
 ### Environment Configuration
 ```bash
 # Copy environment template
