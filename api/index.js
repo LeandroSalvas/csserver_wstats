@@ -442,6 +442,7 @@ async function setupSession() {
 const lastState = {}
 const lastMapByServer = {}
 let snapshotInProgress = false
+const lastServerInfo = {}
 
 
 const Gamedig = require('gamedig')
@@ -2054,7 +2055,14 @@ function updateLiveServerGauges(srv, state) {
   const scoreboard = readLiveFile('live_scoreboard.json', resolveLiveDir(srv.id))
 
   serverOnlineGauge.set({ server: srv.id }, 1)
-  serverInfoGauge.set({ server: srv.id, map: state.map || 'unknown', hostname: state.name || srv.id }, 1)
+  const map = state.map || 'unknown'
+  const hostname = state.name || srv.id
+  const prev = lastServerInfo[srv.id]
+  if (prev && (prev.map !== map || prev.hostname !== hostname)) {
+    serverInfoGauge.remove({ server: srv.id, map: prev.map, hostname: prev.hostname })
+  }
+  lastServerInfo[srv.id] = { map, hostname }
+  serverInfoGauge.set({ server: srv.id, map, hostname }, 1)
   maxPlayersGauge.set({ server: srv.id }, parseInt(state.maxplayers, 10) || 0)
   playersOnlineGauge.set({ server: srv.id }, state.players.length)
 
