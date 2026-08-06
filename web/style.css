@@ -523,6 +523,10 @@ button.quick-cmd:hover {
   gap: 20px;
 }
 
+.admin-grid > .admin-live-card {
+  grid-column: 1 / -1;
+}
+
 .history-list {
   display: flex;
   flex-direction: column;
