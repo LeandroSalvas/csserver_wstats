@@ -44,7 +44,7 @@ docker compose down
 - `config/servers.list` is the single source of truth (first line = primary `main`).
 - `./scripts/setup.sh` — interactive wizard: asks how many servers/names, whether to rotate maps (and which maps, from the image's available pool), writes `servers.list`, generates configs, and starts the stack (flags: `--no-up`, `--yes`).
 - `./scripts/servers.sh up` — `init` + `compose` + `docker compose up -d --remove-orphans`. It does NOT pass `--build` (BuildKit's provenance metadata produces a new image ID on every build, which made compose recreate all CS containers on each `up`). Builds happen explicitly via `./scripts/servers.sh build`; `up` only builds automatically on first run when `cs16_stats:local` / `csserver_wstats-api` images don't exist yet.
-- `./scripts/servers.sh compose` regenerates the committed `docker-compose.servers.yml` override; `prune [ids]` deletes config/live dirs of removed servers.
+- `./scripts/servers.sh compose` regenerates the committed `docker-compose.servers.yml` override; `prune [ids]` deletes config/live dirs of removed servers and, if confirmed (or `--metrics`), also deletes their Prometheus series via the Admin API (`--web.enable-admin-api`, bound to `127.0.0.1:9090`) so Grafana stops showing removed servers.
 - `.env` sets `COMPOSE_FILE=docker-compose.yml:docker-compose.servers.yml`, so plain `docker compose ...` works after generation.
 
 ### Environment Configuration

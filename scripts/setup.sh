@@ -26,6 +26,7 @@ OVERRIDE="docker-compose.servers.yml"
 NO_UP=0
 YES_MODE=0
 PRUNE_IDS=""
+PRUNE_METRICS=0
 
 CUR_IDS=() CUR_NAMES=() CUR_PORTS=() CUR_MAPS=() CUR_SLOTS=() CUR_ROTATE=()
 NEW_IDS=() NEW_NAMES=() NEW_PORTS=() NEW_MAPS=() NEW_SLOTS=() NEW_ROTATE=()
@@ -261,6 +262,13 @@ build_new_list() {
       a|A|apagar|sim|s) PRUNE_IDS="${removed_ids[*]}" ;;
       *) PRUNE_IDS="" ;;
     esac
+    if [ -n "${PRUNE_IDS}" ]; then
+      ask "Apagar também os dados do Prometheus/Grafana desses servidores? (s=sim, n=não)" "n" metrics_ans
+      case "$metrics_ans" in
+        s|S|sim|SIM|y|Y|yes|YES) PRUNE_METRICS=1 ;;
+        *) PRUNE_METRICS=0 ;;
+      esac
+    fi
     return 0
   fi
 
@@ -355,7 +363,11 @@ main() {
 
   if [ -n "${PRUNE_IDS}" ]; then
     # shellcheck disable=SC2086
-    "${SERVERS_SH}" prune --yes ${PRUNE_IDS}
+    if [ "$PRUNE_METRICS" -eq 1 ]; then
+      "${SERVERS_SH}" prune --yes --metrics ${PRUNE_IDS}
+    else
+      "${SERVERS_SH}" prune --yes ${PRUNE_IDS}
+    fi
   fi
 
   if [ "$NO_UP" -eq 1 ]; then

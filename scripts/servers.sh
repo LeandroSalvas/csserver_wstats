@@ -11,7 +11,7 @@
 #   servers.sh ps            docker compose ps
 #   servers.sh status        Resumo dos servidores configurados
 #   servers.sh list          Mostra config/servers.list
-#   servers.sh prune [ids]   Apaga config/servers/<id> e live/<id> (default: ids fora do servers.list)
+#   servers.sh prune [ids]   Apaga config/servers/<id> e live/<id> (default: ids fora do servers.list). --metrics remove também os dados do Prometheus/Grafana
 #   servers.sh rcon <id> <cmd>   Executa comando RCON no servidor <id>
 #
 # O servidor primário (primeira linha de servers.list) mantém o id "main" e é o
@@ -300,13 +300,31 @@ cmd_list() {
   cat "${SERVERS_LIST}"
 }
 
+# Apaga as séries do Prometheus dos servidores removidos (dados do Grafana).
+# Requer a Admin API habilitada (docker-compose.yml) e o prometheus no ar.
+prom_delete_series() {
+  local ids=("$@") id code
+  local base="http://localhost:9090/api/v1/admin/tsdb"
+  for id in "${ids[@]}"; do
+    code="$(curl -s -o /dev/null -w "%{http_code}" -X POST -g "${base}/delete_series?match[]={server=\"${id}\"}")"
+    if [ "$code" = "204" ] || [ "$code" = "200" ]; then
+      ok "Prometheus: séries de '${id}' removidas"
+    else
+      err "Prometheus: falha ao remover séries de '${id}' (http ${code})"
+    fi
+  done
+  curl -s -o /dev/null -X POST "${base}/clean_tombstones"
+}
+
 # Apaga config/servers/<id> e live/<id>. Sem ids, usa todos que não estão no servers.list.
+# --metrics: também remove os dados do Prometheus/Grafana sem perguntar (usado pelo setup.sh).
 cmd_prune() {
-  local yes=0 ids=() line
+  local yes=0 metrics=0 ids=() line
 
   for arg in "$@"; do
     case "$arg" in
       --yes) yes=1 ;;
+      --metrics) metrics=1 ;;
       -*) err "Opção desconhecida: $arg"; return 1 ;;
       *) ids+=("$arg") ;;
     esac
@@ -342,6 +360,8 @@ cmd_prune() {
   if [ "$yes" -ne 1 ]; then
     read -r -p "Continuar? [S/n] " answer
     [[ "$answer" =~ ^(s|S|sim|SIM|y|Y|yes|YES|)$ ]] || { info "prune cancelado."; return 0; }
+    read -r -p "Apagar também os dados do Prometheus/Grafana destes servidores? [s/N] " pm_ans
+    [[ "$pm_ans" =~ ^(s|S|sim|SIM|y|Y|yes|YES)$ ]] && metrics=1
   fi
 
   local id
@@ -349,6 +369,10 @@ cmd_prune() {
     [ -d "${ROOT}/config/servers/${id}" ] && rm -rf "${ROOT}/config/servers/${id}" && ok "apagado config/servers/${id}"
     [ -d "${ROOT}/live/${id}" ] && rm -rf "${ROOT}/live/${id}" && ok "apagado live/${id}"
   done
+
+  if [ "$metrics" -eq 1 ]; then
+    prom_delete_series "${ids[@]}"
+  fi
 }
 
 cmd_rcon() {
