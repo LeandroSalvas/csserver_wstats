@@ -529,7 +529,7 @@ let snapshotInProgress = false
 const lastServerInfo = {}
 
 
-const Gamedig = require('gamedig')
+const { GameDig } = require('gamedig')
 
 const GAMEDIG_HOST = process.env.GAMEDIG_HOST || 'cs16'
 const GAMEDIG_PORT = parseInt(process.env.GAMEDIG_PORT || '27015', 10)
@@ -571,8 +571,8 @@ function resolveLiveDir(id) {
 }
 
 function queryServer(srv) {
-  return Gamedig.query({
-    type: 'cs16',
+  return GameDig.query({
+    type: 'counterstrike16',
     host: srv.host,
     port: parseInt(srv.port, 10)
   })
