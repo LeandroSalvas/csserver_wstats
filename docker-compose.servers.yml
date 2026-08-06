@@ -1,0 +1,70 @@
+# Gerado por scripts/servers.sh compose — não edite manualmente.
+# Consulte config/servers.list para alterar os servidores.
+services:
+  cs16:
+    build: ./cs16
+    image: cs16_stats:local
+    environment:
+      PORT: "27015"
+      MAP: "de_dust2"
+      MAXPLAYERS: "32"
+      SERVER_ID: "main"
+  cs16fypooldayonly:
+    image: cs16_stats:local
+    restart: always
+    environment:
+      PORT: "27015"
+      MAP: "fy_pool_day"
+      MAXPLAYERS: "8"
+      SERVER_ID: "fypooldayonly"
+    ports:
+      - "27016:27015/udp"
+      - "27016:27015/tcp"
+    security_opt:
+      - seccomp=unconfined
+    volumes:
+      - ./config/servers/fypooldayonly/server.cfg:/home/cs16/cstrike/server.cfg
+      - ./config/servers/fypooldayonly/users.ini:/home/cs16/cstrike/addons/amxmodx/configs/users.ini
+      - ./config/servers/fypooldayonly/amxx.cfg:/home/cs16/cstrike/addons/amxmodx/configs/amxx.cfg
+      - ./config/servers/fypooldayonly/mapcycle.txt:/home/cs16/cstrike/mapcycle.txt
+      - ./config/servers/fypooldayonly/motd.txt:/home/cs16/cstrike/motd.txt
+      - ./config/servers/fypooldayonly/plugins.ini:/home/cs16/cstrike/addons/amxmodx/configs/plugins.ini
+      - ./cs/plugins/live_scoreboard.amxx:/home/cs16/cstrike/addons/amxmodx/plugins/live_scoreboard.amxx
+      - ./cs/plugins/live_killfeed.amxx:/home/cs16/cstrike/addons/amxmodx/plugins/live_killfeed.amxx
+      - ./cs/plugins/csstatsx_sql.amxx:/home/cs16/cstrike/addons/amxmodx/plugins/csstatsx_sql.amxx
+      - ./live/fypooldayonly/live_scoreboard.json:/home/cs16/cstrike/addons/amxmodx/data/live/live_scoreboard.json
+      - ./live/fypooldayonly/live_killfeed.json:/home/cs16/cstrike/addons/amxmodx/data/live/live_killfeed.json
+  cs16zueira2:
+    image: cs16_stats:local
+    restart: always
+    environment:
+      PORT: "27015"
+      MAP: "de_dust"
+      MAXPLAYERS: "16"
+      SERVER_ID: "zueira2"
+    ports:
+      - "27017:27015/udp"
+      - "27017:27015/tcp"
+    security_opt:
+      - seccomp=unconfined
+    volumes:
+      - ./config/servers/zueira2/server.cfg:/home/cs16/cstrike/server.cfg
+      - ./config/servers/zueira2/users.ini:/home/cs16/cstrike/addons/amxmodx/configs/users.ini
+      - ./config/servers/zueira2/amxx.cfg:/home/cs16/cstrike/addons/amxmodx/configs/amxx.cfg
+      - ./config/servers/zueira2/mapcycle.txt:/home/cs16/cstrike/mapcycle.txt
+      - ./config/servers/zueira2/motd.txt:/home/cs16/cstrike/motd.txt
+      - ./config/servers/zueira2/plugins.ini:/home/cs16/cstrike/addons/amxmodx/configs/plugins.ini
+      - ./cs/plugins/live_scoreboard.amxx:/home/cs16/cstrike/addons/amxmodx/plugins/live_scoreboard.amxx
+      - ./cs/plugins/live_killfeed.amxx:/home/cs16/cstrike/addons/amxmodx/plugins/live_killfeed.amxx
+      - ./cs/plugins/csstatsx_sql.amxx:/home/cs16/cstrike/addons/amxmodx/plugins/csstatsx_sql.amxx
+      - ./live/zueira2/live_scoreboard.json:/home/cs16/cstrike/addons/amxmodx/data/live/live_scoreboard.json
+      - ./live/zueira2/live_killfeed.json:/home/cs16/cstrike/addons/amxmodx/data/live/live_killfeed.json
+  api:
+    environment:
+      CS_SERVERS: >-
+        [{"id":"main","name":"Zueira","host":"cs16","port":27015,"liveDir":"/live_data/main"},{"id":"fypooldayonly","name":"fy_pool_day_only","host":"cs16fypooldayonly","port":27015,"liveDir":"/live_data/fypooldayonly"},{"id":"zueira2","name":"Zueira2","host":"cs16zueira2","port":27015,"liveDir":"/live_data/zueira2"}]
+    volumes:
+      - ./live/fypooldayonly/live_scoreboard.json:/live_data/fypooldayonly/live_scoreboard.json:ro
+      - ./live/fypooldayonly/live_killfeed.json:/live_data/fypooldayonly/live_killfeed.json:ro
+      - ./live/zueira2/live_scoreboard.json:/live_data/zueira2/live_scoreboard.json:ro
+      - ./live/zueira2/live_killfeed.json:/live_data/zueira2/live_killfeed.json:ro

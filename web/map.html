@@ -1,0 +1,50 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title data-i18n="labels.rankingMap">Ranking do mapa - CS 1.6 Stats</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+  <div class="container">
+    <div class="header">
+      <h1 id="mapTitle" data-i18n="labels.rankingMap">🗺️ Ranking do mapa</h1>
+      <div class="lang-toggle-slot"></div>
+    </div>
+
+    <div class="page-nav"></div>
+
+    <div style="display:flex; gap:10px; align-items:center; margin-bottom:16px; flex-wrap:wrap;">
+      <label for="mapServer" data-i18n="server.selectServer">Servidor:</label>
+      <select id="mapServer" class="server-selector" data-i18n-title="server.selectServer" title="Selecionar servidor" style="max-width:220px;"></select>
+    </div>
+
+    <div id="statusMessage" class="status-message"></div>
+
+    <div class="card">
+      <h2 data-i18n="labels.topJogadores">Top jogadores</h2>
+
+      <table>
+        <thead>
+          <tr>
+            <th data-i18n="labels.rank">#</th>
+            <th data-i18n="labels.player">Player</th>
+            <th data-i18n="labels.kills">Kills</th>
+            <th data-i18n="labels.deaths">Deaths</th>
+            <th data-i18n="labels.hs">HS</th>
+            <th data-i18n="labels.kd">KD</th>
+            <th data-i18n="labels.skill">Skill</th>
+          </tr>
+        </thead>
+        <tbody id="mapRanking"></tbody>
+      </table>
+    </div>
+  </div>
+
+  <script src="i18n/translations.js" defer></script>
+  <script src="common.js" defer></script>
+  <script src="map.js" defer></script>
+</body>
+</html>

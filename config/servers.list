@@ -1,0 +1,9 @@
+# Lista de servidores CS 1.6 gerenciados pelo docker-compose.
+# Formato: id hostname host_port map maxplayers rotate
+# - A primeira linha é o servidor primário (id "main"), usado por snapshots/rankings e partidas.
+# - host_port é a porta publicada no host (mapeada para a porta interna 27015 do container).
+# - rotate: yes = rotação de mapas (lista em config/servers/<id>/mapcycle.txt); no = só o mapa escolhido.
+# - Edite à mão e rode: scripts/servers.sh up  — ou use scripts/setup.sh (interativo).
+main Zueira 27015 de_dust2 32 yes
+fypooldayonly fy_pool_day_only 27016 fy_pool_day 8 no
+zueira2 Zueira2 27017 de_dust 16 no

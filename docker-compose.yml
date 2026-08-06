@@ -1,0 +1,157 @@
+services:
+  cs16:
+    build: ./cs16
+    image: cs16_stats:local
+    restart: always
+    depends_on:
+      - db
+    environment:
+      # Todos os containers usam a porta interna 27015; o publish no host fica no ports.
+      PORT: "27015"
+      MAP: "de_dust2"
+      MAXPLAYERS: "32"
+      SERVER_ID: "main"
+    volumes:
+      - ./config/servers/main/server.cfg:/home/cs16/cstrike/server.cfg
+      - ./config/servers/main/users.ini:/home/cs16/cstrike/addons/amxmodx/configs/users.ini
+      - ./config/servers/main/amxx.cfg:/home/cs16/cstrike/addons/amxmodx/configs/amxx.cfg
+      - ./config/servers/main/mapcycle.txt:/home/cs16/cstrike/mapcycle.txt
+      - ./config/servers/main/motd.txt:/home/cs16/cstrike/motd.txt
+      - ./config/servers/main/plugins.ini:/home/cs16/cstrike/addons/amxmodx/configs/plugins.ini
+      - ./live/main/live_scoreboard.json:/home/cs16/cstrike/addons/amxmodx/data/live/live_scoreboard.json
+      - ./live/main/live_killfeed.json:/home/cs16/cstrike/addons/amxmodx/data/live/live_killfeed.json
+      - ./cs/plugins/live_scoreboard.amxx:/home/cs16/cstrike/addons/amxmodx/plugins/live_scoreboard.amxx
+      - ./cs/plugins/live_killfeed.amxx:/home/cs16/cstrike/addons/amxmodx/plugins/live_killfeed.amxx
+      - ./cs/plugins/csstatsx_sql.amxx:/home/cs16/cstrike/addons/amxmodx/plugins/csstatsx_sql.amxx
+
+    ports:
+      - "27015:27015/udp"
+      - "27015:27015/tcp"
+    security_opt:
+      - seccomp=unconfined
+
+
+  db:
+    image: mariadb:10.6
+    restart: always
+    environment:
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD}
+      MYSQL_DATABASE: ${MYSQL_DATABASE}
+      MYSQL_USER: ${MYSQL_USER}
+      MYSQL_PASSWORD: ${MYSQL_PASSWORD}
+    volumes:
+      - db_data:/var/lib/mysql
+    healthcheck:
+      test: ["CMD-SHELL", "mysqladmin ping -h 127.0.0.1 -p$$MYSQL_ROOT_PASSWORD --silent"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+
+  redis:
+    image: redis:7-alpine
+    restart: always
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+
+
+  api:
+    build: ./api
+    container_name: cs16-api
+    restart: always
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    environment:
+      DB_HOST: ${DB_HOST:-db}
+      DB_USER: ${MYSQL_USER}
+      DB_PASSWORD: ${MYSQL_PASSWORD}
+      DB_NAME: ${MYSQL_DATABASE}
+      SESSION_SECRET: ${SESSION_SECRET}
+      SESSION_STORE: ${SESSION_STORE:-redis}
+      REDIS_HOST: ${REDIS_HOST:-redis}
+      REDIS_PORT: ${REDIS_PORT:-6379}
+      REDIS_PASSWORD: ${REDIS_PASSWORD:-}
+      REDIS_DB: ${REDIS_DB:-0}
+      GAMEDIG_HOST: ${GAMEDIG_HOST:-cs16}
+      GAMEDIG_PORT: ${GAMEDIG_PORT:-27015}
+      RCON_PASSWORD: ${RCON_PASSWORD}
+      # Se vazio, a API monitora só o servidor primário. O override gerado por
+      # scripts/servers.sh compose define este valor com todos os servidores.
+      CS_SERVERS: ${CS_SERVERS:-}
+      ALERT_WEBHOOK_URL: ${ALERT_WEBHOOK_URL:-}
+      STEAM_RETURN_URL: ${STEAM_RETURN_URL:-}
+      STEAM_ADMIN_IDS: ${STEAM_ADMIN_IDS:-}
+    healthcheck:
+      test: ["CMD-SHELL", "wget --no-verbose --tries=1 --spider http://localhost:3000/health || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 30s
+#    ports:
+#      - "3000:3000"  
+    volumes: 
+      - ./live/main/live_scoreboard.json:/live_data/main/live_scoreboard.json:ro
+      - ./live/main/live_killfeed.json:/live_data/main/live_killfeed.json:ro
+      
+  web:
+    image: nginx:alpine
+    container_name: cs16-web
+    depends_on:
+      - api
+    ports:
+      - "8080:80"
+    volumes:
+      - ./web:/usr/share/nginx/html:ro
+      - ./web/nginx.conf:/etc/nginx/conf.d/default.conf:ro
+    restart: always
+
+  nginx-exporter:
+    image: nginx/nginx-prometheus-exporter:1.1.0
+    container_name: cs16-nginx-exporter
+    restart: always
+    depends_on:
+      - web
+    command:
+      - -nginx.scrape-uri=http://web:80/stub_status
+
+  prometheus:
+    image: prom/prometheus:v2.53.0
+    container_name: cs16-prometheus
+    restart: always
+    depends_on:
+      - api
+    volumes:
+      - ./config/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - prometheus_data:/prometheus
+    ports:
+      - "9090:9090"
+
+  grafana:
+    image: grafana/grafana:11.1.0
+    container_name: cs16-grafana
+    restart: always
+    depends_on:
+      - prometheus
+    environment:
+      GF_SECURITY_ADMIN_USER: ${GRAFANA_ADMIN_USER:-admin}
+      GF_SECURITY_ADMIN_PASSWORD: ${GRAFANA_ADMIN_PASSWORD:-admin}
+    volumes:
+      - ./config/grafana/provisioning:/etc/grafana/provisioning:ro
+      - ./config/grafana/dashboards:/var/lib/grafana/dashboards:ro
+      - grafana_data:/var/lib/grafana
+    ports:
+      - "3001:3000"
+
+
+volumes:
+  db_data:
+  redis_data:
+  prometheus_data:
+  grafana_data:

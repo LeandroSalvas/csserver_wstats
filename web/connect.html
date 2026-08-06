@@ -1,0 +1,50 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title data-i18n="server.title">Conectar ao servidor - CS 1.6</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body class="body-font-default">
+
+  <div class="container">
+    <div class="header">
+      <h1>🔗 <span data-i18n="server.title">Conectar ao servidor</span></h1>
+      <div class="lang-toggle-slot"></div>
+    </div>
+
+    <div class="page-nav"></div>
+
+    <div id="statusMessage" class="status-message"></div>
+
+    <div class="card">
+      <h2 data-i18n="server.address">Endereço do servidor</h2>
+      <p><strong data-i18n="server.host">Host:</strong> <span data-connect-host>zueira.servecounterstrike.com</span> &nbsp;·&nbsp; <strong data-i18n="server.port">Porta:</strong> <span data-connect-port>27015</span></p>
+      <p><strong data-i18n="server.fullConnect">Conexão completa:</strong> <code data-connect-address>zueira.servecounterstrike.com:27015</code></p>
+
+      <h2 data-i18n="server.openSteamRecommended">Abrir pelo Steam (recomendado se você tem CS 1.6 na biblioteca)</h2>
+      <p data-i18n="server.openDescription">Este botão pede ao Steam para iniciar o Counter-Strike 1.6 e passar o comando +connect na linha de lançamento.</p>
+      <a class="button" data-connect-steam href="steam://rungameid/10//%2Bconnect%20zueira.servecounterstrike.com:27015" data-i18n="server.openCsAndConnect">Abrir CS 1.6 e conectar</a>
+      <p style="margin-top:12px; color:#9ca3af; font-size:0.95rem;" data-i18n="server.browserNote">Em alguns PCs o protocolo só traz o Steam à frente ou não inicia o jogo; nesse caso use o passo a passo abaixo.</p>
+
+      <h2 data-i18n="server.manualConnect">Conectar manualmente (funciona com Steam e não-Steam)</h2>
+      <ol>
+        <li data-i18n="server.step1">Abra o CS 1.6.</li>
+        <li data-i18n="server.step2">Abra o console com ~ ou º (tecla ao lado do 1).</li>
+        <li data-i18n="server.step3">Digite o comando (Enter para enviar):</li>
+      </ol>
+      <pre><span data-connect-command>connect zueira.servecounterstrike.com:27015</span></pre>
+      <p><strong data-i18n="server.alternative">Outra opção:</strong></p>
+      <ul>
+        <li data-i18n="server.findServers">No jogo, acesse Find Servers / Internet.</li>
+        <li data-i18n="server.addFavorites">Adicione o servidor aos favoritos usando <strong><span data-connect-address>zueira.servecounterstrike.com:27015</span></strong>.</li>
+      </ul>
+    </div>
+
+  </div>
+
+  <script src="i18n/translations.js" defer></script>
+  <script src="common.js" defer></script>
+</body>
+</html>

@@ -1,0 +1,17 @@
+.env
+
+# Diretório local do opencode (planos/plugins) — não versionar
+.opencode/
+
+# Lixo do macOS (evita arquivos tipo "._arquivo")
+._*
+.DS_Store
+
+# Dados live por servidor (runtime)
+live/
+
+# Configs geradas por `scripts/servers.sh init` (server.cfg contém rcon_password)
+config/servers/
+
+# Backup do banco com dados reais (contém IPs de jogadores) — não versionar
+csstats_backup.sql

@@ -1,0 +1,607 @@
+{
+  "uid": "cs16-dashboard",
+  "title": "CS 1.6 Server Stats",
+  "tags": ["cs16"],
+  "timezone": "browser",
+  "schemaVersion": 39,
+  "version": 2,
+  "refresh": "15s",
+  "time": { "from": "now-6h", "to": "now" },
+  "templating": {
+    "list": [
+      {
+        "name": "server",
+        "label": "Servidor",
+        "type": "query",
+        "datasource": { "type": "prometheus", "uid": "prometheus" },
+        "query": "label_values(cs16_players_online, server)",
+        "refresh": 2,
+        "includeAll": true,
+        "multi": true,
+        "sort": 1,
+        "allValue": ".*"
+      }
+    ]
+  },
+  "panels": [
+    {
+      "id": 1,
+      "type": "row",
+      "title": "Servidores",
+      "collapsed": false,
+      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 0 },
+      "panels": []
+    },
+    {
+      "id": 10,
+      "type": "stat",
+      "title": "Servidores online",
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "gridPos": { "h": 4, "w": 6, "x": 0, "y": 1 },
+      "targets": [
+        { "expr": "cs16_server_online{server=~\"$server\"}", "legendFormat": "{{server}}", "refId": "A" }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "thresholds": { "mode": "absolute", "steps": [ { "color": "red", "value": null }, { "color": "green", "value": 1 } ] }
+        },
+        "overrides": []
+      }
+    },
+    {
+      "id": 11,
+      "type": "stat",
+      "title": "Jogadores online",
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "gridPos": { "h": 4, "w": 6, "x": 6, "y": 1 },
+      "targets": [
+        { "expr": "cs16_players_online{server=~\"$server\"}", "legendFormat": "{{server}}", "refId": "A" }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "thresholds": { "mode": "absolute", "steps": [ { "color": "green", "value": null } ] }
+        },
+        "overrides": []
+      }
+    },
+    {
+      "id": 12,
+      "type": "stat",
+      "title": "Lotação máxima",
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "gridPos": { "h": 4, "w": 6, "x": 12, "y": 1 },
+      "targets": [
+        { "expr": "cs16_max_players{server=~\"$server\"}", "legendFormat": "{{server}}", "refId": "A" }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "thresholds": { "mode": "absolute", "steps": [ { "color": "blue", "value": null } ] }
+        },
+        "overrides": []
+      }
+    },
+    {
+      "id": 13,
+      "type": "stat",
+      "title": "Tempo no mapa",
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "gridPos": { "h": 4, "w": 6, "x": 18, "y": 1 },
+      "targets": [
+        { "expr": "cs16_map_time_seconds{server=~\"$server\"}", "legendFormat": "{{server}}", "refId": "A" }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "s",
+          "thresholds": { "mode": "absolute", "steps": [ { "color": "blue", "value": null } ] }
+        },
+        "overrides": []
+      }
+    },
+    {
+      "id": 14,
+      "type": "table",
+      "title": "Estado ao vivo",
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "gridPos": { "h": 7, "w": 12, "x": 0, "y": 5 },
+      "targets": [
+        {
+          "expr": "cs16_server_info{server=~\"$server\"}",
+          "legendFormat": "{{server}}",
+          "format": "table",
+          "instant": true,
+          "refId": "A"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": { "unit": "short" },
+        "overrides": [
+          { "matcher": { "id": "byName", "options": "Value" }, "properties": [ { "id": "custom.hidden", "value": true } ] }
+        ]
+      },
+      "options": { "showHeader": true, "sortBy": [{ "displayName": "server", "desc": false }] }
+    },
+    {
+      "id": 15,
+      "type": "timeseries",
+      "title": "Placar T/CT",
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "gridPos": { "h": 7, "w": 12, "x": 12, "y": 5 },
+      "targets": [
+        { "expr": "cs16_round_t{server=~\"$server\"}", "legendFormat": "{{server}} T", "refId": "A" },
+        { "expr": "cs16_round_ct{server=~\"$server\"}", "legendFormat": "{{server}} CT", "refId": "B" }
+      ],
+      "fieldConfig": { "defaults": { "unit": "short" }, "overrides": [] },
+      "options": { "legend": { "displayMode": "list", "placement": "bottom", "calcs": ["last"] } }
+    },
+    {
+      "id": 2,
+      "type": "row",
+      "title": "Jogadores",
+      "collapsed": false,
+      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 12 },
+      "panels": []
+    },
+    {
+      "id": 20,
+      "type": "stat",
+      "title": "Jogadores registrados",
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "gridPos": { "h": 4, "w": 6, "x": 0, "y": 13 },
+      "targets": [
+        { "expr": "cs16_players_registered{server=~\"$server\"}", "legendFormat": "{{server}}", "refId": "A" }
+      ],
+      "fieldConfig": {
+        "defaults": { "unit": "short", "thresholds": { "mode": "absolute", "steps": [ { "color": "blue", "value": null } ] } },
+        "overrides": []
+      }
+    },
+    {
+      "id": 21,
+      "type": "stat",
+      "title": "Ativos (7 dias)",
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "gridPos": { "h": 4, "w": 6, "x": 6, "y": 13 },
+      "targets": [
+        { "expr": "cs16_active_players{period=\"7d\",server=~\"$server\"}", "legendFormat": "{{server}}", "refId": "A" }
+      ],
+      "fieldConfig": {
+        "defaults": { "unit": "short", "thresholds": { "mode": "absolute", "steps": [ { "color": "blue", "value": null } ] } },
+        "overrides": []
+      }
+    },
+    {
+      "id": 22,
+      "type": "stat",
+      "title": "Ativos (30 dias)",
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "gridPos": { "h": 4, "w": 6, "x": 12, "y": 13 },
+      "targets": [
+        { "expr": "cs16_active_players{period=\"30d\",server=~\"$server\"}", "legendFormat": "{{server}}", "refId": "A" }
+      ],
+      "fieldConfig": {
+        "defaults": { "unit": "short", "thresholds": { "mode": "absolute", "steps": [ { "color": "blue", "value": null } ] } },
+        "overrides": []
+      }
+    },
+    {
+      "id": 23,
+      "type": "timeseries",
+      "title": "Jogadores online (histórico)",
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 17 },
+      "targets": [
+        { "expr": "cs16_players_online{server=~\"$server\"}", "legendFormat": "{{server}}", "refId": "A" }
+      ],
+      "fieldConfig": { "defaults": { "unit": "short" }, "overrides": [] },
+      "options": { "legend": { "displayMode": "list", "placement": "bottom", "calcs": ["last", "max"] } }
+    },
+    {
+      "id": 24,
+      "type": "timeseries",
+      "title": "Kills por período",
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 17 },
+      "targets": [
+        {
+          "expr": "sum by (server, period) (cs16_kills_period_total{server=~\"$server\"})",
+          "legendFormat": "{{server}} {{period}}",
+          "refId": "A"
+        }
+      ],
+      "fieldConfig": { "defaults": { "unit": "short" }, "overrides": [] },
+      "options": { "legend": { "displayMode": "list", "placement": "bottom", "calcs": ["last"] } }
+    },
+    {
+      "id": 3,
+      "type": "row",
+      "title": "Estatísticas",
+      "collapsed": false,
+      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 25 },
+      "panels": []
+    },
+    {
+      "id": 30,
+      "type": "barchart",
+      "title": "Kills / Deaths / HS por servidor",
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 26 },
+      "targets": [
+        {
+          "expr": "sum by (stat, server) (cs16_stats_total{stat=~\"kills|deaths|hs\",server=~\"$server\"})",
+          "legendFormat": "{{server}} {{stat}}",
+          "refId": "A"
+        }
+      ],
+      "fieldConfig": { "defaults": { "unit": "short" }, "overrides": [] },
+      "options": {
+        "orientation": "auto",
+        "groupWidth": 70,
+        "barWidth": 0.8,
+        "xTickLabelRotation": 0,
+        "showValue": "auto",
+        "stacking": { "group": "A", "mode": "normal" },
+        "legend": { "displayMode": "list", "placement": "bottom", "calcs": ["last"] }
+      }
+    },
+    {
+      "id": 31,
+      "type": "stat",
+      "title": "Precisão média",
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "gridPos": { "h": 4, "w": 4, "x": 12, "y": 26 },
+      "targets": [
+        { "expr": "cs16_accuracy{server=~\"$server\"}", "legendFormat": "{{server}}", "refId": "A" }
+      ],
+      "fieldConfig": {
+        "defaults": { "unit": "percent", "thresholds": { "mode": "absolute", "steps": [ { "color": "blue", "value": null } ] } },
+        "overrides": []
+      }
+    },
+    {
+      "id": 32,
+      "type": "stat",
+      "title": "Skill médio",
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "gridPos": { "h": 4, "w": 4, "x": 16, "y": 26 },
+      "targets": [
+        { "expr": "cs16_skill_avg{server=~\"$server\"}", "legendFormat": "{{server}}", "refId": "A" }
+      ],
+      "fieldConfig": {
+        "defaults": { "unit": "short", "thresholds": { "mode": "absolute", "steps": [ { "color": "blue", "value": null } ] } },
+        "overrides": []
+      }
+    },
+    {
+      "id": 33,
+      "type": "stat",
+      "title": "Skill máximo",
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "gridPos": { "h": 4, "w": 4, "x": 20, "y": 26 },
+      "targets": [
+        { "expr": "cs16_skill_max{server=~\"$server\"}", "legendFormat": "{{server}}", "refId": "A" }
+      ],
+      "fieldConfig": {
+        "defaults": { "unit": "short", "thresholds": { "mode": "absolute", "steps": [ { "color": "blue", "value": null } ] } },
+        "overrides": []
+      }
+    },
+    {
+      "id": 34,
+      "type": "timeseries",
+      "title": "Conexões",
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "gridPos": { "h": 6, "w": 6, "x": 12, "y": 30 },
+      "targets": [
+        { "expr": "cs16_stats_total{stat=\"connects\",server=~\"$server\"}", "legendFormat": "{{server}}", "refId": "A" }
+      ],
+      "fieldConfig": { "defaults": { "unit": "short" }, "overrides": [] },
+      "options": { "legend": { "displayMode": "list", "placement": "bottom", "calcs": ["last"] } }
+    },
+    {
+      "id": 35,
+      "type": "stat",
+      "title": "Tempo conectado (total)",
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "gridPos": { "h": 6, "w": 6, "x": 18, "y": 30 },
+      "targets": [
+        { "expr": "cs16_connection_time_seconds{server=~\"$server\"}", "legendFormat": "{{server}}", "refId": "A" }
+      ],
+      "fieldConfig": {
+        "defaults": { "unit": "s", "thresholds": { "mode": "absolute", "steps": [ { "color": "blue", "value": null } ] } },
+        "overrides": []
+      }
+    },
+    {
+      "id": 4,
+      "type": "row",
+      "title": "Partidas",
+      "collapsed": false,
+      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 36 },
+      "panels": []
+    },
+    {
+      "id": 40,
+      "type": "stat",
+      "title": "Partidas registradas",
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "gridPos": { "h": 4, "w": 6, "x": 0, "y": 37 },
+      "targets": [
+        { "expr": "sum(cs16_matches_total{server=~\"$server\"})", "legendFormat": "matches", "refId": "A" }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "thresholds": { "mode": "absolute", "steps": [ { "color": "blue", "value": null } ] }
+        },
+        "overrides": []
+      }
+    },
+    {
+      "id": 41,
+      "type": "stat",
+      "title": "Duração média (p50)",
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "gridPos": { "h": 4, "w": 6, "x": 6, "y": 37 },
+      "targets": [
+        {
+          "expr": "histogram_quantile(0.50, sum by (le) (rate(cs16_match_duration_seconds_bucket[1h])))",
+          "legendFormat": "p50",
+          "refId": "A"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": { "unit": "s", "thresholds": { "mode": "absolute", "steps": [ { "color": "blue", "value": null } ] } },
+        "overrides": []
+      }
+    },
+    {
+      "id": 42,
+      "type": "piechart",
+      "title": "Vencedores (T / CT / Empate)",
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "gridPos": { "h": 8, "w": 6, "x": 12, "y": 37 },
+      "targets": [
+        {
+          "expr": "sum by (winner) (cs16_match_duration_seconds_count{server=~\"$server\"})",
+          "legendFormat": "{{winner}}",
+          "refId": "A"
+        }
+      ],
+      "fieldConfig": { "defaults": { "unit": "short" }, "overrides": [] },
+      "options": {
+        "reduceOptions": { "values": false, "calcs": ["lastNotNull"], "fields": "", "limit": 10 },
+        "pieType": "pie",
+        "displayLabels": ["name", "value", "percent"],
+        "legend": { "displayMode": "list", "placement": "bottom", "values": ["value"] },
+        "tooltip": { "mode": "single", "sort": "none" }
+      }
+    },
+    {
+      "id": 43,
+      "type": "barchart",
+      "title": "Partidas por servidor",
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "gridPos": { "h": 8, "w": 6, "x": 18, "y": 37 },
+      "targets": [
+        {
+          "expr": "sum by (server) (cs16_matches_total{server=~\"$server\"})",
+          "legendFormat": "{{server}}",
+          "refId": "A"
+        }
+      ],
+      "fieldConfig": { "defaults": { "unit": "short" }, "overrides": [] },
+      "options": {
+        "orientation": "auto",
+        "groupWidth": 70,
+        "barWidth": 0.8,
+        "xTickLabelRotation": 0,
+        "showValue": "auto",
+        "stacking": { "group": "A", "mode": "normal" },
+        "legend": { "displayMode": "list", "placement": "bottom", "calcs": ["last"] }
+      }
+    },
+    {
+      "id": 44,
+      "type": "barchart",
+      "title": "Mapas mais populares",
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 45 },
+      "targets": [
+        {
+          "expr": "topk(10, sum by (map) (cs16_snapshots_total{server=~\"$server\"}))",
+          "legendFormat": "{{map}}",
+          "refId": "A"
+        }
+      ],
+      "fieldConfig": { "defaults": { "unit": "short" }, "overrides": [] },
+      "options": {
+        "orientation": "horizontal",
+        "groupWidth": 70,
+        "barWidth": 0.8,
+        "xTickLabelRotation": 0,
+        "showValue": "auto",
+        "stacking": { "group": "A", "mode": "normal" },
+        "legend": { "displayMode": "list", "placement": "bottom", "calcs": ["last"] }
+      }
+    },
+    {
+      "id": 45,
+      "type": "timeseries",
+      "title": "Partidas por hora",
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 45 },
+      "targets": [
+        {
+          "expr": "sum(rate(cs16_matches_total{server=~\"$server\"}[1h]))",
+          "legendFormat": "matches/h",
+          "refId": "A"
+        }
+      ],
+      "fieldConfig": { "defaults": { "unit": "short" }, "overrides": [] },
+      "options": { "legend": { "displayMode": "list", "placement": "bottom", "calcs": ["last"] } }
+    },
+    {
+      "id": 5,
+      "type": "row",
+      "title": "API e Infra",
+      "collapsed": false,
+      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 53 },
+      "panels": []
+    },
+    {
+      "id": 50,
+      "type": "stat",
+      "title": "Banco de dados",
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "gridPos": { "h": 4, "w": 6, "x": 0, "y": 54 },
+      "targets": [
+        { "expr": "cs16_db_up", "legendFormat": "db", "refId": "A" }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "thresholds": { "mode": "absolute", "steps": [ { "color": "red", "value": 0 }, { "color": "green", "value": 1 } ] }
+        },
+        "overrides": []
+      }
+    },
+    {
+      "id": 51,
+      "type": "stat",
+      "title": "Redis",
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "gridPos": { "h": 4, "w": 6, "x": 6, "y": 54 },
+      "targets": [
+        { "expr": "cs16_redis_up", "legendFormat": "redis", "refId": "A" }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "thresholds": { "mode": "absolute", "steps": [ { "color": "red", "value": 0 }, { "color": "green", "value": 1 } ] }
+        },
+        "overrides": []
+      }
+    },
+    {
+      "id": 52,
+      "type": "stat",
+      "title": "Erros HTTP 5xx",
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "gridPos": { "h": 4, "w": 6, "x": 12, "y": 54 },
+      "targets": [
+        {
+          "expr": "sum(rate(cs16_http_requests_total{status=~\"5..\"}[5m]))",
+          "legendFormat": "5xx/s",
+          "refId": "A"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "thresholds": { "mode": "absolute", "steps": [ { "color": "green", "value": 0 }, { "color": "yellow", "value": 0.01 } ] }
+        },
+        "overrides": []
+      }
+    },
+    {
+      "id": 53,
+      "type": "stat",
+      "title": "Erros de query (1h)",
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "gridPos": { "h": 4, "w": 6, "x": 18, "y": 54 },
+      "targets": [
+        {
+          "expr": "increase(cs16_db_query_errors_total[1h])",
+          "legendFormat": "erros",
+          "refId": "A"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "thresholds": { "mode": "absolute", "steps": [ { "color": "green", "value": 0 }, { "color": "yellow", "value": 1 } ] }
+        },
+        "overrides": []
+      }
+    },
+    {
+      "id": 54,
+      "type": "timeseries",
+      "title": "Latência HTTP (p50 / p95 / p99)",
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 58 },
+      "targets": [
+        { "expr": "histogram_quantile(0.50, sum by (le) (rate(cs16_http_request_duration_seconds_bucket[5m])))", "legendFormat": "p50", "refId": "A" },
+        { "expr": "histogram_quantile(0.95, sum by (le) (rate(cs16_http_request_duration_seconds_bucket[5m])))", "legendFormat": "p95", "refId": "B" },
+        { "expr": "histogram_quantile(0.99, sum by (le) (rate(cs16_http_request_duration_seconds_bucket[5m])))", "legendFormat": "p99", "refId": "C" }
+      ],
+      "fieldConfig": { "defaults": { "unit": "s" }, "overrides": [] },
+      "options": { "legend": { "displayMode": "list", "placement": "bottom", "calcs": ["last"] } }
+    },
+    {
+      "id": 55,
+      "type": "timeseries",
+      "title": "Requisições HTTP (rps)",
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 58 },
+      "targets": [
+        { "expr": "sum(rate(cs16_http_requests_total[5m])) by (status)", "legendFormat": "{{status}}", "refId": "A" }
+      ],
+      "fieldConfig": { "defaults": { "unit": "reqps" }, "overrides": [] },
+      "options": { "legend": { "displayMode": "list", "placement": "bottom", "calcs": ["last"] } }
+    },
+    {
+      "id": 56,
+      "type": "timeseries",
+      "title": "Nginx req/s",
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 66 },
+      "targets": [
+        { "expr": "rate(nginx_http_requests_total[1m])", "legendFormat": "req/s", "refId": "A" }
+      ],
+      "fieldConfig": { "defaults": { "unit": "reqps" }, "overrides": [] },
+      "options": { "legend": { "displayMode": "list", "placement": "bottom", "calcs": ["last"] } }
+    },
+    {
+      "id": 57,
+      "type": "timeseries",
+      "title": "Nginx conexões",
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 66 },
+      "targets": [
+        { "expr": "nginx_connections_active", "legendFormat": "active", "refId": "A" },
+        { "expr": "nginx_connections_waiting", "legendFormat": "waiting", "refId": "B" }
+      ],
+      "fieldConfig": { "defaults": { "unit": "short" }, "overrides": [] },
+      "options": { "legend": { "displayMode": "list", "placement": "bottom", "calcs": ["last"] } }
+    },
+    {
+      "id": 58,
+      "type": "timeseries",
+      "title": "CPU do processo (API)",
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 74 },
+      "targets": [
+        { "expr": "rate(process_cpu_user_seconds_total[5m])", "legendFormat": "user", "refId": "A" },
+        { "expr": "rate(process_cpu_system_seconds_total[5m])", "legendFormat": "system", "refId": "B" }
+      ],
+      "fieldConfig": { "defaults": { "unit": "s" }, "overrides": [] },
+      "options": { "legend": { "displayMode": "list", "placement": "bottom", "calcs": ["last"] } }
+    },
+    {
+      "id": 59,
+      "type": "timeseries",
+      "title": "Memória do processo (API)",
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 74 },
+      "targets": [
+        { "expr": "process_resident_memory_bytes", "legendFormat": "RSS", "refId": "A" }
+      ],
+      "fieldConfig": { "defaults": { "unit": "bytes" }, "overrides": [] },
+      "options": { "legend": { "displayMode": "list", "placement": "bottom", "calcs": ["last"] } }
+    }
+  ]
+}
