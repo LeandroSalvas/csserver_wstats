@@ -4,6 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title data-i18n="live.title">Live Match - CS 1.6</title>
+  <link rel="icon" type="image/svg+xml" href="favicon.svg">
   <link rel="stylesheet" href="style.css">
 </head>
 <body>
@@ -22,7 +23,7 @@
       <select id="liveServer" class="server-selector"></select>
       <h2 id="liveHostname" data-i18n="server.hostname">Servidor</h2>
 
-      <div class="live-summary">
+      <div class="live-summary live-summary-3">
         <div class="live-box">
           <span class="live-label" data-i18n="live.currentMap">🎮 Mapa atual</span>
           <strong id="liveMap">-</strong>
@@ -31,6 +32,15 @@
         <div class="live-box">
           <span class="live-label" data-i18n="live.playersOnline">👥 Players online</span>
           <strong id="liveCount">0</strong>
+        </div>
+
+        <div class="live-box">
+          <span class="live-label" data-i18n="live.score">⚔️ Placar</span>
+          <span class="live-score" id="liveScore">
+            <span class="live-score-t" id="liveScoreT">0</span>
+            <span class="live-score-sep">:</span>
+            <span class="live-score-ct" id="liveScoreCT">0</span>
+          </span>
         </div>
       </div>
     </div>

@@ -121,7 +121,7 @@ async function loadServer() {
     const s = await fetchJson(`/server${serverQuery()}`)
 
     document.getElementById('hostname').innerText = s.hostname
-    document.getElementById('currentMap').innerText = s.map
+    setCurrentMapLink(s.map)
     document.getElementById('playersOnline').innerText = s.players
     document.getElementById('maxPlayers').innerText = s.maxplayers
     setServerStatusElement(document.getElementById('serverStatus'), true)
@@ -130,12 +130,24 @@ async function loadServer() {
     console.error('Erro ao carregar status do servidor:', err)
     setStatus(`${i18nUtils.t('errors.loadServer')}: ${err.message}`, 'error')
     document.getElementById('hostname').innerText = i18nUtils.t('status.offline')
-    document.getElementById('currentMap').innerText = '-'
+    setCurrentMapLink(null)
     document.getElementById('playersOnline').innerText = '0'
     document.getElementById('maxPlayers').innerText = '0'
     setServerStatusElement(document.getElementById('serverStatus'), false)
     setStatusChip('systemCs', 'Offline')
   }
+}
+
+function setCurrentMapLink(mapName) {
+  const link = document.getElementById('currentMapLink')
+  if (!link) return
+  if (!mapName) {
+    link.textContent = '-'
+    link.removeAttribute('href')
+    return
+  }
+  link.textContent = mapName
+  link.href = `map.html?map=${encodeURIComponent(mapName)}${serverParam()}`
 }
 
 function refreshAll() {

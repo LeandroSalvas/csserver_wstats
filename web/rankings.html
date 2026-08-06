@@ -4,6 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title data-i18n="nav.rankings">Rankings - CS 1.6 Stats</title>
+  <link rel="icon" type="image/svg+xml" href="favicon.svg">
   <link rel="stylesheet" href="style.css">
 </head>
 <body>
@@ -16,35 +17,37 @@
 
     <div class="page-nav"></div>
 
-    <div style="display:flex; gap:10px; align-items:center; margin-bottom:16px; flex-wrap:wrap;">
-      <select id="rankingServer" class="server-selector" style="max-width:220px;"></select>
+    <div class="toolbar">
+      <select id="rankingServer" class="server-selector"></select>
     </div>
 
     <div id="statusMessage" class="status-message"></div>
 
     <div class="card">
-      <div style="display:flex; gap:10px; margin-bottom:20px; flex-wrap:wrap;">
-        <button id="btnWeekly" data-i18n="labels.weekly">Semanal</button>
-        <button id="btnMonthly" data-i18n="labels.monthly">Mensal</button>
+      <div class="toolbar">
+        <button id="btnWeekly" class="period-btn active" data-i18n="labels.weekly">Semanal</button>
+        <button id="btnMonthly" class="period-btn" data-i18n="labels.monthly">Mensal</button>
         <button id="btnExportCsv" data-i18n="labels.exportCsv">⬇ Exportar CSV</button>
       </div>
 
       <h2 id="rankingTitle" data-i18n="labels.rankingWeekly">Ranking semanal</h2>
 
-      <table>
-        <thead>
-          <tr>
-            <th data-i18n="labels.rank">#</th>
-            <th data-i18n="labels.player">Player</th>
-            <th data-i18n="labels.kills">Kills</th>
-            <th data-i18n="labels.deaths">Deaths</th>
-            <th data-i18n="labels.hs">HS</th>
-            <th data-i18n="labels.kd">KD</th>
-            <th data-i18n="labels.skill">Skill</th>
-          </tr>
-        </thead>
-        <tbody id="rankingTable"></tbody>
-      </table>
+      <div class="table-responsive">
+        <table>
+          <thead>
+            <tr>
+              <th data-i18n="labels.rank">#</th>
+              <th data-i18n="labels.player">Player</th>
+              <th data-i18n="labels.kills">Kills</th>
+              <th data-i18n="labels.deaths">Deaths</th>
+              <th data-i18n="labels.hs">HS</th>
+              <th data-i18n="labels.kd">KD</th>
+              <th data-i18n="labels.skill">Skill</th>
+            </tr>
+          </thead>
+          <tbody id="rankingTable"></tbody>
+        </table>
+      </div>
 
       <div class="pagination" id="rankingPagination">
         <button id="btnPrev" data-i18n="pagination.prev">← Anterior</button>

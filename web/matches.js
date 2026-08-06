@@ -34,7 +34,7 @@ function renderMatches(tbody, rows) {
     const row = document.createElement('tr')
     row.innerHTML = `
       <td>${((matchesPage - 1) * MATCHES_LIMIT) + index + 1}</td>
-      <td>${escapeHtml(item.map)}</td>
+      <td><a href="map.html?map=${encodeURIComponent(item.map)}${serverParam()}">${escapeHtml(item.map)}</a></td>
       <td><span class="match-score match-score-t">${item.round_t}</span> : <span class="match-score match-score-ct">${item.round_ct}</span></td>
       <td>${winnerLabel(item)}</td>
       <td>${formatMatchDuration(item.duration_sec)}</td>
@@ -47,9 +47,9 @@ function renderMatches(tbody, rows) {
 }
 
 function winnerLabel(item) {
-  if (item.winner === 'T') return 'T'
-  if (item.winner === 'CT') return 'CT'
-  return i18nUtils.t('matches.draw')
+  if (item.winner === 'T') return '<span class="winner-t">T</span>'
+  if (item.winner === 'CT') return '<span class="winner-ct">CT</span>'
+  return `<span class="winner-draw">${escapeHtml(i18nUtils.t('matches.draw'))}</span>`
 }
 
 function formatMatchDuration(seconds) {

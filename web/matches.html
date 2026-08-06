@@ -4,6 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title data-i18n="nav.matches">Partidas - CS 1.6 Stats</title>
+  <link rel="icon" type="image/svg+xml" href="favicon.svg">
   <link rel="stylesheet" href="style.css">
 </head>
 <body>
@@ -16,27 +17,29 @@
 
     <div class="page-nav"></div>
 
-    <div style="display:flex; gap:10px; align-items:center; margin-bottom:16px; flex-wrap:wrap;">
-      <select id="matchesServer" class="server-selector" style="max-width:220px;"></select>
+    <div class="toolbar">
+      <select id="matchesServer" class="server-selector"></select>
     </div>
 
     <div id="statusMessage" class="status-message"></div>
 
     <div class="card">
       <h2 data-i18n="matches.title">Histórico de Partidas</h2>
-      <table>
-        <thead>
-          <tr>
-            <th data-i18n="labels.rank">#</th>
-            <th data-i18n="labels.map">Mapa</th>
-            <th data-i18n="matches.score">Placar</th>
-            <th data-i18n="matches.winner">Vencedor</th>
-            <th data-i18n="matches.duration">Duração</th>
-            <th data-i18n="matches.endedAt">Fim</th>
-          </tr>
-        </thead>
-        <tbody id="matchesTable"></tbody>
-      </table>
+      <div class="table-responsive">
+        <table>
+          <thead>
+            <tr>
+              <th data-i18n="labels.rank">#</th>
+              <th data-i18n="labels.map">Mapa</th>
+              <th data-i18n="matches.score">Placar</th>
+              <th data-i18n="matches.winner">Vencedor</th>
+              <th data-i18n="matches.duration">Duração</th>
+              <th data-i18n="matches.endedAt">Fim</th>
+            </tr>
+          </thead>
+          <tbody id="matchesTable"></tbody>
+        </table>
+      </div>
 
       <div class="pagination">
         <button id="prevPage" class="page-btn" data-i18n="labels.prev">← Anterior</button>

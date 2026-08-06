@@ -199,7 +199,7 @@ function renderPageNav() {
 
       if (item.href.split('/').pop() === currentPage) {
         link.classList.add('active')
-        link.style.display = 'none'
+        link.setAttribute('aria-current', 'page')
       }
 
       container.appendChild(link)
@@ -266,10 +266,10 @@ function applyActiveNav() {
     const normalizedHref = href === '' ? 'index.html' : href.split('/').pop()
     if (normalizedHref === currentPage) {
       link.classList.add('active')
-      link.style.display = 'none'
+      link.setAttribute('aria-current', 'page')
     } else {
       link.classList.remove('active')
-      link.style.display = ''
+      link.removeAttribute('aria-current')
     }
   })
 }
@@ -326,6 +326,8 @@ function exportTableCsv(table, filename) {
 
 function initCommon() {
   i18nUtils.init()
+  document.querySelectorAll('.status-message').forEach((el) => el.setAttribute('aria-live', 'polite'))
+  document.querySelectorAll('table th').forEach((th) => th.setAttribute('scope', 'col'))
   renderPageNav()
   renderLanguageToggle()
   applyActiveNav()
@@ -347,6 +349,19 @@ function initConnectPage() {
   const steamLink = document.querySelector('[data-connect-steam]')
   if (steamLink) {
     steamLink.href = `steam://rungameid/10//%2Bconnect%20${encodeURIComponent(fullAddress)}`
+  }
+
+  const copyBtn = document.querySelector('[data-copy-command]')
+  if (copyBtn) {
+    copyBtn.addEventListener('click', async () => {
+      try {
+        await navigator.clipboard.writeText(`connect ${fullAddress}`)
+        copyBtn.textContent = i18nUtils.t('server.copied')
+      } catch (err) {
+        copyBtn.textContent = i18nUtils.t('server.copyError')
+      }
+      window.setTimeout(() => { copyBtn.textContent = i18nUtils.t('server.copy') }, 2000)
+    })
   }
 }
 
@@ -375,6 +390,13 @@ function initPlayerSearch() {
   const results = document.createElement('div')
   results.className = 'search-results'
   wrap.appendChild(results)
+
+  input.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') {
+      const first = results.querySelector('a')
+      if (first) window.location.href = first.getAttribute('href')
+    }
+  })
 
   input.addEventListener('input', () => {
     const q = input.value.trim()
@@ -415,12 +437,21 @@ async function runPlayerSearch(q, results) {
         name.className = 'sr-name'
         name.textContent = p.name || p.steamid
 
+        const meta = document.createElement('span')
+        meta.className = 'sr-meta'
+
+        const steam = document.createElement('span')
+        steam.className = 'sr-steamid'
+        steam.textContent = p.steamid
+
         const kills = document.createElement('span')
         kills.className = 'sr-kills'
         kills.textContent = `${p.kills} ${i18nUtils.t('labels.kills').toLowerCase()}`
 
+        meta.appendChild(steam)
+        meta.appendChild(kills)
         link.appendChild(name)
-        link.appendChild(kills)
+        link.appendChild(meta)
         results.appendChild(link)
       })
     }

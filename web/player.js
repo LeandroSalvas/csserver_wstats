@@ -44,7 +44,7 @@ async function loadPlayer() {
   }
 
   document.getElementById('playerName').innerText = p.name || '-'
-  document.getElementById('steamid').innerText = p.steamid || '-'
+  document.getElementById('playerSteamid').innerText = p.steamid || '-'
   document.getElementById('kills').innerText = p.kills ?? 0
   document.getElementById('deaths').innerText = p.deaths ?? 0
   document.getElementById('hs').innerText = p.hs ?? 0
@@ -158,6 +158,15 @@ async function loadRankHistory() {
     return
   }
 
+  const last = history[history.length - 1]
+  if (last && last.position) {
+    const badge = document.getElementById('playerRank')
+    if (badge) {
+      badge.hidden = false
+      badge.textContent = `${i18nUtils.t('player.currentRank')}: #${last.position}${last.total_players ? ` / ${last.total_players}` : ''}`
+    }
+  }
+
   const labels = history.map((row) => formatDate(row.day))
   const positions = history.map((row) => row.position)
   const totals = history.map((row) => row.total_players)
@@ -181,7 +190,13 @@ async function loadRankHistory() {
 
 async function loadLastMap() {
   const data = await fetchJson(`/player-last-map/${encodeURIComponent(steamid)}${serverQuery()}`)
-  document.getElementById('lastMap').innerText = data?.map || '-'
+  const el = document.getElementById('lastMap')
+  if (!el) return
+  if (data?.map) {
+    el.innerHTML = `<a href="map.html?map=${encodeURIComponent(data.map)}${serverParam()}">${escapeHtml(data.map)}</a>`
+  } else {
+    el.innerText = '-'
+  }
 }
 
 async function loadPlayerData() {
@@ -208,10 +223,17 @@ function renderChart(canvasId, labels, datasets, extraOptions = {}) {
 
   if (chartInstances[canvasId]) {
     chartInstances[canvasId].destroy()
+    chartInstances[canvasId] = null
   }
 
   if (typeof Chart === 'undefined') {
-    console.error('Chart.js não carregado')
+    console.warn(`Chart.js não carregado para ${canvasId}`)
+    const parent = canvas.parentElement
+    const fallback = document.createElement('div')
+    fallback.className = 'chart-fallback'
+    fallback.textContent = i18nUtils.t('player.chartUnavailable')
+    canvas.remove()
+    parent.appendChild(fallback)
     return
   }
 

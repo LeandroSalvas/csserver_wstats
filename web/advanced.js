@@ -19,6 +19,19 @@ function renderAdvancedRows(tableId, rows, columns, formatRow) {
   tbody.appendChild(fragment)
 }
 
+let advancedLimit = 10
+
+function setAdvancedLimit(limit) {
+  advancedLimit = limit
+  const note = document.getElementById('advancedNote')
+  const toggle = document.getElementById('advancedToggle')
+  if (note) note.textContent = i18nUtils.t(limit === 50 ? 'advanced.note50' : 'advanced.note10')
+  if (toggle) {
+    toggle.textContent = i18nUtils.t(limit === 50 ? 'advanced.viewTop' : 'advanced.viewAll')
+    toggle.setAttribute('aria-pressed', limit === 50 ? 'true' : 'false')
+  }
+}
+
 async function loadAdvancedStats() {
   const tables = {
     headshotsTable: { endpoint: '/top-headshots', columns: 7 },
@@ -42,7 +55,7 @@ async function loadAdvancedStats() {
   try {
     const fetchAll = Object.entries(tables).map(async ([tableId, { endpoint }]) => {
       try {
-        const rows = await fetchJson(`${endpoint}${serverQuery()}`)
+        const rows = await fetchJson(`${endpoint}?limit=${advancedLimit}${serverParam()}`)
         return { tableId, rows }
       } catch (err) {
         throw { tableId, error: err }
@@ -211,5 +224,20 @@ function addExportButtons() {
   })
 }
 
-document.addEventListener('DOMContentLoaded', loadAdvancedStats)
+document.addEventListener('DOMContentLoaded', () => {
+  setAdvancedLimit(10)
+  const toggle = document.getElementById('advancedToggle')
+  if (toggle) {
+    toggle.addEventListener('click', () => {
+      setAdvancedLimit(advancedLimit === 10 ? 50 : 10)
+      loadAdvancedStats()
+    })
+  }
+  loadAdvancedStats()
+})
+
+document.addEventListener('i18n applied', () => {
+  setAdvancedLimit(advancedLimit)
+})
+
 document.addEventListener('server-change', loadAdvancedStats)

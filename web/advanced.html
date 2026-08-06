@@ -4,6 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title data-i18n="nav.advanced">Estatísticas Avançadas - CS 1.6 Stats</title>
+  <link rel="icon" type="image/svg+xml" href="favicon.svg">
   <link rel="stylesheet" href="style.css">
 </head>
 <body>
@@ -16,177 +17,199 @@
 
     <div class="page-nav"></div>
 
-    <div style="display:flex; gap:10px; align-items:center; margin-bottom:16px; flex-wrap:wrap;">
-      <select id="advancedServer" class="server-selector" style="max-width:220px;"></select>
+    <div class="toolbar">
+      <select id="advancedServer" class="server-selector"></select>
+      <div id="advancedNote" class="advanced-note">Exibindo o top 10</div>
+      <button id="advancedToggle">Ver top 50</button>
     </div>
 
     <div id="statusMessage" class="status-message"></div>
 
     <div class="card">
       <h2 data-i18n="advanced.headshots">Top Headshots</h2>
-      <table>
-        <thead>
-          <tr>
-            <th data-i18n="labels.rank">#</th>
-            <th data-i18n="labels.player">Player</th>
-            <th data-i18n="labels.hs">HS</th>
-            <th data-i18n="labels.kills">Kills</th>
-            <th data-i18n="labels.deaths">Deaths</th>
-            <th data-i18n="labels.accuracy">Accuracy</th>
-            <th data-i18n="labels.skill">Skill</th>
-          </tr>
-        </thead>
-        <tbody id="headshotsTable"></tbody>
-      </table>
+      <div class="table-responsive">
+        <table>
+          <thead>
+            <tr>
+              <th data-i18n="labels.rank">#</th>
+              <th data-i18n="labels.player">Player</th>
+              <th data-i18n="labels.hs">HS</th>
+              <th data-i18n="labels.kills">Kills</th>
+              <th data-i18n="labels.deaths">Deaths</th>
+              <th data-i18n="labels.accuracy">Accuracy</th>
+              <th data-i18n="labels.skill">Skill</th>
+            </tr>
+          </thead>
+          <tbody id="headshotsTable"></tbody>
+        </table>
+      </div>
     </div>
 
     <div class="card">
       <h2 data-i18n="advanced.accuracy">Top Accuracy</h2>
-      <table>
-        <thead>
-          <tr>
-            <th data-i18n="labels.rank">#</th>
-            <th data-i18n="labels.player">Player</th>
-            <th data-i18n="labels.accuracy">Accuracy</th>
-            <th data-i18n="labels.hs">HS</th>
-            <th data-i18n="labels.kills">Kills</th>
-            <th data-i18n="labels.deaths">Deaths</th>
-            <th data-i18n="labels.skill">Skill</th>
-          </tr>
-        </thead>
-        <tbody id="accuracyTable"></tbody>
-      </table>
+      <div class="table-responsive">
+        <table>
+          <thead>
+            <tr>
+              <th data-i18n="labels.rank">#</th>
+              <th data-i18n="labels.player">Player</th>
+              <th data-i18n="labels.accuracy">Accuracy</th>
+              <th data-i18n="labels.hs">HS</th>
+              <th data-i18n="labels.kills">Kills</th>
+              <th data-i18n="labels.deaths">Deaths</th>
+              <th data-i18n="labels.skill">Skill</th>
+            </tr>
+          </thead>
+          <tbody id="accuracyTable"></tbody>
+        </table>
+      </div>
     </div>
 
     <div class="card">
       <h2 data-i18n="advanced.streak">Top Kill Streak</h2>
-      <table>
-        <thead>
-          <tr>
-            <th data-i18n="labels.rank">#</th>
-            <th data-i18n="labels.player">Player</th>
-            <th data-i18n="labels.streak">Streak</th>
-          </tr>
-        </thead>
-        <tbody id="streakTable"></tbody>
-      </table>
+      <div class="table-responsive">
+        <table>
+          <thead>
+            <tr>
+              <th data-i18n="labels.rank">#</th>
+              <th data-i18n="labels.player">Player</th>
+              <th data-i18n="labels.streak">Streak</th>
+            </tr>
+          </thead>
+          <tbody id="streakTable"></tbody>
+        </table>
+      </div>
     </div>
 
     <div class="card">
       <h2 data-i18n="advanced.skill">Top Skill</h2>
-      <table>
-        <thead>
-          <tr>
-            <th data-i18n="labels.rank">#</th>
-            <th data-i18n="labels.player">Player</th>
-            <th data-i18n="labels.skill">Skill</th>
-          </tr>
-        </thead>
-        <tbody id="skillTable"></tbody>
-      </table>
+      <div class="table-responsive">
+        <table>
+          <thead>
+            <tr>
+              <th data-i18n="labels.rank">#</th>
+              <th data-i18n="labels.player">Player</th>
+              <th data-i18n="labels.skill">Skill</th>
+            </tr>
+          </thead>
+          <tbody id="skillTable"></tbody>
+        </table>
+      </div>
     </div>
 
     <div class="card">
       <h2 data-i18n="advanced.kd">Top KD</h2>
-      <table>
-        <thead>
-          <tr>
-            <th data-i18n="labels.rank">#</th>
-            <th data-i18n="labels.player">Player</th>
-            <th data-i18n="labels.kd">KD</th>
-            <th data-i18n="labels.kills">Kills</th>
-            <th data-i18n="labels.deaths">Deaths</th>
-            <th data-i18n="labels.skill">Skill</th>
-          </tr>
-        </thead>
-        <tbody id="kdTable"></tbody>
-      </table>
+      <div class="table-responsive">
+        <table>
+          <thead>
+            <tr>
+              <th data-i18n="labels.rank">#</th>
+              <th data-i18n="labels.player">Player</th>
+              <th data-i18n="labels.kd">KD</th>
+              <th data-i18n="labels.kills">Kills</th>
+              <th data-i18n="labels.deaths">Deaths</th>
+              <th data-i18n="labels.skill">Skill</th>
+            </tr>
+          </thead>
+          <tbody id="kdTable"></tbody>
+        </table>
+      </div>
     </div>
 
     <div class="card">
       <h2 data-i18n="advanced.assists">Top Assists</h2>
-      <table>
-        <thead>
-          <tr>
-            <th data-i18n="labels.rank">#</th>
-            <th data-i18n="labels.player">Player</th>
-            <th data-i18n="labels.assists">Assists</th>
-            <th data-i18n="labels.kills">Kills</th>
-            <th data-i18n="labels.deaths">Deaths</th>
-            <th data-i18n="labels.skill">Skill</th>
-          </tr>
-        </thead>
-        <tbody id="assistsTable"></tbody>
-      </table>
+      <div class="table-responsive">
+        <table>
+          <thead>
+            <tr>
+              <th data-i18n="labels.rank">#</th>
+              <th data-i18n="labels.player">Player</th>
+              <th data-i18n="labels.assists">Assists</th>
+              <th data-i18n="labels.kills">Kills</th>
+              <th data-i18n="labels.deaths">Deaths</th>
+              <th data-i18n="labels.skill">Skill</th>
+            </tr>
+          </thead>
+          <tbody id="assistsTable"></tbody>
+        </table>
+      </div>
     </div>
 
     <div class="card">
       <h2 data-i18n="advanced.damage">Top Damage</h2>
-      <table>
-        <thead>
-          <tr>
-            <th data-i18n="labels.rank">#</th>
-            <th data-i18n="labels.player">Player</th>
-            <th data-i18n="labels.damage">Damage</th>
-            <th data-i18n="labels.kills">Kills</th>
-            <th data-i18n="labels.deaths">Deaths</th>
-            <th data-i18n="labels.skill">Skill</th>
-          </tr>
-        </thead>
-        <tbody id="damageTable"></tbody>
-      </table>
+      <div class="table-responsive">
+        <table>
+          <thead>
+            <tr>
+              <th data-i18n="labels.rank">#</th>
+              <th data-i18n="labels.player">Player</th>
+              <th data-i18n="labels.damage">Damage</th>
+              <th data-i18n="labels.kills">Kills</th>
+              <th data-i18n="labels.deaths">Deaths</th>
+              <th data-i18n="labels.skill">Skill</th>
+            </tr>
+          </thead>
+          <tbody id="damageTable"></tbody>
+        </table>
+      </div>
     </div>
 
     <div class="card">
       <h2 data-i18n="advanced.tk">Top Team Kills</h2>
-      <table>
-        <thead>
-          <tr>
-            <th data-i18n="labels.rank">#</th>
-            <th data-i18n="labels.player">Player</th>
-            <th data-i18n="labels.tk">TK</th>
-            <th data-i18n="labels.kills">Kills</th>
-            <th data-i18n="labels.deaths">Deaths</th>
-            <th data-i18n="labels.skill">Skill</th>
-          </tr>
-        </thead>
-        <tbody id="tkTable"></tbody>
-      </table>
+      <div class="table-responsive">
+        <table>
+          <thead>
+            <tr>
+              <th data-i18n="labels.rank">#</th>
+              <th data-i18n="labels.player">Player</th>
+              <th data-i18n="labels.tk">TK</th>
+              <th data-i18n="labels.kills">Kills</th>
+              <th data-i18n="labels.deaths">Deaths</th>
+              <th data-i18n="labels.skill">Skill</th>
+            </tr>
+          </thead>
+          <tbody id="tkTable"></tbody>
+        </table>
+      </div>
     </div>
 
     <div class="card">
       <h2 data-i18n="advanced.bomb">Top Bomb</h2>
-      <table>
-        <thead>
-          <tr>
-            <th data-i18n="labels.rank">#</th>
-            <th data-i18n="labels.player">Player</th>
-            <th data-i18n="labels.bombPlants">Plants</th>
-            <th data-i18n="labels.bombDefused">Defused</th>
-            <th data-i18n="labels.bombDef">Defuses</th>
-            <th data-i18n="labels.bombExplosions">Explosions</th>
-            <th data-i18n="labels.skill">Skill</th>
-          </tr>
-        </thead>
-        <tbody id="bombTable"></tbody>
-      </table>
+      <div class="table-responsive">
+        <table>
+          <thead>
+            <tr>
+              <th data-i18n="labels.rank">#</th>
+              <th data-i18n="labels.player">Player</th>
+              <th data-i18n="labels.bombPlants">Plants</th>
+              <th data-i18n="labels.bombDefused">Defused</th>
+              <th data-i18n="labels.bombDef">Defuses</th>
+              <th data-i18n="labels.bombExplosions">Explosions</th>
+              <th data-i18n="labels.skill">Skill</th>
+            </tr>
+          </thead>
+          <tbody id="bombTable"></tbody>
+        </table>
+      </div>
     </div>
 
     <div class="card">
       <h2 data-i18n="advanced.connectTime">Top Tempo de Conexão</h2>
-      <table>
-        <thead>
-          <tr>
-            <th data-i18n="labels.rank">#</th>
-            <th data-i18n="labels.player">Player</th>
-            <th data-i18n="labels.hoursPlayed">Horas</th>
-            <th data-i18n="labels.connects">Conexões</th>
-            <th data-i18n="labels.kills">Kills</th>
-            <th data-i18n="labels.skill">Skill</th>
-          </tr>
-        </thead>
-        <tbody id="connectTimeTable"></tbody>
-      </table>
+      <div class="table-responsive">
+        <table>
+          <thead>
+            <tr>
+              <th data-i18n="labels.rank">#</th>
+              <th data-i18n="labels.player">Player</th>
+              <th data-i18n="labels.hoursPlayed">Horas</th>
+              <th data-i18n="labels.connects">Conexões</th>
+              <th data-i18n="labels.kills">Kills</th>
+              <th data-i18n="labels.skill">Skill</th>
+            </tr>
+          </thead>
+          <tbody id="connectTimeTable"></tbody>
+        </table>
+      </div>
     </div>
   </div>
 

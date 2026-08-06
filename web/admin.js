@@ -214,6 +214,10 @@ function renderCommandReference(filter = '') {
       `
 
       btn.onclick = () => {
+        if (item.danger) {
+          const confirmed = window.confirm(`⚠️ ${i18nUtils.t(item.descriptionKey)} — ${item.command}?`)
+          if (!confirmed) return
+        }
         commandInput.value = item.command
         commandInput.focus()
       }
@@ -289,6 +293,11 @@ async function sendCommand(customCommand) {
       body: JSON.stringify(body)
     })
 
+    if (res.status === 401) {
+      handleSessionExpired()
+      return
+    }
+
     const data = await res.json()
 
     if (!res.ok || !data.success) {
@@ -303,6 +312,14 @@ async function sendCommand(customCommand) {
     console.error(err)
     output.textContent = i18nUtils.t('admin.errorExecute')
   }
+}
+
+function handleSessionExpired() {
+  csrfToken = null
+  stopLivePlayers()
+  output.textContent = ''
+  loginStatus.innerText = i18nUtils.t('admin.sessionExpired')
+  showLogin()
 }
 
 async function logout() {
@@ -392,6 +409,8 @@ function renderLivePlayers(players) {
       })
 
       tr.querySelector('[data-action="ban"]').addEventListener('click', () => {
+        const confirmed = window.confirm(`⚠️ ${i18nUtils.t('admin.ban')}: ${p.name}? (30 min)`)
+        if (!confirmed) return
         sendCommand(`amx_ban "${rconSafeName(p.name)}" 30`)
       })
 
@@ -419,6 +438,21 @@ if (steamLoginBtn) {
 passwordInput.addEventListener('keydown', (e) => {
   if (e.key === 'Enter') login()
 })
+
+const passwordToggle = document.getElementById('passwordToggle')
+if (passwordToggle && passwordInput) {
+  passwordToggle.addEventListener('click', () => {
+    const isPassword = passwordInput.type === 'password'
+    passwordInput.type = isPassword ? 'text' : 'password'
+    passwordToggle.textContent = i18nUtils.t(isPassword ? 'admin.hidePassword' : 'admin.showPassword')
+    passwordInput.focus()
+  })
+
+  document.addEventListener('i18n applied', () => {
+    const isPassword = passwordInput.type === 'password'
+    passwordToggle.textContent = i18nUtils.t(isPassword ? 'admin.showPassword' : 'admin.hidePassword')
+  })
+}
 
 commandInput.addEventListener('keydown', (e) => {
   if (e.key === 'Enter') sendCommand()

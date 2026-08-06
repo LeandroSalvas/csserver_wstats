@@ -5,6 +5,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title data-i18n="system.title">CS 1.6 Sistema</title>
+<link rel="icon" type="image/svg+xml" href="favicon.svg">
 <link rel="stylesheet" href="style.css">
 </head>
 
@@ -39,19 +40,21 @@
 
   <div class="card">
     <h2 data-i18n="system.servers">Servidores</h2>
-    <table class="servers-table">
-      <thead>
-        <tr>
-          <th data-i18n="labels.name">Nome</th>
-          <th data-i18n="labels.host">Host</th>
-          <th data-i18n="labels.port">Porta</th>
-          <th data-i18n="labels.map">Mapa</th>
-          <th data-i18n="labels.players">Players</th>
-          <th data-i18n="labels.status">Status</th>
-        </tr>
-      </thead>
-      <tbody id="serversTable"></tbody>
-    </table>
+    <div class="table-responsive">
+      <table class="servers-table">
+        <thead>
+          <tr>
+            <th data-i18n="labels.name">Nome</th>
+            <th data-i18n="labels.host">Host</th>
+            <th data-i18n="labels.port">Porta</th>
+            <th data-i18n="labels.map">Mapa</th>
+            <th data-i18n="labels.players">Players</th>
+            <th data-i18n="labels.status">Status</th>
+          </tr>
+        </thead>
+        <tbody id="serversTable"></tbody>
+      </table>
+    </div>
   </div>
 
   <div class="card">

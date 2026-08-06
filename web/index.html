@@ -5,6 +5,7 @@
 <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>CS 1.6 Stats</title>
+  <link rel="icon" type="image/svg+xml" href="favicon.svg">
   <link rel="stylesheet" href="style.css">
 </head>
 
@@ -22,11 +23,14 @@
   <div id="statusMessage" class="status-message"></div>
 
   <div class="card server-box">
-    <select id="serverSelector" class="server-selector"></select>
+    <div class="toolbar">
+      <select id="serverSelector" class="server-selector"></select>
+      <a class="button" href="live.html" data-i18n="labels.watchLive">Ver partida ao vivo</a>
+    </div>
     <h2 id="hostname" data-i18n="server.hostname">Servidor</h2>
 
     <div class="server-info">
-      <div>🎮 <span id="currentMap">-</span></div>
+      <div>🎮 <a id="currentMapLink" href="#">-</a></div>
       <div>👥 <span id="playersOnline">-</span>/<span id="maxPlayers">-</span></div>
       <div><span id="serverStatus" class="server-status-online">Online</span></div>
     </div>
@@ -79,20 +83,26 @@
 
     </div>
 
-    <table>
-      <thead>
-        <tr>
-          <th data-i18n="labels.rank">#</th>
-          <th data-i18n="labels.player">Player</th>
-          <th data-i18n="labels.kills">Kills</th>
-          <th data-i18n="labels.deaths">Deaths</th>
-          <th data-i18n="labels.kd">KD</th>
-          <th data-i18n="labels.skill">Skill</th>
-        </tr>
-      </thead>
+    <div class="toolbar">
+      <a class="button" href="rankings.html" data-i18n="labels.viewFullRanking">Ver ranking completo</a>
+    </div>
 
-      <tbody id="ranking"></tbody>
-    </table>
+    <div class="table-responsive">
+      <table>
+        <thead>
+          <tr>
+            <th data-i18n="labels.rank">#</th>
+            <th data-i18n="labels.player">Player</th>
+            <th data-i18n="labels.kills">Kills</th>
+            <th data-i18n="labels.deaths">Deaths</th>
+            <th data-i18n="labels.kd">KD</th>
+            <th data-i18n="labels.skill">Skill</th>
+          </tr>
+        </thead>
+
+        <tbody id="ranking"></tbody>
+      </table>
+    </div>
 
   </div>
 

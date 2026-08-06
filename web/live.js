@@ -250,6 +250,11 @@ function applyLiveState(data) {
   document.getElementById('liveMap').innerText = data.map || '-'
   document.getElementById('liveCount').innerText = players.length
 
+  const roundT = Number.isFinite(Number(data.round_t)) ? Number(data.round_t) : 0
+  const roundCT = Number.isFinite(Number(data.round_ct)) ? Number(data.round_ct) : 0
+  document.getElementById('liveScoreT').innerText = roundT
+  document.getElementById('liveScoreCT').innerText = roundCT
+
   const tPlayers = players.filter((p) => p.team === 'T')
   const ctPlayers = players.filter((p) => p.team === 'CT')
 
@@ -268,6 +273,8 @@ function handleLiveError() {
   document.getElementById('liveHostname').innerText = i18nUtils.t('status.offline')
   document.getElementById('liveMap').innerText = '-'
   document.getElementById('liveCount').innerText = '0'
+  document.getElementById('liveScoreT').innerText = '0'
+  document.getElementById('liveScoreCT').innerText = '0'
   document.getElementById('tCount').innerText = `0 ${i18nUtils.t('live.playersCount')}`
   document.getElementById('ctCount').innerText = `0 ${i18nUtils.t('live.playersCount')}`
 

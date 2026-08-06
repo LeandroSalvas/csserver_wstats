@@ -4,6 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title data-i18n="player.title">Player Stats</title>
+  <link rel="icon" type="image/svg+xml" href="favicon.svg">
   <link rel="stylesheet" href="style.css">
   <script src="https://cdn.jsdelivr.net/npm/chart.js" defer></script>
 </head>
@@ -19,31 +20,52 @@
 
     <div class="page-nav"></div>
 
-    <div style="display:flex; gap:10px; align-items:center; margin-bottom:16px; flex-wrap:wrap;">
-      <select id="playerServer" class="server-selector" style="max-width:220px;"></select>
+    <div class="toolbar">
+      <select id="playerServer" class="server-selector"></select>
     </div>
 
     <div id="statusMessage" class="status-message"></div>
 
     <div class="card player-card">
-      <h2 id="playerName">-</h2>
-      <div class="player-meta">
-        <div><strong data-i18n="player.steamid">SteamID:</strong> <span id="steamid">-</span></div>
-        <div><strong data-i18n="labels.kills">Kills:</strong> <span id="kills">-</span></div>
-        <div><strong data-i18n="labels.deaths">Deaths:</strong> <span id="deaths">-</span></div>
-        <div><strong data-i18n="labels.hs">HS:</strong> <span id="hs">-</span></div>
-        <div><strong data-i18n="labels.kd">K/D:</strong> <span id="kd">-</span></div>
-        <div><strong data-i18n="labels.skill">Skill:</strong> <span id="skill">-</span></div>
-        <div><strong data-i18n="labels.accuracy">Accuracy:</strong> <span id="accuracy">-</span></div>
-        <div><strong data-i18n="labels.assists">Assists:</strong> <span id="assists">-</span></div>
-        <div><strong data-i18n="labels.tk">TK:</strong> <span id="tks">-</span></div>
-        <div><strong data-i18n="labels.damage">Damage:</strong> <span id="dmg">-</span></div>
-        <div><strong data-i18n="labels.bombPlants">Plants:</strong> <span id="bombplants">-</span></div>
-        <div><strong data-i18n="labels.bombDefused">Defused:</strong> <span id="bombdefused">-</span></div>
-        <div><strong data-i18n="labels.hoursPlayed">Horas:</strong> <span id="hours">-</span></div>
-        <div><strong data-i18n="labels.connects">Conexões:</strong> <span id="connects">-</span></div>
-        <div><strong data-i18n="player.firstJoin">Primeira entrada:</strong> <span id="firstJoin">-</span></div>
-        <div><strong data-i18n="player.lastMap">Último mapa:</strong> <span id="lastMap">-</span></div>
+      <div class="player-card-head">
+        <div class="player-card-title">
+          <h2 id="playerName">-</h2>
+          <div id="playerSteamid" class="player-steamid">-</div>
+        </div>
+        <span id="playerRank" class="rank-badge" hidden></span>
+      </div>
+
+      <div class="player-meta-group">
+        <h3 data-i18n="player.groupCombat">Combate</h3>
+        <div class="player-meta">
+          <div><strong data-i18n="labels.kills">Kills:</strong> <span id="kills">-</span></div>
+          <div><strong data-i18n="labels.deaths">Deaths:</strong> <span id="deaths">-</span></div>
+          <div><strong data-i18n="labels.hs">HS:</strong> <span id="hs">-</span></div>
+          <div><strong data-i18n="labels.kd">K/D:</strong> <span id="kd">-</span></div>
+          <div><strong data-i18n="labels.skill">Skill:</strong> <span id="skill">-</span></div>
+          <div><strong data-i18n="labels.accuracy">Accuracy:</strong> <span id="accuracy">-</span></div>
+          <div><strong data-i18n="labels.assists">Assists:</strong> <span id="assists">-</span></div>
+          <div><strong data-i18n="labels.tk">TK:</strong> <span id="tks">-</span></div>
+          <div><strong data-i18n="labels.damage">Damage:</strong> <span id="dmg">-</span></div>
+        </div>
+      </div>
+
+      <div class="player-meta-group">
+        <h3 data-i18n="player.groupBomb">Bomba</h3>
+        <div class="player-meta">
+          <div><strong data-i18n="labels.bombPlants">Plants:</strong> <span id="bombplants">-</span></div>
+          <div><strong data-i18n="labels.bombDefused">Defused:</strong> <span id="bombdefused">-</span></div>
+        </div>
+      </div>
+
+      <div class="player-meta-group">
+        <h3 data-i18n="player.groupTime">Tempo</h3>
+        <div class="player-meta">
+          <div><strong data-i18n="labels.hoursPlayed">Horas:</strong> <span id="hours">-</span></div>
+          <div><strong data-i18n="labels.connects">Conexões:</strong> <span id="connects">-</span></div>
+          <div><strong data-i18n="player.firstJoin">Primeira entrada:</strong> <span id="firstJoin">-</span></div>
+          <div><strong data-i18n="player.lastMap">Último mapa:</strong> <span id="lastMap">-</span></div>
+        </div>
       </div>
     </div>
 
@@ -64,18 +86,20 @@
 
     <div class="card">
       <h2 data-i18n="labels.recentHistory">🕒 Histórico recente</h2>
-      <table>
-        <thead>
-          <tr>
-            <th data-i18n="labels.data">Data</th>
-            <th data-i18n="labels.kills">Kills</th>
-            <th data-i18n="labels.deaths">Deaths</th>
-            <th data-i18n="labels.hs">HS</th>
-            <th data-i18n="labels.skill">Skill</th>
-          </tr>
-        </thead>
-        <tbody id="historyTable"></tbody>
-      </table>
+      <div class="table-responsive">
+        <table>
+          <thead>
+            <tr>
+              <th data-i18n="labels.data">Data</th>
+              <th data-i18n="labels.kills">Kills</th>
+              <th data-i18n="labels.deaths">Deaths</th>
+              <th data-i18n="labels.hs">HS</th>
+              <th data-i18n="labels.skill">Skill</th>
+            </tr>
+          </thead>
+          <tbody id="historyTable"></tbody>
+        </table>
+      </div>
     </div>
 
   </div>

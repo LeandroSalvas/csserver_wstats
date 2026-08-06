@@ -57,6 +57,15 @@ function updatePagination(hasMore, page) {
   if (btnNext) btnNext.disabled = !hasMore
 }
 
+function setActivePeriod(period) {
+  const btnWeekly = document.getElementById('btnWeekly')
+  const btnMonthly = document.getElementById('btnMonthly')
+  btnWeekly.classList.toggle('active', period === 'weekly')
+  btnMonthly.classList.toggle('active', period === 'monthly')
+  btnWeekly.setAttribute('aria-pressed', period === 'weekly' ? 'true' : 'false')
+  btnMonthly.setAttribute('aria-pressed', period === 'monthly' ? 'true' : 'false')
+}
+
 document.addEventListener('DOMContentLoaded', () => {
   const btnWeekly = document.getElementById('btnWeekly')
   const btnMonthly = document.getElementById('btnMonthly')
@@ -66,11 +75,13 @@ document.addEventListener('DOMContentLoaded', () => {
   if (btnWeekly) btnWeekly.addEventListener('click', () => {
     currentPeriod = 'weekly'
     currentPage = 1
+    setActivePeriod(currentPeriod)
     loadRanking(currentPeriod, currentPage)
   })
   if (btnMonthly) btnMonthly.addEventListener('click', () => {
     currentPeriod = 'monthly'
     currentPage = 1
+    setActivePeriod(currentPeriod)
     loadRanking(currentPeriod, currentPage)
   })
   if (btnPrev) btnPrev.addEventListener('click', () => {
@@ -90,6 +101,7 @@ document.addEventListener('DOMContentLoaded', () => {
     exportTableCsv(document.getElementById('rankingTable'), filename)
   })
 
+  setActivePeriod(currentPeriod)
   loadRanking(currentPeriod, currentPage)
 })
 

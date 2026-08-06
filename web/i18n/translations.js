@@ -119,7 +119,9 @@ const i18n = {
       failLoadData: 'Falha ao carregar dados',
       failLoadMaps: 'Falha ao carregar mapas',
       noPlayersThisTeam: 'Nenhum jogador neste time',
-      noRecentKills: 'Nenhuma kill recente'
+      noRecentKills: 'Nenhuma kill recente',
+      viewFullRanking: 'Ver ranking completo',
+      watchLive: 'Ver partida ao vivo'
     },
     admin: {
       title: 'Painel RCON',
@@ -145,7 +147,10 @@ const i18n = {
       ban: 'Ban',
       steamLogin: 'Entrar com Steam',
       steamLoginDisabled: 'Login Steam não configurado no servidor',
-      steamLoginDenied: 'SteamID não autorizado para administração'
+      steamLoginDenied: 'SteamID não autorizado para administração',
+      sessionExpired: 'Sessão expirada. Faça login novamente.',
+      showPassword: 'Mostrar senha',
+      hidePassword: 'Ocultar senha'
     },
     server: {
       title: 'Servidor',
@@ -167,7 +172,10 @@ const i18n = {
       findServers: 'No jogo, acesse Find Servers / Internet.',
       addFavorites: 'Adicione o servidor aos favoritos usando',
       allowBrowser: 'Se o navegador perguntar, permite abrir o Steam.',
-      browserNote: 'Em alguns PCs o protocolo só traz o Steam à frente ou não inicia o jogo; nesse caso use o passo a passo abaixo.'
+      browserNote: 'Em alguns PCs o protocolo só traz o Steam à frente ou não inicia o jogo; nesse caso use o passo a passo abaixo.',
+      copy: 'Copiar',
+      copied: 'Copiado!',
+      copyError: 'Erro ao copiar'
     },
     system: {
       title: 'Status do Sistema',
@@ -195,13 +203,19 @@ const i18n = {
       score: 'Score',
       alive: 'Alive',
       dead: 'Dead',
-      killFeed: '🔫 Kill Feed'
+      killFeed: '🔫 Kill Feed',
+      score: 'Placar'
     },
     player: {
       title: 'Player Stats',
       steamid: 'SteamID',
       lastMap: 'Último mapa',
-      firstJoin: 'Primeira entrada'
+      firstJoin: 'Primeira entrada',
+      currentRank: 'Posição no ranking',
+      groupCombat: 'Combate',
+      groupBomb: 'Bomba',
+      groupTime: 'Tempo',
+      chartUnavailable: 'Gráfico indisponível neste momento.'
     },
     cmd: {
       status: 'Mostra status do servidor',
@@ -264,7 +278,11 @@ const i18n = {
       damage: 'Top Damage',
       tk: 'Top Team Kills',
       bomb: 'Top Bomb',
-      connectTime: 'Top Tempo de Conexão'
+      connectTime: 'Top Tempo de Conexão',
+      note10: 'Exibindo o top 10',
+      note50: 'Exibindo o top 50',
+      viewAll: 'Ver top 50',
+      viewTop: 'Ver top 10'
     },
     matches: {
       title: 'Histórico de Partidas',
@@ -396,7 +414,9 @@ const i18n = {
       failLoadData: 'Failed to load data',
       failLoadMaps: 'Failed to load maps',
       noPlayersThisTeam: 'No players on this team',
-      noRecentKills: 'No recent kills'
+      noRecentKills: 'No recent kills',
+      viewFullRanking: 'View full ranking',
+      watchLive: 'Watch live match'
     },
     admin: {
       title: 'RCON Panel',
@@ -422,7 +442,10 @@ const i18n = {
       ban: 'Ban',
       steamLogin: 'Sign in with Steam',
       steamLoginDisabled: 'Steam login not configured on server',
-      steamLoginDenied: 'SteamID not authorized for administration'
+      steamLoginDenied: 'SteamID not authorized for administration',
+      sessionExpired: 'Session expired. Please sign in again.',
+      showPassword: 'Show password',
+      hidePassword: 'Hide password'
     },
     server: {
       title: 'Connect to Server',
@@ -472,13 +495,19 @@ const i18n = {
       score: 'Score',
       alive: 'Alive',
       dead: 'Dead',
-      killFeed: '🔫 Kill Feed'
+      killFeed: '🔫 Kill Feed',
+      score: 'Score'
     },
     player: {
       title: 'Player Stats',
       steamid: 'SteamID',
       lastMap: 'Last Map',
-      firstJoin: 'First Join'
+      firstJoin: 'First Join',
+      currentRank: 'Current rank',
+      groupCombat: 'Combat',
+      groupBomb: 'Bomb',
+      groupTime: 'Time',
+      chartUnavailable: 'Chart unavailable right now.'
     },
     cmd: {
       status: 'Shows server status',
@@ -541,7 +570,11 @@ const i18n = {
       damage: 'Top Damage',
       tk: 'Top Team Kills',
       bomb: 'Top Bomb',
-      connectTime: 'Top Connection Time'
+      connectTime: 'Top Connection Time',
+      note10: 'Showing top 10',
+      note50: 'Showing top 50',
+      viewAll: 'Show top 50',
+      viewTop: 'Show top 10'
     },
     matches: {
       title: 'Match History',
