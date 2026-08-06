@@ -340,25 +340,47 @@ test_login_rate_limit() {
   done
 }
 
+# Login do bloco 3: o teste de rate-limit do bloco 2 pode ter exaurido a janela
+# de 60s do loginLimiter — re-tenta até a janela passar (máx ~80s).
+block3_login() {
+  local jar="$1" body csrf i=0
+  body="$(curl -s -c "$jar" --max-time 10 "${API_BASE}/admin/session")"
+  csrf="$(printf '%s' "$body" | jq -r '.csrfToken // empty')"
+  while [ "$i" -lt 16 ]; do
+    body="$(curl -s -b "$jar" -c "$jar" --max-time 10 \
+      -X POST -H "x-csrf-token: ${csrf}" -H 'Content-Type: application/json' \
+      -d "$(jq -nc --arg p "$RCON_PASSWORD" '{password:$p}')" "${API_BASE}/admin/login")"
+    printf '%s' "$body" | jq -e '.success == true' >/dev/null 2>&1 && return 0
+    i=$((i + 1))
+    sleep 5
+  done
+  err "block3: login falhou após retries: ${body}"
+  return 1
+}
+
 run_block_redis() {
   section "Bloco 3 — Redis/sessão"
 
-  local jar body csrf sess_code
+  local jar
 
   [ -n "$RCON_PASSWORD" ] || { fail "RCON_PASSWORD ausente no .env — bloco redis pulado"; return; }
 
   jar="$(mktemp)"
-  body="$(curl -s -c "$jar" --max-time 10 "${API_BASE}/admin/session")"
-  csrf="$(printf '%s' "$body" | jq -r '.csrfToken // empty')"
-  curl -s -b "$jar" -c "$jar" -o /dev/null --max-time 10 \
-    -X POST -H "x-csrf-token: ${csrf}" -H 'Content-Type: application/json' \
-    -d "$(jq -nc --arg p "$RCON_PASSWORD" '{password:$p}')" "${API_BASE}/admin/login"
-
-  sess_code="$(docker exec "${REDIS_CONTAINER}" redis-cli keys 'sess:*' 2>/dev/null | wc -l)"
-  if [ "${sess_code}" -gt 0 ]; then
-    pass "sessão gravada no Redis (${sess_code} chave(s) sess:*)"
+  local before after
+  before="$(docker exec "${REDIS_CONTAINER}" redis-cli keys 'sess:*' 2>/dev/null | wc -l)"
+  if block3_login "$jar"; then
+    pass "block3: login ok"
   else
-    fail "nenhuma sessão sess:* no Redis após login"
+    fail "block3: login não obteve sucesso (rate limit não expirou?)"
+    rm -f "$jar"
+    return
+  fi
+
+  after="$(docker exec "${REDIS_CONTAINER}" redis-cli keys 'sess:*' 2>/dev/null | wc -l)"
+  if [ "$after" -gt "$before" ]; then
+    pass "sessão criada no Redis (${before} → ${after} chaves sess:*)"
+  else
+    fail "nenhuma sessão sess:* nova no Redis após login (${before} → ${after})"
   fi
 
   docker restart "${API_CONTAINER}" >/dev/null 2>&1
