@@ -118,7 +118,8 @@
       "fieldConfig": {
         "defaults": { "unit": "short" },
         "overrides": [
-          { "matcher": { "id": "byName", "options": "Value" }, "properties": [ { "id": "custom.hidden", "value": true } ] }
+          { "matcher": { "id": "byName", "options": "Value" }, "properties": [ { "id": "custom.hidden", "value": true } ] },
+          { "matcher": { "id": "byName", "options": "__name__" }, "properties": [ { "id": "custom.hidden", "value": true } ] }
         ]
       },
       "options": { "showHeader": true, "sortBy": [{ "displayName": "server", "desc": false }] }
