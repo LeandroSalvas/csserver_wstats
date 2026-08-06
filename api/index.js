@@ -539,7 +539,12 @@ function getServerConfigs() {
   if (!raw) return null
   try {
     const list = JSON.parse(raw)
-    return Array.isArray(list) && list.length ? list : null
+    if (!Array.isArray(list) || !list.length) return null
+    return list.map((s) => ({
+      ...s,
+      port: parseInt(s.port, 10) || 27015,
+      hostPort: s.hostPort != null ? parseInt(s.hostPort, 10) : (parseInt(s.port, 10) || 27015)
+    }))
   } catch (err) {
     console.error('CS_SERVERS inválido:', err.message)
     return null
@@ -550,7 +555,7 @@ const serverConfigs = getServerConfigs()
 
 const primaryServer = serverConfigs && serverConfigs.length
   ? serverConfigs[0]
-  : { id: 'main', name: GAMEDIG_HOST, host: GAMEDIG_HOST, port: GAMEDIG_PORT, liveDir: LIVE_DATA_DIR }
+  : { id: 'main', name: GAMEDIG_HOST, host: GAMEDIG_HOST, port: GAMEDIG_PORT, hostPort: GAMEDIG_PORT, liveDir: LIVE_DATA_DIR }
 
 // Retorna o servidor configurado por id OU host, ou null se não existir.
 function findServer(id) {
@@ -1602,6 +1607,7 @@ app.get('/servers', async (req, res) => {
         name: srv.name || srv.host,
         host: srv.host,
         port: parseInt(srv.port, 10),
+        hostPort: srv.hostPort || parseInt(srv.port, 10),
         online: true,
         map: state.map,
         players: state.players.length,
@@ -1614,6 +1620,7 @@ app.get('/servers', async (req, res) => {
         name: srv.name || srv.host,
         host: srv.host,
         port: parseInt(srv.port, 10),
+        hostPort: srv.hostPort || parseInt(srv.port, 10),
         online: false,
         map: 'unknown',
         players: 0,
@@ -1635,6 +1642,7 @@ app.get('/server/:id', async (req, res) => {
       name: srv.name || srv.host,
       host: srv.host,
       port: parseInt(srv.port, 10),
+      hostPort: srv.hostPort || parseInt(srv.port, 10),
       online: true,
       map: state.map,
       players: state.players.length,
@@ -1648,6 +1656,7 @@ app.get('/server/:id', async (req, res) => {
       name: srv.name || srv.host,
       host: srv.host,
       port: parseInt(srv.port, 10),
+      hostPort: srv.hostPort || parseInt(srv.port, 10),
       online: false,
       map: 'unknown',
       players: 0,

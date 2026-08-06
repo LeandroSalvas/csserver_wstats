@@ -231,7 +231,7 @@ cmd_compose() {
       else
         svc_host="cs16${ids[$i]}"
       fi
-      entries+=("{\"id\":\"${ids[$i]}\",\"name\":\"${names[$i]}\",\"host\":\"${svc_host}\",\"port\":27015,\"liveDir\":\"/live_data/${ids[$i]}\"}")
+      entries+=("{\"id\":\"${ids[$i]}\",\"name\":\"${names[$i]}\",\"host\":\"${svc_host}\",\"port\":27015,\"hostPort\":${ports[$i]},\"liveDir\":\"/live_data/${ids[$i]}\"}")
     done
     for j in "${entries[@]}"; do
       if [ -z "$json" ]; then json="$j"; else json="${json},${j}"; fi

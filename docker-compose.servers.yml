@@ -62,7 +62,7 @@ services:
   api:
     environment:
       CS_SERVERS: >-
-        [{"id":"main","name":"Zueira","host":"cs16","port":27015,"liveDir":"/live_data/main"},{"id":"fypooldayonly","name":"fy_pool_day_only","host":"cs16fypooldayonly","port":27015,"liveDir":"/live_data/fypooldayonly"},{"id":"zueira2","name":"Zueira2","host":"cs16zueira2","port":27015,"liveDir":"/live_data/zueira2"}]
+        [{"id":"main","name":"Zueira","host":"cs16","port":27015,"hostPort":27015,"liveDir":"/live_data/main"},{"id":"fypooldayonly","name":"fy_pool_day_only","host":"cs16fypooldayonly","port":27015,"hostPort":27016,"liveDir":"/live_data/fypooldayonly"},{"id":"zueira2","name":"Zueira2","host":"cs16zueira2","port":27015,"hostPort":27017,"liveDir":"/live_data/zueira2"}]
     volumes:
       - ./live/fypooldayonly/live_scoreboard.json:/live_data/fypooldayonly/live_scoreboard.json:ro
       - ./live/fypooldayonly/live_killfeed.json:/live_data/fypooldayonly/live_killfeed.json:ro

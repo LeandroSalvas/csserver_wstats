@@ -74,7 +74,7 @@ async function loadServersTable() {
       row.innerHTML = `
         <td>${escapeHtml(srv.name)}</td>
         <td>${escapeHtml(srv.host)}</td>
-        <td>${escapeHtml(String(srv.port))}</td>
+        <td>${escapeHtml(String(srv.hostPort ?? srv.port))}</td>
         <td>${escapeHtml(srv.map)}</td>
         <td>${srv.players}/${srv.maxplayers}</td>
         <td><span class="status-pill ${online ? 'status-ok' : 'status-error'}">${i18nUtils.t(online ? 'status.online' : 'status.offline')}</span></td>
