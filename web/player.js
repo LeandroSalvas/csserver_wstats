@@ -117,8 +117,8 @@ async function loadPlayerHistory() {
     {
       label: i18nUtils.t('labels.kills'),
       data: killsData,
-      borderColor: '#60a5fa',
-      backgroundColor: 'rgba(96,165,250,0.24)',
+      borderColor: '#fb923c',
+      backgroundColor: 'rgba(249,115,22,0.24)',
       fill: true
     }
   ])

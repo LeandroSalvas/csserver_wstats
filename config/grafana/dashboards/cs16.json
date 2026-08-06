@@ -78,7 +78,7 @@
       "fieldConfig": {
         "defaults": {
           "unit": "short",
-          "thresholds": { "mode": "absolute", "steps": [ { "color": "blue", "value": null } ] }
+          "thresholds": { "mode": "absolute", "steps": [ { "color": "orange", "value": null } ] }
         },
         "overrides": []
       }
@@ -95,7 +95,7 @@
       "fieldConfig": {
         "defaults": {
           "unit": "s",
-          "thresholds": { "mode": "absolute", "steps": [ { "color": "blue", "value": null } ] }
+          "thresholds": { "mode": "absolute", "steps": [ { "color": "orange", "value": null } ] }
         },
         "overrides": []
       }
@@ -134,7 +134,13 @@
         { "expr": "cs16_round_t{server=~\"$server\"}", "legendFormat": "{{server}} T", "refId": "A" },
         { "expr": "cs16_round_ct{server=~\"$server\"}", "legendFormat": "{{server}} CT", "refId": "B" }
       ],
-      "fieldConfig": { "defaults": { "unit": "short" }, "overrides": [] },
+      "fieldConfig": {
+        "defaults": { "unit": "short", "color": { "fixedColor": "#fb923c", "mode": "fixed" } },
+        "overrides": [
+          { "matcher": { "id": "byRegexp", "options": "/ T$/" }, "properties": [ { "id": "color", "value": { "fixedColor": "#fb923c", "mode": "fixed" } } ] },
+          { "matcher": { "id": "byRegexp", "options": "/ CT$/" }, "properties": [ { "id": "color", "value": { "fixedColor": "#93c5fd", "mode": "fixed" } } ] }
+        ]
+      },
       "options": { "legend": { "displayMode": "list", "placement": "bottom", "calcs": ["last"] } }
     },
     {
@@ -155,7 +161,7 @@
         { "expr": "cs16_players_registered{server=~\"$server\"}", "legendFormat": "{{server}}", "refId": "A" }
       ],
       "fieldConfig": {
-        "defaults": { "unit": "short", "thresholds": { "mode": "absolute", "steps": [ { "color": "blue", "value": null } ] } },
+        "defaults": { "unit": "short", "thresholds": { "mode": "absolute", "steps": [ { "color": "orange", "value": null } ] } },
         "overrides": []
       }
     },
@@ -169,7 +175,7 @@
         { "expr": "cs16_active_players{period=\"7d\",server=~\"$server\"}", "legendFormat": "{{server}}", "refId": "A" }
       ],
       "fieldConfig": {
-        "defaults": { "unit": "short", "thresholds": { "mode": "absolute", "steps": [ { "color": "blue", "value": null } ] } },
+        "defaults": { "unit": "short", "thresholds": { "mode": "absolute", "steps": [ { "color": "orange", "value": null } ] } },
         "overrides": []
       }
     },
@@ -183,7 +189,7 @@
         { "expr": "cs16_active_players{period=\"30d\",server=~\"$server\"}", "legendFormat": "{{server}}", "refId": "A" }
       ],
       "fieldConfig": {
-        "defaults": { "unit": "short", "thresholds": { "mode": "absolute", "steps": [ { "color": "blue", "value": null } ] } },
+        "defaults": { "unit": "short", "thresholds": { "mode": "absolute", "steps": [ { "color": "orange", "value": null } ] } },
         "overrides": []
       }
     },
@@ -196,7 +202,7 @@
       "targets": [
         { "expr": "cs16_players_online{server=~\"$server\"}", "legendFormat": "{{server}}", "refId": "A" }
       ],
-      "fieldConfig": { "defaults": { "unit": "short" }, "overrides": [] },
+      "fieldConfig": { "defaults": { "unit": "short", "color": { "fixedColor": "#fb923c", "mode": "fixed" } }, "overrides": [] },
       "options": { "legend": { "displayMode": "list", "placement": "bottom", "calcs": ["last", "max"] } }
     },
     {
@@ -212,7 +218,7 @@
           "refId": "A"
         }
       ],
-      "fieldConfig": { "defaults": { "unit": "short" }, "overrides": [] },
+      "fieldConfig": { "defaults": { "unit": "short", "color": { "fixedColor": "#fb923c", "mode": "fixed" } }, "overrides": [] },
       "options": { "legend": { "displayMode": "list", "placement": "bottom", "calcs": ["last"] } }
     },
     {
@@ -236,7 +242,7 @@
           "refId": "A"
         }
       ],
-      "fieldConfig": { "defaults": { "unit": "short" }, "overrides": [] },
+      "fieldConfig": { "defaults": { "unit": "short", "color": { "fixedColor": "#fb923c", "mode": "fixed" } }, "overrides": [] },
       "options": {
         "orientation": "auto",
         "groupWidth": 70,
@@ -257,7 +263,7 @@
         { "expr": "cs16_accuracy{server=~\"$server\"}", "legendFormat": "{{server}}", "refId": "A" }
       ],
       "fieldConfig": {
-        "defaults": { "unit": "percent", "thresholds": { "mode": "absolute", "steps": [ { "color": "blue", "value": null } ] } },
+        "defaults": { "unit": "percent", "thresholds": { "mode": "absolute", "steps": [ { "color": "orange", "value": null } ] } },
         "overrides": []
       }
     },
@@ -271,7 +277,7 @@
         { "expr": "cs16_skill_avg{server=~\"$server\"}", "legendFormat": "{{server}}", "refId": "A" }
       ],
       "fieldConfig": {
-        "defaults": { "unit": "short", "thresholds": { "mode": "absolute", "steps": [ { "color": "blue", "value": null } ] } },
+        "defaults": { "unit": "short", "thresholds": { "mode": "absolute", "steps": [ { "color": "orange", "value": null } ] } },
         "overrides": []
       }
     },
@@ -285,7 +291,7 @@
         { "expr": "cs16_skill_max{server=~\"$server\"}", "legendFormat": "{{server}}", "refId": "A" }
       ],
       "fieldConfig": {
-        "defaults": { "unit": "short", "thresholds": { "mode": "absolute", "steps": [ { "color": "blue", "value": null } ] } },
+        "defaults": { "unit": "short", "thresholds": { "mode": "absolute", "steps": [ { "color": "orange", "value": null } ] } },
         "overrides": []
       }
     },
@@ -298,7 +304,7 @@
       "targets": [
         { "expr": "cs16_stats_total{stat=\"connects\",server=~\"$server\"}", "legendFormat": "{{server}}", "refId": "A" }
       ],
-      "fieldConfig": { "defaults": { "unit": "short" }, "overrides": [] },
+      "fieldConfig": { "defaults": { "unit": "short", "color": { "fixedColor": "#fb923c", "mode": "fixed" } }, "overrides": [] },
       "options": { "legend": { "displayMode": "list", "placement": "bottom", "calcs": ["last"] } }
     },
     {
@@ -311,7 +317,7 @@
         { "expr": "cs16_connection_time_seconds{server=~\"$server\"}", "legendFormat": "{{server}}", "refId": "A" }
       ],
       "fieldConfig": {
-        "defaults": { "unit": "s", "thresholds": { "mode": "absolute", "steps": [ { "color": "blue", "value": null } ] } },
+        "defaults": { "unit": "s", "thresholds": { "mode": "absolute", "steps": [ { "color": "orange", "value": null } ] } },
         "overrides": []
       }
     },
@@ -335,7 +341,7 @@
       "fieldConfig": {
         "defaults": {
           "unit": "short",
-          "thresholds": { "mode": "absolute", "steps": [ { "color": "blue", "value": null } ] }
+          "thresholds": { "mode": "absolute", "steps": [ { "color": "orange", "value": null } ] }
         },
         "overrides": []
       }
@@ -354,7 +360,7 @@
         }
       ],
       "fieldConfig": {
-        "defaults": { "unit": "s", "thresholds": { "mode": "absolute", "steps": [ { "color": "blue", "value": null } ] } },
+        "defaults": { "unit": "s", "thresholds": { "mode": "absolute", "steps": [ { "color": "orange", "value": null } ] } },
         "overrides": []
       }
     },
@@ -371,7 +377,14 @@
           "refId": "A"
         }
       ],
-      "fieldConfig": { "defaults": { "unit": "short" }, "overrides": [] },
+      "fieldConfig": {
+        "defaults": { "unit": "short", "color": { "fixedColor": "#fb923c", "mode": "fixed" } },
+        "overrides": [
+          { "matcher": { "id": "byRegexp", "options": "/^T$/" }, "properties": [ { "id": "color", "value": { "fixedColor": "#fb923c", "mode": "fixed" } } ] },
+          { "matcher": { "id": "byRegexp", "options": "/^CT$/" }, "properties": [ { "id": "color", "value": { "fixedColor": "#93c5fd", "mode": "fixed" } } ] },
+          { "matcher": { "id": "byRegexp", "options": "/^DRAW$/" }, "properties": [ { "id": "color", "value": { "fixedColor": "#8a7f77", "mode": "fixed" } } ] }
+        ]
+      },
       "options": {
         "reduceOptions": { "values": false, "calcs": ["lastNotNull"], "fields": "", "limit": 10 },
         "pieType": "pie",
@@ -393,7 +406,7 @@
           "refId": "A"
         }
       ],
-      "fieldConfig": { "defaults": { "unit": "short" }, "overrides": [] },
+      "fieldConfig": { "defaults": { "unit": "short", "color": { "fixedColor": "#fb923c", "mode": "fixed" } }, "overrides": [] },
       "options": {
         "orientation": "auto",
         "groupWidth": 70,
@@ -417,7 +430,7 @@
           "refId": "A"
         }
       ],
-      "fieldConfig": { "defaults": { "unit": "short" }, "overrides": [] },
+      "fieldConfig": { "defaults": { "unit": "short", "color": { "fixedColor": "#fb923c", "mode": "fixed" } }, "overrides": [] },
       "options": {
         "orientation": "horizontal",
         "groupWidth": 70,
@@ -441,7 +454,7 @@
           "refId": "A"
         }
       ],
-      "fieldConfig": { "defaults": { "unit": "short" }, "overrides": [] },
+      "fieldConfig": { "defaults": { "unit": "short", "color": { "fixedColor": "#fb923c", "mode": "fixed" } }, "overrides": [] },
       "options": { "legend": { "displayMode": "list", "placement": "bottom", "calcs": ["last"] } }
     },
     {
@@ -576,7 +589,7 @@
         { "expr": "nginx_connections_active", "legendFormat": "active", "refId": "A" },
         { "expr": "nginx_connections_waiting", "legendFormat": "waiting", "refId": "B" }
       ],
-      "fieldConfig": { "defaults": { "unit": "short" }, "overrides": [] },
+      "fieldConfig": { "defaults": { "unit": "short", "color": { "fixedColor": "#fb923c", "mode": "fixed" } }, "overrides": [] },
       "options": { "legend": { "displayMode": "list", "placement": "bottom", "calcs": ["last"] } }
     },
     {
