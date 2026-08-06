@@ -58,6 +58,12 @@ cp .env.example .env
 # REDIS_HOST (default: redis), REDIS_PORT (default: 6379)
 ```
 
+### Passwords & Accounts
+- The password in `users.ini` (AMXX admin account, set via client `setinfo _pw "<senha>"`) is **NOT** the RCON password. They are independent.
+- RCON password = `RCON_PASSWORD` in `.env`, applied to `rcon_password` in each `config/servers/<id>/server.cfg` (generated from `config/templates/server.cfg`). Must match for RCON to work.
+- Admin accounts live in `config/users.ini` (tracked master); `scripts/servers.sh init` copies it to `config/servers/<id>/users.ini` (gitignored, bind-mounted into the CS containers). Account flag `a` = kick on invalid password; AMXX re-reads `users.ini` only on map change.
+- Per-server `config/servers/*/users.ini` must be kept in sync with the master manually (init only copies when the per-server file doesn't exist).
+
 ### Port Access
 - Frontend: http://localhost:8080
 - API via proxy: http://localhost:8080/api
