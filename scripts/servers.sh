@@ -65,10 +65,8 @@ cmd_init() {
 
     local out="${ROOT}/config/servers/${id}/server.cfg"
     if [ ! -f "$out" ]; then
-      local rankbots=0
-      [ "$id" = "frag" ] && rankbots=1
       sed -e "s|__HOSTNAME__|${name}|g" -e "s|__RCON_PASSWORD__|${rcon_pass}|g" \
-        -e "s|__SERVER_ID__|${id}|g" -e "s|__RANKBOTS__|${rankbots}|g" \
+        -e "s|__SERVER_ID__|${id}|g" -e "s|__RANKBOTS__|0|g" \
         "${TEMPLATE_CFG}" > "$out"
       ok "gerado ${out}"
       changed=1
@@ -102,12 +100,10 @@ cmd_init() {
       changed=1
     fi
 
-    # amxx.cfg: precisa do rankbots por servidor (frag usa bots, demais não)
+    # amxx.cfg: bots nunca são rankeados (rankbots=0 para todos os servidores)
     local amxx_out="${ROOT}/config/servers/${id}/amxx.cfg"
     if [ ! -f "$amxx_out" ]; then
-      local rankbots=0
-      [ "$id" = "frag" ] && rankbots=1
-      sed -e "s|__RANKBOTS__|${rankbots}|g" "${ROOT}/config/amxx.cfg" > "$amxx_out"
+      sed -e "s|__RANKBOTS__|0|g" "${ROOT}/config/amxx.cfg" > "$amxx_out"
       ok "gerado ${amxx_out}"
       changed=1
     fi

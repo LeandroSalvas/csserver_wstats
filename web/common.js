@@ -15,7 +15,7 @@
 const API = '/api'
 
 // Endereço público do servidor de jogo — edite aqui (usado na página "Conectar")
-const SERVER_HOST = 'zueira.servecounterstrike.com'
+const SERVER_HOST = 'zueiracstrike.duckdns.org'
 const SERVER_PORT = '27015'
 
 function escapeHtml(s) {
@@ -126,6 +126,15 @@ async function initServerSelector() {
   selects.forEach((select) => {
     select.innerHTML = ''
 
+    if (select.dataset.labeled !== '1') {
+      const label = document.createElement('label')
+      label.className = 'server-selector-label'
+      if (select.id) label.htmlFor = select.id
+      label.textContent = i18nUtils.t('server.selectServerLabel')
+      select.parentNode.insertBefore(label, select)
+      select.dataset.labeled = '1'
+    }
+
     if (!servers.length) {
       const option = document.createElement('option')
       option.value = ''
@@ -142,7 +151,12 @@ async function initServerSelector() {
       select.appendChild(option)
     })
 
-    select.value = getSelectedServer() || servers[0].id
+    let selected = getSelectedServer()
+    if (!selected || !servers.some((srv) => srv.id === selected)) {
+      selected = servers[0].id
+      setSelectedServer(selected)
+    }
+    select.value = selected
     select.addEventListener('change', () => {
       setSelectedServer(select.value)
       document.dispatchEvent(new CustomEvent('server-change', { detail: { server: select.value } }))

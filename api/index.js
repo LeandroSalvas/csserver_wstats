@@ -57,6 +57,11 @@ function getPagination(req, maxLimit = 50) {
   return { limit, page, offset }
 }
 
+// Filtro defensivo para excluir bots (PodBod/HLTV registram steamid "BOT")
+// de rankings, tops, buscas e snapshots.
+const NOT_BOT = "steamid NOT LIKE 'BOT%'"
+const NOT_BOT_WHERE = `AND ${NOT_BOT}`
+
 // Filtro opcional ?server= para queries por servidor.
 // Retorna null quando não informado, { invalid } quando o id não é configurado,
 // ou { server, where, params } para usar em queries (cláusulas AND).
@@ -522,7 +527,7 @@ app.get('/top10', async (req, res) => {
         skill,
         last_join
       FROM csstats
-      ${sf ? 'WHERE server_name = ?' : ''}
+      ${sf ? 'WHERE server_name = ? AND ' : 'WHERE '}${NOT_BOT}
       ORDER BY kills DESC
       LIMIT ? OFFSET ?
     `, [...(sf ? sf.params : []), limit, offset])
@@ -551,7 +556,7 @@ app.get('/top-headshots', async (req, res) => {
         skill,
         ROUND(hs / IF(kills = 0, 1, kills) * 100, 2) AS accuracy
       FROM csstats
-      ${sf ? 'WHERE server_name = ?' : ''}
+      ${sf ? 'WHERE server_name = ? AND ' : 'WHERE '}${NOT_BOT}
       ORDER BY hs DESC, kills DESC
       LIMIT ? OFFSET ?
     `, [...(sf ? sf.params : []), limit, offset])
@@ -581,6 +586,7 @@ app.get('/top-accuracy', async (req, res) => {
       FROM csstats
       WHERE kills >= 10
       ${sf ? sf.where : ''}
+      ${NOT_BOT_WHERE}
       ORDER BY accuracy DESC, hs DESC
       LIMIT ? OFFSET ?
     `, [...(sf ? sf.params : []), limit, offset])
@@ -607,7 +613,7 @@ app.get('/top-killstreak', async (req, res) => {
           kills,
           LAG(kills) OVER (PARTITION BY steamid ORDER BY created_at) AS prev_kills
         FROM csstats_snapshots
-        ${sf ? 'WHERE server_name = ?' : ''}
+        ${sf ? 'WHERE server_name = ? AND ' : 'WHERE '}${NOT_BOT}
       )
       SELECT
         steamid,
@@ -645,7 +651,7 @@ app.get('/top-assists', async (req, res) => {
         skill,
         ROUND(assists / IF(kills = 0, 1, kills), 2) AS assists_per_kill
       FROM csstats
-      ${sf ? 'WHERE server_name = ?' : ''}
+      ${sf ? 'WHERE server_name = ? AND ' : 'WHERE '}${NOT_BOT}
       ORDER BY assists DESC, kills DESC
       LIMIT ? OFFSET ?
     `, [...(sf ? sf.params : []), limit, offset])
@@ -675,7 +681,7 @@ app.get('/top-damage', async (req, res) => {
         skill,
         ROUND(dmg / IF(kills = 0, 1, kills), 1) AS dmg_per_kill
       FROM csstats
-      ${sf ? 'WHERE server_name = ?' : ''}
+      ${sf ? 'WHERE server_name = ? AND ' : 'WHERE '}${NOT_BOT}
       ORDER BY dmg DESC, kills DESC
       LIMIT ? OFFSET ?
     `, [...(sf ? sf.params : []), limit, offset])
@@ -704,7 +710,7 @@ app.get('/top-tk', async (req, res) => {
         deaths,
         skill
       FROM csstats
-      ${sf ? 'WHERE server_name = ?' : ''}
+      ${sf ? 'WHERE server_name = ? AND ' : 'WHERE '}${NOT_BOT}
       ORDER BY tks DESC, kills DESC
       LIMIT ? OFFSET ?
     `, [...(sf ? sf.params : []), limit, offset])
@@ -734,7 +740,7 @@ app.get('/top-bomb', async (req, res) => {
         bombexplosions,
         skill
       FROM csstats
-      ${sf ? 'WHERE server_name = ?' : ''}
+      ${sf ? 'WHERE server_name = ? AND ' : 'WHERE '}${NOT_BOT}
       ORDER BY (bombplants + bombdefused + bombdef + bombexplosions) DESC, bombplants DESC
       LIMIT ? OFFSET ?
     `, [...(sf ? sf.params : []), limit, offset])
@@ -767,6 +773,7 @@ app.get('/top-connect-time', async (req, res) => {
       FROM csstats
       WHERE connection_time > 0
       ${sf ? sf.where : ''}
+      ${NOT_BOT_WHERE}
       ORDER BY connection_time DESC
       LIMIT ? OFFSET ?
     `, [...(sf ? sf.params : []), limit, offset])
@@ -790,6 +797,7 @@ app.get('/player/:steamid', async (req, res) => {
       FROM csstats
       WHERE steamid = ?
       ${sf ? sf.where : ''}
+      ${NOT_BOT_WHERE}
       ORDER BY last_join DESC
       LIMIT 1
     `, [req.params.steamid, ...(sf ? sf.params : [])])
@@ -820,6 +828,7 @@ app.get('/player-search', async (req, res) => {
       FROM csstats
       WHERE (name LIKE ? OR steamid LIKE ?)
       ${sf ? sf.where : ''}
+      ${NOT_BOT_WHERE}
       ORDER BY kills DESC
       LIMIT 10
     `, [`%${q}%`, `%${q}%`, ...(sf ? sf.params : [])])
@@ -843,7 +852,7 @@ app.get('/topskill', async (req, res) => {
     const [rows] = await db.query(`
       SELECT name, steamid, skill
       FROM csstats
-      ${sf ? 'WHERE server_name = ?' : ''}
+      ${sf ? 'WHERE server_name = ? AND ' : 'WHERE '}${NOT_BOT}
       ORDER BY skill DESC
       LIMIT ? OFFSET ?
     `, [...(sf ? sf.params : []), limit, offset])
@@ -873,6 +882,7 @@ app.get('/topkd', async (req, res) => {
       FROM csstats
       WHERE kills > 10
       ${sf ? sf.where : ''}
+      ${NOT_BOT_WHERE}
       ORDER BY kd DESC
       LIMIT ? OFFSET ?
     `, [...(sf ? sf.params : []), limit, offset])
@@ -892,17 +902,17 @@ app.get('/stats', async (req, res) => {
     if (sf && sf.invalid) return res.status(400).json({ error: `Servidor não configurado: ${sf.invalid}` })
 
     const [[players]] = await db.query(
-      `SELECT COUNT(*) total FROM csstats ${sf ? 'WHERE server_name = ?' : ''}`,
+      `SELECT COUNT(*) total FROM csstats ${sf ? 'WHERE server_name = ? AND ' : 'WHERE '}${NOT_BOT}`,
       sf ? sf.params : []
     )
 
     const [[kills]] = await db.query(
-      `SELECT COALESCE(SUM(kills), 0) total FROM csstats ${sf ? 'WHERE server_name = ?' : ''}`,
+      `SELECT COALESCE(SUM(kills), 0) total FROM csstats ${sf ? 'WHERE server_name = ? AND ' : 'WHERE '}${NOT_BOT}`,
       sf ? sf.params : []
     )
 
     const [[maps]] = await db.query(
-      `SELECT COUNT(DISTINCT map) total FROM csstats_snapshots ${sf ? 'WHERE server_name = ?' : ''}`,
+      `SELECT COUNT(DISTINCT map) total FROM csstats_snapshots ${sf ? 'WHERE server_name = ? AND ' : 'WHERE '}${NOT_BOT}`,
       sf ? sf.params : []
     )
 
@@ -969,7 +979,7 @@ async function snapshot() {
       const [players] = await db.query(`
         SELECT steamid, name, kills, deaths, hs, skill
         FROM csstats
-        WHERE server_name = ?
+        WHERE server_name = ? AND ${NOT_BOT}
       `, [srv.id])
 
       if (lastMapByServer[srv.id] !== map) {
@@ -1072,7 +1082,7 @@ async function collectDbStats() {
           COALESCE(MAX(skill), 0) AS skill_max,
           COALESCE(SUM(connection_time), 0) AS connection_time
         FROM csstats
-        WHERE server_name = ?
+        WHERE server_name = ? AND ${NOT_BOT}
       `, [srv.id])
 
       playersRegisteredGauge.set({ server: srv.id }, agg.players_registered)
@@ -1100,12 +1110,12 @@ async function collectDbStats() {
       const [[{ active7d }]] = await db.query(`
         SELECT COUNT(DISTINCT steamid) AS active7d
         FROM csstats_snapshots
-        WHERE server_name = ? AND created_at >= DATE_SUB(NOW(), INTERVAL 7 DAY)
+        WHERE server_name = ? AND created_at >= DATE_SUB(NOW(), INTERVAL 7 DAY) AND ${NOT_BOT}
       `, [srv.id])
       const [[{ active30d }]] = await db.query(`
         SELECT COUNT(DISTINCT steamid) AS active30d
         FROM csstats_snapshots
-        WHERE server_name = ? AND created_at >= DATE_SUB(NOW(), INTERVAL 30 DAY)
+        WHERE server_name = ? AND created_at >= DATE_SUB(NOW(), INTERVAL 30 DAY) AND ${NOT_BOT}
       `, [srv.id])
       activePlayersGauge.set({ server: srv.id, period: '7d' }, active7d)
       activePlayersGauge.set({ server: srv.id, period: '30d' }, active30d)
@@ -1115,7 +1125,7 @@ async function collectDbStats() {
           SELECT kills, created_at,
             LAG(kills) OVER (PARTITION BY steamid ORDER BY created_at) AS prev_kills
           FROM csstats_snapshots
-          WHERE server_name = ?
+          WHERE server_name = ? AND ${NOT_BOT}
         )
         SELECT COALESCE(SUM(GREATEST(kills - COALESCE(prev_kills, 0), 0)), 0) AS kills7d
         FROM ordered
@@ -1126,7 +1136,7 @@ async function collectDbStats() {
           SELECT kills, created_at,
             LAG(kills) OVER (PARTITION BY steamid ORDER BY created_at) AS prev_kills
           FROM csstats_snapshots
-          WHERE server_name = ?
+          WHERE server_name = ? AND ${NOT_BOT}
         )
         SELECT COALESCE(SUM(GREATEST(kills - COALESCE(prev_kills, 0), 0)), 0) AS kills30d
         FROM ordered
@@ -1138,7 +1148,7 @@ async function collectDbStats() {
       const [mapRows] = await db.query(`
         SELECT map, COUNT(*) AS snapshots
         FROM csstats_snapshots
-        WHERE server_name = ? AND map IS NOT NULL AND map <> '' AND map <> 'unknown'
+        WHERE server_name = ? AND map IS NOT NULL AND map <> '' AND map <> 'unknown' AND ${NOT_BOT}
         GROUP BY map
       `, [srv.id])
       for (const row of mapRows) {
@@ -1169,6 +1179,7 @@ app.get('/maps', async (req, res) => {
         AND map <> ''
         AND map <> 'unknown'
       ${sf ? sf.where : ''}
+      ${NOT_BOT_WHERE}
       GROUP BY map
       ORDER BY snapshots DESC, map ASC
     `, sf ? sf.params : [])
@@ -1197,7 +1208,7 @@ async function getMapRanking(map, limit, offset = 0, server = null) {
         LAG(deaths) OVER (PARTITION BY steamid ORDER BY created_at) AS prev_deaths,
         LAG(hs) OVER (PARTITION BY steamid ORDER BY created_at) AS prev_hs
       FROM csstats_snapshots
-      ${server ? 'WHERE server_name = ?' : ''}
+      ${server ? 'WHERE server_name = ? AND ' : 'WHERE '}${NOT_BOT}
     ),
     deltas AS (
       SELECT
@@ -1279,7 +1290,7 @@ app.get('/ranking/weekly', async (req, res) => {
           LAG(deaths) OVER (PARTITION BY steamid ORDER BY created_at) AS prev_deaths,
           LAG(hs) OVER (PARTITION BY steamid ORDER BY created_at) AS prev_hs
         FROM csstats_snapshots
-        ${sf ? 'WHERE server_name = ?' : ''}
+        ${sf ? 'WHERE server_name = ? AND ' : 'WHERE '}${NOT_BOT}
       ),
       deltas AS (
         SELECT
@@ -1337,7 +1348,7 @@ app.get('/ranking/monthly', async (req, res) => {
           LAG(deaths) OVER (PARTITION BY steamid ORDER BY created_at) AS prev_deaths,
           LAG(hs) OVER (PARTITION BY steamid ORDER BY created_at) AS prev_hs
         FROM csstats_snapshots
-        ${sf ? 'WHERE server_name = ?' : ''}
+        ${sf ? 'WHERE server_name = ? AND ' : 'WHERE '}${NOT_BOT}
       ),
       deltas AS (
         SELECT
@@ -1394,6 +1405,7 @@ app.get('/player-history-daily/:steamid', async (req, res) => {
         FROM csstats_snapshots
         WHERE steamid = ?
         ${sf ? sf.where : ''}
+        ${NOT_BOT_WHERE}
       ),
       deltas AS (
         SELECT
@@ -1437,6 +1449,7 @@ app.get('/player-last-map/:steamid', async (req, res) => {
         AND map <> ''
         AND map <> 'unknown'
       ${sf ? sf.where : ''}
+      ${NOT_BOT_WHERE}
       ORDER BY created_at DESC
       LIMIT 1
     `, [req.params.steamid, ...(sf ? sf.params : [])])
@@ -1463,6 +1476,7 @@ app.get('/player-rank-history/:steamid', async (req, res) => {
         FROM csstats_snapshots
         WHERE steamid = ?
         ${sf ? sf.where : ''}
+        ${NOT_BOT_WHERE}
         GROUP BY steamid, day
       ),
       all_players_daily AS (
@@ -1473,6 +1487,7 @@ app.get('/player-rank-history/:steamid', async (req, res) => {
         FROM csstats_snapshots
         WHERE created_at >= COALESCE((SELECT MIN(day) FROM daily), NOW() - INTERVAL 90 DAY)
         ${sf ? sf.where : ''}
+        ${NOT_BOT_WHERE}
         GROUP BY steamid, day
       ),
       ranked AS (

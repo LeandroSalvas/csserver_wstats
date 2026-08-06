@@ -1224,6 +1224,12 @@ select:focus {
   margin-bottom: 12px;
 }
 
+.server-selector-label {
+  display: block;
+  margin-bottom: 6px;
+  font-weight: 600;
+}
+
 button {
   background: #2563eb;
   color: white;
