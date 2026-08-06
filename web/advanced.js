@@ -40,16 +40,34 @@ async function loadAdvancedStats() {
   setStatus(i18nUtils.t('status.loadingAdvanced'))
 
   try {
-    const fetchAll = Object.entries(tables).map(async ([tableId, { endpoint }]) => ({
-      tableId,
-      rows: await fetchJson(`${endpoint}${serverQuery()}`)
-    }))
-    const results = await Promise.all(fetchAll)
+    const fetchAll = Object.entries(tables).map(async ([tableId, { endpoint }]) => {
+      try {
+        const rows = await fetchJson(`${endpoint}${serverQuery()}`)
+        return { tableId, rows }
+      } catch (err) {
+        throw { tableId, error: err }
+      }
+    })
+    const results = await Promise.allSettled(fetchAll)
 
-    results.forEach(({ tableId, rows }) => renderAdvancedTable(tableId, rows))
+    let anyFailed = false
+    results.forEach(({ status, value, reason }) => {
+      if (status === 'rejected') {
+        anyFailed = true
+        const failedTableId = reason.tableId || ''
+        console.error(`Erro ao carregar ${failedTableId}:`, reason.error || reason)
+        showEmptyRow(document.getElementById(failedTableId), 6, i18nUtils.t('errors.failToLoad'))
+        return
+      }
+      renderAdvancedTable(value.tableId, value.rows)
+    })
     addExportButtons()
 
-    clearStatus()
+    if (anyFailed) {
+      setStatus(i18nUtils.t('errors.partialAdvanced'), 'warning')
+    } else {
+      clearStatus()
+    }
   } catch (err) {
     console.error('Erro ao carregar estatísticas avançadas:', err)
     setStatus(`${i18nUtils.t('errors.loadAdvanced')}: ${err.message}`, 'error')

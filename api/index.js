@@ -24,6 +24,21 @@ app.use(cors({
   credentials: true
 }))
 
+// Headers de segurança para as respostas da API (o nginx também cobre o frontend).
+app.use((req, res, next) => {
+  res.setHeader('X-Content-Type-Options', 'nosniff')
+  res.setHeader('X-Frame-Options', 'SAMEORIGIN')
+  res.setHeader('X-XSS-Protection', '1; mode=block')
+  res.setHeader('Referrer-Policy', 'no-referrer')
+  next()
+})
+
+// Padroniza respostas de erro: log completo no servidor, mensagem genérica no cliente.
+function handleError(res, err, context) {
+  console.error(`Erro em ${context}:`, err)
+  res.status(500).json({ error: 'Erro interno do servidor' })
+}
+
 let sessionMiddleware = null
 app.use((req, res, next) => {
   if (!sessionMiddleware) return next(new Error('Sessão ainda não inicializada'))
@@ -52,7 +67,7 @@ function getPagination(req, maxLimit = 50) {
   const rawLimit = parseInt(req.query.limit, 10)
   const rawPage = parseInt(req.query.page, 10)
   const limit = Number.isFinite(rawLimit) && rawLimit > 0 ? Math.min(rawLimit, maxLimit) : 10
-  const page = Number.isFinite(rawPage) && rawPage > 0 ? rawPage : 1
+  const page = Number.isFinite(rawPage) && rawPage > 0 ? Math.min(rawPage, 1000) : 1
   const offset = (page - 1) * limit
   return { limit, page, offset }
 }
@@ -65,6 +80,7 @@ const NOT_BOT_WHERE = `AND ${NOT_BOT}`
 // Filtro opcional ?server= para queries por servidor.
 // Retorna null quando não informado, { invalid } quando o id não é configurado,
 // ou { server, where, params } para usar em queries (cláusulas AND).
+// Observação: quando casa por host, usa o id resolvido (server_name no banco é o id).
 function getServerFilter(req) {
   const raw = String(req.query.server || '').trim()
   if (!raw) return null
@@ -72,6 +88,7 @@ function getServerFilter(req) {
   if (serverConfigs && serverConfigs.length) {
     const found = serverConfigs.find((s) => s.id === raw || s.host === raw)
     if (!found) return { invalid: raw }
+    return { server: found.id, where: ' AND server_name = ?', params: [found.id] }
   }
 
   return { server: raw, where: ' AND server_name = ?', params: [raw] }
@@ -154,15 +171,45 @@ async function ensureSchema() {
   await ensureColumn('cs_matches', 'server', "`server` varchar(32) NOT NULL DEFAULT 'main'")
 
   // uq_match precisa incluir `server` (bancos antigos tinham apenas map+ended_at).
-  const [[uqMatchCols]] = await db.query(
-    `SELECT COUNT(*) AS n FROM information_schema.STATISTICS
-     WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'cs_matches'
-       AND INDEX_NAME = 'uq_match' AND COLUMN_NAME = 'server'`
-  )
-  if (uqMatchCols.n === 0) {
-    await db.query('ALTER TABLE `cs_matches` DROP INDEX `uq_match`')
-    await db.query('ALTER TABLE `cs_matches` ADD UNIQUE KEY `uq_match` (`server`, `map`, `ended_at`)')
+  // Se o índice não existir, apenas cria; se existir sem `server`, recria.
+  try {
+    const [[uqMatchExists]] = await db.query(
+      `SELECT COUNT(*) AS n FROM information_schema.STATISTICS
+       WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'cs_matches' AND INDEX_NAME = 'uq_match'`
+    )
+    if (!uqMatchExists.n) {
+      await db.query('ALTER TABLE `cs_matches` ADD UNIQUE KEY `uq_match` (`server`, `map`, `ended_at`)')
+    } else {
+      const [[uqMatchCols]] = await db.query(
+        `SELECT COUNT(*) AS n FROM information_schema.STATISTICS
+         WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'cs_matches'
+           AND INDEX_NAME = 'uq_match' AND COLUMN_NAME = 'server'`
+      )
+      if (uqMatchCols.n === 0) {
+        await db.query('ALTER TABLE `cs_matches` DROP INDEX `uq_match`')
+        await db.query('ALTER TABLE `cs_matches` ADD UNIQUE KEY `uq_match` (`server`, `map`, `ended_at`)')
+      }
+    }
+  } catch (err) {
+    console.error('Migração uq_match falhou:', err)
   }
+
+  // csstats_snapshots.skill: INT → FLOAT (alinhar com csstats.skill, evitar truncamento).
+  try {
+    const [[skillCol]] = await db.query(
+      `SELECT DATA_TYPE AS t FROM information_schema.COLUMNS
+       WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'csstats_snapshots' AND COLUMN_NAME = 'skill'`
+    )
+    if (skillCol && skillCol.t && String(skillCol.t).toUpperCase() !== 'FLOAT') {
+      await db.query('ALTER TABLE `csstats_snapshots` MODIFY `skill` float NULL')
+    }
+  } catch (err) {
+    console.error('Migração skill FLOAT falhou:', err)
+  }
+
+  // Índice composto para as CTEs de LAG por (server_name, steamid, created_at).
+  await ensureKey('csstats_snapshots', 'idx_snap_server_steamid_time',
+    'KEY `idx_snap_server_steamid_time` (`server_name`, `steamid`, `created_at`)')
 }
 
 app.get('/health', async (req, res) => {
@@ -473,13 +520,17 @@ const primaryServer = serverConfigs && serverConfigs.length
   ? serverConfigs[0]
   : { id: 'main', name: GAMEDIG_HOST, host: GAMEDIG_HOST, port: GAMEDIG_PORT, liveDir: LIVE_DATA_DIR }
 
+// Retorna o servidor configurado por id OU host, ou null se não existir.
+function findServer(id) {
+  if (!id) return null
+  if (serverConfigs) return serverConfigs.find((s) => s.id === id || s.host === id) || null
+  return null
+}
+
 function resolveServer(id) {
   if (!id) return primaryServer
-  if (serverConfigs) {
-    const found = serverConfigs.find((s) => s.id === id || s.host === id)
-    if (found) return found
-  }
-  return primaryServer
+  const found = findServer(id)
+  return found || primaryServer
 }
 
 function resolveLiveDir(id) {
@@ -493,10 +544,6 @@ function queryServer(srv) {
     host: srv.host,
     port: parseInt(srv.port, 10)
   })
-}
-
-async function getCurrentMap() {
-  return getServerMap(primaryServer)
 }
 
 async function getServerMap(srv) {
@@ -535,8 +582,7 @@ app.get('/top10', async (req, res) => {
     res.json(rows)
 
   } catch (err) {
-    console.error(err)
-    res.status(500).json({ error: err.message })
+    handleError(res, err)
   }
 })
 
@@ -563,8 +609,7 @@ app.get('/top-headshots', async (req, res) => {
 
     res.json(rows)
   } catch (err) {
-    console.error(err)
-    res.status(500).json({ error: err.message })
+    handleError(res, err)
   }
 })
 
@@ -593,8 +638,7 @@ app.get('/top-accuracy', async (req, res) => {
 
     res.json(rows)
   } catch (err) {
-    console.error(err)
-    res.status(500).json({ error: err.message })
+    handleError(res, err)
   }
 })
 
@@ -611,16 +655,16 @@ app.get('/top-killstreak', async (req, res) => {
           name,
           created_at,
           kills,
-          LAG(kills) OVER (PARTITION BY steamid ORDER BY created_at) AS prev_kills
+          LAG(kills) OVER (PARTITION BY steamid, server_name ORDER BY created_at) AS prev_kills
         FROM csstats_snapshots
         ${sf ? 'WHERE server_name = ? AND ' : 'WHERE '}${NOT_BOT}
       )
       SELECT
         steamid,
-        name,
+        MAX(name) AS name,
         MAX(GREATEST(kills - COALESCE(prev_kills, 0), 0)) AS streak
       FROM ordered
-      GROUP BY steamid, name
+      GROUP BY steamid
       HAVING streak > 0
       ORDER BY streak DESC
       LIMIT ? OFFSET ?
@@ -628,8 +672,7 @@ app.get('/top-killstreak', async (req, res) => {
 
     res.json(rows)
   } catch (err) {
-    console.error(err)
-    res.status(500).json({ error: err.message })
+    handleError(res, err)
   }
 })
 
@@ -658,8 +701,7 @@ app.get('/top-assists', async (req, res) => {
 
     res.json(rows)
   } catch (err) {
-    console.error(err)
-    res.status(500).json({ error: err.message })
+    handleError(res, err)
   }
 })
 
@@ -688,8 +730,7 @@ app.get('/top-damage', async (req, res) => {
 
     res.json(rows)
   } catch (err) {
-    console.error(err)
-    res.status(500).json({ error: err.message })
+    handleError(res, err)
   }
 })
 
@@ -717,8 +758,7 @@ app.get('/top-tk', async (req, res) => {
 
     res.json(rows)
   } catch (err) {
-    console.error(err)
-    res.status(500).json({ error: err.message })
+    handleError(res, err)
   }
 })
 
@@ -747,8 +787,7 @@ app.get('/top-bomb', async (req, res) => {
 
     res.json(rows)
   } catch (err) {
-    console.error(err)
-    res.status(500).json({ error: err.message })
+    handleError(res, err)
   }
 })
 
@@ -780,8 +819,7 @@ app.get('/top-connect-time', async (req, res) => {
 
     res.json(rows)
   } catch (err) {
-    console.error(err)
-    res.status(500).json({ error: err.message })
+    handleError(res, err)
   }
 })
 
@@ -793,7 +831,9 @@ app.get('/player/:steamid', async (req, res) => {
     if (sf && sf.invalid) return res.status(400).json({ error: `Servidor não configurado: ${sf.invalid}` })
 
     const [rows] = await db.query(`
-      SELECT *
+      SELECT steamid, name, skill, kills, deaths, hs, tks, shots, hits,
+             dmg, bombdef, bombdefused, bombplants, bombexplosions,
+             connection_time, connects, assists, first_join, last_join, server_name
       FROM csstats
       WHERE steamid = ?
       ${sf ? sf.where : ''}
@@ -802,10 +842,10 @@ app.get('/player/:steamid', async (req, res) => {
       LIMIT 1
     `, [req.params.steamid, ...(sf ? sf.params : [])])
 
-    res.json(rows[0])
+    res.json(rows[0] || null)
 
   } catch (err) {
-    res.status(500).json({ error: err.message })
+    handleError(res, err)
   }
 })
 
@@ -836,8 +876,7 @@ app.get('/player-search', async (req, res) => {
     res.json(rows)
 
   } catch (err) {
-    console.error('Erro na busca de jogador:', err)
-    res.status(500).json({ error: err.message })
+    handleError(res, err, 'busca de jogador')
   }
 })
 
@@ -860,7 +899,7 @@ app.get('/topskill', async (req, res) => {
     res.json(rows)
 
   } catch (err) {
-    res.status(500).json({ error: err.message })
+    handleError(res, err)
   }
 })
 
@@ -890,7 +929,7 @@ app.get('/topkd', async (req, res) => {
     res.json(rows)
 
   } catch (err) {
-    res.status(500).json({ error: err.message })
+    handleError(res, err)
   }
 })
 
@@ -922,8 +961,7 @@ app.get('/stats', async (req, res) => {
       maps: maps.total,
     })
   } catch (err) {
-    console.error(err)
-    res.status(500).json({ error: err.message })
+    handleError(res, err)
   }
 })
 
@@ -1123,7 +1161,7 @@ async function collectDbStats() {
       const [[{ kills7d }]] = await db.query(`
         WITH ordered AS (
           SELECT kills, created_at,
-            LAG(kills) OVER (PARTITION BY steamid ORDER BY created_at) AS prev_kills
+            LAG(kills) OVER (PARTITION BY steamid, server_name ORDER BY created_at) AS prev_kills
           FROM csstats_snapshots
           WHERE server_name = ? AND ${NOT_BOT}
         )
@@ -1134,7 +1172,7 @@ async function collectDbStats() {
       const [[{ kills30d }]] = await db.query(`
         WITH ordered AS (
           SELECT kills, created_at,
-            LAG(kills) OVER (PARTITION BY steamid ORDER BY created_at) AS prev_kills
+            LAG(kills) OVER (PARTITION BY steamid, server_name ORDER BY created_at) AS prev_kills
           FROM csstats_snapshots
           WHERE server_name = ? AND ${NOT_BOT}
         )
@@ -1186,8 +1224,7 @@ app.get('/maps', async (req, res) => {
 
     res.json(rows)
   } catch (err) {
-    console.error(err)
-    res.status(500).json({ error: err.message })
+    handleError(res, err)
   }
 })
 
@@ -1204,9 +1241,9 @@ async function getMapRanking(map, limit, offset = 0, server = null) {
         hs,
         skill,
         created_at,
-        LAG(kills) OVER (PARTITION BY steamid ORDER BY created_at) AS prev_kills,
-        LAG(deaths) OVER (PARTITION BY steamid ORDER BY created_at) AS prev_deaths,
-        LAG(hs) OVER (PARTITION BY steamid ORDER BY created_at) AS prev_hs
+        LAG(kills) OVER (PARTITION BY steamid, server_name ORDER BY created_at) AS prev_kills,
+        LAG(deaths) OVER (PARTITION BY steamid, server_name ORDER BY created_at) AS prev_deaths,
+        LAG(hs) OVER (PARTITION BY steamid, server_name ORDER BY created_at) AS prev_hs
       FROM csstats_snapshots
       ${server ? 'WHERE server_name = ? AND ' : 'WHERE '}${NOT_BOT}
     ),
@@ -1223,7 +1260,7 @@ async function getMapRanking(map, limit, offset = 0, server = null) {
     )
     SELECT
       steamid,
-      name,
+      MAX(name) AS name,
       SUM(kills_delta) AS kills,
       SUM(deaths_delta) AS deaths,
       SUM(hs_delta) AS hs,
@@ -1231,7 +1268,7 @@ async function getMapRanking(map, limit, offset = 0, server = null) {
       ROUND(SUM(kills_delta) / IF(SUM(deaths_delta) = 0, 1, SUM(deaths_delta)), 2) AS kd
     FROM deltas
     WHERE map = ?
-    GROUP BY steamid, name
+    GROUP BY steamid
     HAVING kills > 0 OR deaths > 0 OR hs > 0
     ORDER BY kills DESC, kd DESC
     LIMIT ? OFFSET ?
@@ -1239,20 +1276,6 @@ async function getMapRanking(map, limit, offset = 0, server = null) {
 
   return rows
 }
-
-app.get('/map/:map', async (req, res) => {
-  try {
-    const { limit, offset } = getPagination(req, 20)
-    const sf = getServerFilter(req)
-    if (sf && sf.invalid) return res.status(400).json({ error: `Servidor não configurado: ${sf.invalid}` })
-
-    const rows = await getMapRanking(req.params.map, limit, offset, sf ? sf.server : null)
-    res.json(rows)
-  } catch (err) {
-    console.error(err)
-    res.status(500).json({ error: err.message })
-  }
-})
 
 app.get('/map-ranking/:map', async (req, res) => {
   try {
@@ -1263,15 +1286,14 @@ app.get('/map-ranking/:map', async (req, res) => {
     const rows = await getMapRanking(req.params.map, limit, offset, sf ? sf.server : null)
     res.json(rows)
   } catch (err) {
-    console.error(err)
-    res.status(500).json({ error: err.message })
+    handleError(res, err)
   }
 })
 
 
 app.get('/ranking/weekly', async (req, res) => {
   try {
-    const { limit } = getPagination(req)
+    const { limit, offset } = getPagination(req)
     const sf = getServerFilter(req)
     if (sf && sf.invalid) return res.status(400).json({ error: `Servidor não configurado: ${sf.invalid}` })
 
@@ -1286,9 +1308,9 @@ app.get('/ranking/weekly', async (req, res) => {
           hs,
           skill,
           created_at,
-          LAG(kills) OVER (PARTITION BY steamid ORDER BY created_at) AS prev_kills,
-          LAG(deaths) OVER (PARTITION BY steamid ORDER BY created_at) AS prev_deaths,
-          LAG(hs) OVER (PARTITION BY steamid ORDER BY created_at) AS prev_hs
+          LAG(kills) OVER (PARTITION BY steamid, server_name ORDER BY created_at) AS prev_kills,
+          LAG(deaths) OVER (PARTITION BY steamid, server_name ORDER BY created_at) AS prev_deaths,
+          LAG(hs) OVER (PARTITION BY steamid, server_name ORDER BY created_at) AS prev_hs
         FROM csstats_snapshots
         ${sf ? 'WHERE server_name = ? AND ' : 'WHERE '}${NOT_BOT}
       ),
@@ -1305,7 +1327,7 @@ app.get('/ranking/weekly', async (req, res) => {
       )
       SELECT
         steamid,
-        name,
+        MAX(name) AS name,
         SUM(kills_delta) AS kills,
         SUM(deaths_delta) AS deaths,
         SUM(hs_delta) AS hs,
@@ -1313,23 +1335,22 @@ app.get('/ranking/weekly', async (req, res) => {
         ROUND(SUM(kills_delta) / IF(SUM(deaths_delta) = 0, 1, SUM(deaths_delta)), 2) AS kd
       FROM deltas
       WHERE created_at >= DATE_SUB(NOW(), INTERVAL 7 DAY)
-      GROUP BY steamid, name
+      GROUP BY steamid
       HAVING kills > 0 OR deaths > 0 OR hs > 0
       ORDER BY kills DESC, kd DESC
-      LIMIT ?
-    `, [...(sf ? sf.params : []), limit])
+      LIMIT ? OFFSET ?
+    `, [...(sf ? sf.params : []), limit, offset])
 
     res.json(rows)
   } catch (err) {
-    console.error(err)
-    res.status(500).json({ error: err.message })
+    handleError(res, err)
   }
 })
 
 
 app.get('/ranking/monthly', async (req, res) => {
   try {
-    const { limit } = getPagination(req)
+    const { limit, offset } = getPagination(req)
     const sf = getServerFilter(req)
     if (sf && sf.invalid) return res.status(400).json({ error: `Servidor não configurado: ${sf.invalid}` })
 
@@ -1344,9 +1365,9 @@ app.get('/ranking/monthly', async (req, res) => {
           hs,
           skill,
           created_at,
-          LAG(kills) OVER (PARTITION BY steamid ORDER BY created_at) AS prev_kills,
-          LAG(deaths) OVER (PARTITION BY steamid ORDER BY created_at) AS prev_deaths,
-          LAG(hs) OVER (PARTITION BY steamid ORDER BY created_at) AS prev_hs
+          LAG(kills) OVER (PARTITION BY steamid, server_name ORDER BY created_at) AS prev_kills,
+          LAG(deaths) OVER (PARTITION BY steamid, server_name ORDER BY created_at) AS prev_deaths,
+          LAG(hs) OVER (PARTITION BY steamid, server_name ORDER BY created_at) AS prev_hs
         FROM csstats_snapshots
         ${sf ? 'WHERE server_name = ? AND ' : 'WHERE '}${NOT_BOT}
       ),
@@ -1363,7 +1384,7 @@ app.get('/ranking/monthly', async (req, res) => {
       )
       SELECT
         steamid,
-        name,
+        MAX(name) AS name,
         SUM(kills_delta) AS kills,
         SUM(deaths_delta) AS deaths,
         SUM(hs_delta) AS hs,
@@ -1371,16 +1392,15 @@ app.get('/ranking/monthly', async (req, res) => {
         ROUND(SUM(kills_delta) / IF(SUM(deaths_delta) = 0, 1, SUM(deaths_delta)), 2) AS kd
       FROM deltas
       WHERE created_at >= DATE_SUB(NOW(), INTERVAL 30 DAY)
-      GROUP BY steamid, name
+      GROUP BY steamid
       HAVING kills > 0 OR deaths > 0 OR hs > 0
       ORDER BY kills DESC, kd DESC
-      LIMIT ?
-    `, [...(sf ? sf.params : []), limit])
+      LIMIT ? OFFSET ?
+    `, [...(sf ? sf.params : []), limit, offset])
 
     res.json(rows)
   } catch (err) {
-    console.error(err)
-    res.status(500).json({ error: err.message })
+    handleError(res, err)
   }
 })
 
@@ -1399,9 +1419,9 @@ app.get('/player-history-daily/:steamid', async (req, res) => {
           deaths,
           hs,
           skill,
-          LAG(kills) OVER (PARTITION BY steamid ORDER BY created_at) AS prev_kills,
-          LAG(deaths) OVER (PARTITION BY steamid ORDER BY created_at) AS prev_deaths,
-          LAG(hs) OVER (PARTITION BY steamid ORDER BY created_at) AS prev_hs
+          LAG(kills) OVER (PARTITION BY steamid, server_name ORDER BY created_at) AS prev_kills,
+          LAG(deaths) OVER (PARTITION BY steamid, server_name ORDER BY created_at) AS prev_deaths,
+          LAG(hs) OVER (PARTITION BY steamid, server_name ORDER BY created_at) AS prev_hs
         FROM csstats_snapshots
         WHERE steamid = ?
         ${sf ? sf.where : ''}
@@ -1431,8 +1451,7 @@ app.get('/player-history-daily/:steamid', async (req, res) => {
 
     res.json(rows)
   } catch (err) {
-    console.error(err)
-    res.status(500).json({ error: err.message })
+    handleError(res, err)
   }
 })
 
@@ -1456,8 +1475,7 @@ app.get('/player-last-map/:steamid', async (req, res) => {
 
     res.json(rows[0] || null)
   } catch (err) {
-    console.error(err)
-    res.status(500).json({ error: err.message })
+    handleError(res, err)
   }
 })
 
@@ -1515,8 +1533,7 @@ app.get('/player-rank-history/:steamid', async (req, res) => {
 
     res.json(rows)
   } catch (err) {
-    console.error(err)
-    res.status(500).json({ error: err.message })
+    handleError(res, err)
   }
 })
 
@@ -1554,7 +1571,8 @@ app.get('/servers', async (req, res) => {
 })
 
 app.get('/server/:id', async (req, res) => {
-  const srv = resolveServer(req.params.id)
+  const srv = findServer(req.params.id)
+  if (!srv) return res.status(400).json({ error: `Servidor não configurado: ${req.params.id}` })
   try {
     const state = await queryServer(srv)
     res.json({
@@ -1586,7 +1604,8 @@ app.get('/server/:id', async (req, res) => {
 })
 
 app.get('/server', async (req, res) => {
-  const srv = resolveServer(req.query.server)
+  const srv = req.query.server ? findServer(req.query.server) : primaryServer
+  if (!srv) return res.status(400).json({ error: `Servidor não configurado: ${req.query.server}` })
 
   try {
 
@@ -1790,6 +1809,9 @@ app.get('/admin/session', (req, res) => {
 
 app.get('/live/killfeed', (req, res) => {
   try {
+    if (req.query.server && !findServer(req.query.server)) {
+      return res.status(400).json({ error: `Servidor não configurado: ${req.query.server}` })
+    }
     const filePath = path.join(resolveLiveDir(req.query.server), 'live_killfeed.json')
 
     if (!fs.existsSync(filePath)) {
@@ -1808,6 +1830,9 @@ app.get('/live/killfeed', (req, res) => {
 
 app.get('/live/state', (req, res) => {
   try {
+    if (req.query.server && !findServer(req.query.server)) {
+      return res.status(400).json({ error: `Servidor não configurado: ${req.query.server}` })
+    }
     const filePath = path.join(resolveLiveDir(req.query.server), 'live_scoreboard.json')
 
     if (!fs.existsSync(filePath)) {
@@ -1849,6 +1874,7 @@ function checkLiveChanges() {
     const killfeed = readLiveFile('live_killfeed.json', client.dir)
     if (scoreboard) client.res.write(`event: scoreboard\ndata: ${JSON.stringify(scoreboard)}\n\n`)
     if (killfeed) client.res.write(`event: killfeed\ndata: ${JSON.stringify(killfeed)}\n\n`)
+    client.res.write(': ping\n\n')
   }
 
   const servers = serverConfigs && serverConfigs.length ? serverConfigs : [primaryServer]
@@ -1863,6 +1889,9 @@ function checkLiveChanges() {
 }
 
 app.get('/live/events', (req, res) => {
+  if (req.query.server && !findServer(req.query.server)) {
+    return res.status(400).json({ error: `Servidor não configurado: ${req.query.server}` })
+  }
   res.writeHead(200, {
     'Content-Type': 'text/event-stream',
     'Cache-Control': 'no-cache',
@@ -1911,8 +1940,10 @@ async function processLastMatch() {
     }
 
     try {
-      const winner = last.round_t > last.round_ct ? 'T' : last.round_ct > last.round_t ? 'CT' : 'DRAW'
-      const durationSec = last.started_at ? last.ended_at - last.started_at : null
+      const roundT = Number(last.round_t)
+      const roundCt = Number(last.round_ct)
+      const winner = roundT > roundCt ? 'T' : roundCt > roundT ? 'CT' : 'DRAW'
+      const durationSec = last.started_at ? Math.max(0, last.ended_at - last.started_at) : null
 
       const [result] = await db.query(
         `INSERT IGNORE INTO cs_matches (server, map, round_t, round_ct, winner, duration_sec, started_at, ended_at)
@@ -1958,8 +1989,7 @@ app.get('/matches', async (req, res) => {
 
     res.json(rows)
   } catch (err) {
-    console.error('Erro ao listar partidas:', err)
-    res.status(500).json({ error: err.message })
+    handleError(res, err, 'listagem de partidas')
   }
 })
 
@@ -1978,8 +2008,7 @@ app.get('/matches/latest', async (req, res) => {
 
     res.json(rows[0] || null)
   } catch (err) {
-    console.error('Erro ao buscar última partida:', err)
-    res.status(500).json({ error: err.message })
+    handleError(res, err, 'última partida')
   }
 })
 
@@ -1993,8 +2022,7 @@ app.get('/matches/:id', async (req, res) => {
 
     res.json(rows[0] || null)
   } catch (err) {
-    console.error('Erro ao buscar partida:', err)
-    res.status(500).json({ error: err.message })
+    handleError(res, err, 'partida')
   }
 })
 
@@ -2014,11 +2042,11 @@ async function sendAlert(text) {
   if (!alertWebhookUrl) return
   try {
     const isDiscord = /discord(app)?\.com\/api\/webhooks/i.test(alertWebhookUrl)
-    await fetch(alertWebhookUrl, {
+    await withTimeout(fetch(alertWebhookUrl, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(isDiscord ? { content: text } : { text })
-    })
+    }), 5000)
   } catch (err) {
     console.error('Erro ao enviar alerta:', err.message)
   }

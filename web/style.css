@@ -1151,6 +1151,12 @@ button:hover {
   border: 1px solid rgba(239,68,68,0.28);
 }
 
+.status-message.warning {
+  background: rgba(245,158,11,0.16);
+  color: #fde68a;
+  border: 1px solid rgba(245,158,11,0.28);
+}
+
 .server-status-online {
   color: #1dd53b;
   font-weight: 700;

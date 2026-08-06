@@ -3,6 +3,20 @@ const steamid = params.get('steamid')
 const serverFromUrl = params.get('server')
 if (serverFromUrl) setSelectedServer(serverFromUrl)
 
+// Valida o servidor vindo da URL contra a lista real; se for desconhecido,
+// remove a seleção para a página carregar dados do servidor primário/todos.
+const serverParamValidated = (async () => {
+  if (!serverFromUrl) return
+  try {
+    const servers = await loadServersList()
+    if (Array.isArray(servers) && !servers.some((srv) => srv.id === serverFromUrl)) {
+      setSelectedServer('')
+    }
+  } catch (err) {
+    // Lista indisponível (API offline): mantém o valor da URL.
+  }
+})()
+
 const chartInstances = {}
 
 function formatHours(seconds) {
@@ -248,7 +262,8 @@ function renderChart(canvasId, labels, datasets, extraOptions = {}) {
 }
 
 try {
-  document.addEventListener('DOMContentLoaded', () => {
+  document.addEventListener('DOMContentLoaded', async () => {
+    await serverParamValidated
     loadPlayerData()
   })
 } catch (err) {

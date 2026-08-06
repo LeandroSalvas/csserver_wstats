@@ -79,6 +79,14 @@ const steamLoginStatus = document.getElementById('steamLoginStatus')
 let commandHistory = []
 let csrfToken = null
 
+// Neutraliza nomes de jogador dentro de comandos RCON (impede injeção via aspas/ponto-e-vírgula).
+function rconSafeName(name) {
+  return String(name ?? '')
+    .replace(/"/g, "'")
+    .replace(/[;\r\n]/g, ' ')
+    .trim()
+}
+
 async function checkSession() {
   try {
     const res = await fetch(`${API}/admin/session`, {
@@ -370,7 +378,7 @@ function renderLivePlayers(players) {
 
       tr.innerHTML = `
         <td>${name}</td>
-        <td title="${steamidAttr}">${p.steamid || '-'}</td>
+        <td title="${steamidAttr}">${steamidAttr || '-'}</td>
         <td>${p.team || '-'}</td>
         <td>${p.score} / ${p.deaths} (${kd})</td>
         <td>
@@ -380,11 +388,11 @@ function renderLivePlayers(players) {
       `
 
       tr.querySelector('[data-action="kick"]').addEventListener('click', () => {
-        sendCommand(`amx_kick "${p.name}"`)
+        sendCommand(`amx_kick "${rconSafeName(p.name)}"`)
       })
 
       tr.querySelector('[data-action="ban"]').addEventListener('click', () => {
-        sendCommand(`amx_ban "${p.name}" 30`)
+        sendCommand(`amx_ban "${rconSafeName(p.name)}" 30`)
       })
 
       fragment.appendChild(tr)
