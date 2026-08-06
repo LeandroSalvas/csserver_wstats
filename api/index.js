@@ -210,6 +210,12 @@ async function ensureSchema() {
   // Índice composto para as CTEs de LAG por (server_name, steamid, created_at).
   await ensureKey('csstats_snapshots', 'idx_snap_server_steamid_time',
     'KEY `idx_snap_server_steamid_time` (`server_name`, `steamid`, `created_at`)')
+
+  // Índices para consultas por data (active7d/30d) e por mapa (GROUP BY /maps).
+  await ensureKey('csstats_snapshots', 'idx_snap_server_time',
+    'KEY `idx_snap_server_time` (`server_name`, `created_at`)')
+  await ensureKey('csstats_snapshots', 'idx_snap_server_map',
+    'KEY `idx_snap_server_map` (`server_name`, `map`)')
 }
 
 app.get('/health', async (req, res) => {
@@ -491,6 +497,32 @@ async function setupSession() {
   sessionMiddleware = session(sessionOptions)
 }
 
+// Cache de resultados em Redis para rotas pesadas (rankings/snapshots).
+// Com degradação graciosa: sem Redis ou em erro de get/set, executa a query direto.
+const CACHE_RANKING_TTL = 60 * 1000
+const CACHE_STATS_TTL = 30 * 1000
+
+async function getCached(key, ttlMs, fn) {
+  if (!redisClient || !redisClient.isReady) return fn()
+
+  try {
+    const cached = await withTimeout(redisClient.get(key), 2000)
+    if (cached !== null) return JSON.parse(cached)
+  } catch (err) {
+    console.error(`Cache get falhou (${key}):`, err.message)
+  }
+
+  const value = await fn()
+
+  try {
+    await withTimeout(redisClient.setEx(key, Math.ceil(ttlMs / 1000), JSON.stringify(value)), 2000)
+  } catch (err) {
+    console.error(`Cache set falhou (${key}):`, err.message)
+  }
+
+  return value
+}
+
 const lastState = {}
 const lastMapByServer = {}
 let snapshotInProgress = false
@@ -648,27 +680,30 @@ app.get('/top-killstreak', async (req, res) => {
     const sf = getServerFilter(req)
     if (sf && sf.invalid) return res.status(400).json({ error: `Servidor não configurado: ${sf.invalid}` })
 
-    const [rows] = await db.query(`
-      WITH ordered AS (
+    const rows = await getCached(`killstreak:${sf ? sf.server : '*'}:${limit}:${offset}`, CACHE_RANKING_TTL, async () => {
+      const [rows] = await db.query(`
+        WITH ordered AS (
+          SELECT
+            steamid,
+            name,
+            created_at,
+            kills,
+            LAG(kills) OVER (PARTITION BY steamid, server_name ORDER BY created_at) AS prev_kills
+          FROM csstats_snapshots
+          ${sf ? 'WHERE server_name = ? AND ' : 'WHERE '}${NOT_BOT}
+        )
         SELECT
           steamid,
-          name,
-          created_at,
-          kills,
-          LAG(kills) OVER (PARTITION BY steamid, server_name ORDER BY created_at) AS prev_kills
-        FROM csstats_snapshots
-        ${sf ? 'WHERE server_name = ? AND ' : 'WHERE '}${NOT_BOT}
-      )
-      SELECT
-        steamid,
-        MAX(name) AS name,
-        MAX(GREATEST(kills - COALESCE(prev_kills, 0), 0)) AS streak
-      FROM ordered
-      GROUP BY steamid
-      HAVING streak > 0
-      ORDER BY streak DESC
-      LIMIT ? OFFSET ?
-    `, [...(sf ? sf.params : []), limit, offset])
+          MAX(name) AS name,
+          MAX(GREATEST(kills - COALESCE(prev_kills, 0), 0)) AS streak
+        FROM ordered
+        GROUP BY steamid
+        HAVING streak > 0
+        ORDER BY streak DESC
+        LIMIT ? OFFSET ?
+      `, [...(sf ? sf.params : []), limit, offset])
+      return rows
+    })
 
     res.json(rows)
   } catch (err) {
@@ -940,26 +975,30 @@ app.get('/stats', async (req, res) => {
     const sf = getServerFilter(req)
     if (sf && sf.invalid) return res.status(400).json({ error: `Servidor não configurado: ${sf.invalid}` })
 
-    const [[players]] = await db.query(
-      `SELECT COUNT(*) total FROM csstats ${sf ? 'WHERE server_name = ? AND ' : 'WHERE '}${NOT_BOT}`,
-      sf ? sf.params : []
-    )
+    const stats = await getCached(`stats:${sf ? sf.server : '*'}`, CACHE_STATS_TTL, async () => {
+      const [[players]] = await db.query(
+        `SELECT COUNT(*) total FROM csstats ${sf ? 'WHERE server_name = ? AND ' : 'WHERE '}${NOT_BOT}`,
+        sf ? sf.params : []
+      )
 
-    const [[kills]] = await db.query(
-      `SELECT COALESCE(SUM(kills), 0) total FROM csstats ${sf ? 'WHERE server_name = ? AND ' : 'WHERE '}${NOT_BOT}`,
-      sf ? sf.params : []
-    )
+      const [[kills]] = await db.query(
+        `SELECT COALESCE(SUM(kills), 0) total FROM csstats ${sf ? 'WHERE server_name = ? AND ' : 'WHERE '}${NOT_BOT}`,
+        sf ? sf.params : []
+      )
 
-    const [[maps]] = await db.query(
-      `SELECT COUNT(DISTINCT map) total FROM csstats_snapshots ${sf ? 'WHERE server_name = ? AND ' : 'WHERE '}${NOT_BOT}`,
-      sf ? sf.params : []
-    )
+      const [[maps]] = await db.query(
+        `SELECT COUNT(DISTINCT map) total FROM csstats_snapshots ${sf ? 'WHERE server_name = ? AND ' : 'WHERE '}${NOT_BOT}`,
+        sf ? sf.params : []
+      )
 
-    res.json({
-      players: players.total,
-      kills: kills.total,
-      maps: maps.total,
+      return {
+        players: players.total,
+        kills: kills.total,
+        maps: maps.total,
+      }
     })
+
+    res.json(stats)
   } catch (err) {
     handleError(res, err)
   }
@@ -1208,19 +1247,22 @@ app.get('/maps', async (req, res) => {
     const sf = getServerFilter(req)
     if (sf && sf.invalid) return res.status(400).json({ error: `Servidor não configurado: ${sf.invalid}` })
 
-    const [rows] = await db.query(`
-      SELECT
-        map,
-        COUNT(*) AS snapshots
-      FROM csstats_snapshots
-      WHERE map IS NOT NULL
-        AND map <> ''
-        AND map <> 'unknown'
-      ${sf ? sf.where : ''}
-      ${NOT_BOT_WHERE}
-      GROUP BY map
-      ORDER BY snapshots DESC, map ASC
-    `, sf ? sf.params : [])
+    const rows = await getCached(`maps:${sf ? sf.server : '*'}`, CACHE_RANKING_TTL, async () => {
+      const [rows] = await db.query(`
+        SELECT
+          map,
+          COUNT(*) AS snapshots
+        FROM csstats_snapshots
+        WHERE map IS NOT NULL
+          AND map <> ''
+          AND map <> 'unknown'
+        ${sf ? sf.where : ''}
+        ${NOT_BOT_WHERE}
+        GROUP BY map
+        ORDER BY snapshots DESC, map ASC
+      `, sf ? sf.params : [])
+      return rows
+    })
 
     res.json(rows)
   } catch (err) {
@@ -1283,7 +1325,11 @@ app.get('/map-ranking/:map', async (req, res) => {
     const sf = getServerFilter(req)
     if (sf && sf.invalid) return res.status(400).json({ error: `Servidor não configurado: ${sf.invalid}` })
 
-    const rows = await getMapRanking(req.params.map, limit, offset, sf ? sf.server : null)
+    const rows = await getCached(
+      `mapranking:${req.params.map}:${sf ? sf.server : '*'}:${limit}:${offset}`,
+      CACHE_RANKING_TTL,
+      () => getMapRanking(req.params.map, limit, offset, sf ? sf.server : null)
+    )
     res.json(rows)
   } catch (err) {
     handleError(res, err)
@@ -1297,49 +1343,52 @@ app.get('/ranking/weekly', async (req, res) => {
     const sf = getServerFilter(req)
     if (sf && sf.invalid) return res.status(400).json({ error: `Servidor não configurado: ${sf.invalid}` })
 
-    const [rows] = await db.query(`
-      WITH ordered AS (
+    const rows = await getCached(`ranking:weekly:${sf ? sf.server : '*'}:${limit}:${offset}`, CACHE_RANKING_TTL, async () => {
+      const [rows] = await db.query(`
+        WITH ordered AS (
+          SELECT
+            steamid,
+            name,
+            map,
+            kills,
+            deaths,
+            hs,
+            skill,
+            created_at,
+            LAG(kills) OVER (PARTITION BY steamid, server_name ORDER BY created_at) AS prev_kills,
+            LAG(deaths) OVER (PARTITION BY steamid, server_name ORDER BY created_at) AS prev_deaths,
+            LAG(hs) OVER (PARTITION BY steamid, server_name ORDER BY created_at) AS prev_hs
+          FROM csstats_snapshots
+          ${sf ? 'WHERE server_name = ? AND ' : 'WHERE '}${NOT_BOT}
+        ),
+        deltas AS (
+          SELECT
+            steamid,
+            name,
+            created_at,
+            GREATEST(kills - COALESCE(prev_kills, 0), 0) AS kills_delta,
+            GREATEST(deaths - COALESCE(prev_deaths, 0), 0) AS deaths_delta,
+            GREATEST(hs - COALESCE(prev_hs, 0), 0) AS hs_delta,
+            skill
+          FROM ordered
+        )
         SELECT
           steamid,
-          name,
-          map,
-          kills,
-          deaths,
-          hs,
-          skill,
-          created_at,
-          LAG(kills) OVER (PARTITION BY steamid, server_name ORDER BY created_at) AS prev_kills,
-          LAG(deaths) OVER (PARTITION BY steamid, server_name ORDER BY created_at) AS prev_deaths,
-          LAG(hs) OVER (PARTITION BY steamid, server_name ORDER BY created_at) AS prev_hs
-        FROM csstats_snapshots
-        ${sf ? 'WHERE server_name = ? AND ' : 'WHERE '}${NOT_BOT}
-      ),
-      deltas AS (
-        SELECT
-          steamid,
-          name,
-          created_at,
-          GREATEST(kills - COALESCE(prev_kills, 0), 0) AS kills_delta,
-          GREATEST(deaths - COALESCE(prev_deaths, 0), 0) AS deaths_delta,
-          GREATEST(hs - COALESCE(prev_hs, 0), 0) AS hs_delta,
-          skill
-        FROM ordered
-      )
-      SELECT
-        steamid,
-        MAX(name) AS name,
-        SUM(kills_delta) AS kills,
-        SUM(deaths_delta) AS deaths,
-        SUM(hs_delta) AS hs,
-        MAX(skill) AS skill,
-        ROUND(SUM(kills_delta) / IF(SUM(deaths_delta) = 0, 1, SUM(deaths_delta)), 2) AS kd
-      FROM deltas
-      WHERE created_at >= DATE_SUB(NOW(), INTERVAL 7 DAY)
-      GROUP BY steamid
-      HAVING kills > 0 OR deaths > 0 OR hs > 0
-      ORDER BY kills DESC, kd DESC
-      LIMIT ? OFFSET ?
-    `, [...(sf ? sf.params : []), limit, offset])
+          MAX(name) AS name,
+          SUM(kills_delta) AS kills,
+          SUM(deaths_delta) AS deaths,
+          SUM(hs_delta) AS hs,
+          MAX(skill) AS skill,
+          ROUND(SUM(kills_delta) / IF(SUM(deaths_delta) = 0, 1, SUM(deaths_delta)), 2) AS kd
+        FROM deltas
+        WHERE created_at >= DATE_SUB(NOW(), INTERVAL 7 DAY)
+        GROUP BY steamid
+        HAVING kills > 0 OR deaths > 0 OR hs > 0
+        ORDER BY kills DESC, kd DESC
+        LIMIT ? OFFSET ?
+      `, [...(sf ? sf.params : []), limit, offset])
+      return rows
+    })
 
     res.json(rows)
   } catch (err) {
@@ -1354,49 +1403,52 @@ app.get('/ranking/monthly', async (req, res) => {
     const sf = getServerFilter(req)
     if (sf && sf.invalid) return res.status(400).json({ error: `Servidor não configurado: ${sf.invalid}` })
 
-    const [rows] = await db.query(`
-      WITH ordered AS (
+    const rows = await getCached(`ranking:monthly:${sf ? sf.server : '*'}:${limit}:${offset}`, CACHE_RANKING_TTL, async () => {
+      const [rows] = await db.query(`
+        WITH ordered AS (
+          SELECT
+            steamid,
+            name,
+            map,
+            kills,
+            deaths,
+            hs,
+            skill,
+            created_at,
+            LAG(kills) OVER (PARTITION BY steamid, server_name ORDER BY created_at) AS prev_kills,
+            LAG(deaths) OVER (PARTITION BY steamid, server_name ORDER BY created_at) AS prev_deaths,
+            LAG(hs) OVER (PARTITION BY steamid, server_name ORDER BY created_at) AS prev_hs
+          FROM csstats_snapshots
+          ${sf ? 'WHERE server_name = ? AND ' : 'WHERE '}${NOT_BOT}
+        ),
+        deltas AS (
+          SELECT
+            steamid,
+            name,
+            created_at,
+            GREATEST(kills - COALESCE(prev_kills, 0), 0) AS kills_delta,
+            GREATEST(deaths - COALESCE(prev_deaths, 0), 0) AS deaths_delta,
+            GREATEST(hs - COALESCE(prev_hs, 0), 0) AS hs_delta,
+            skill
+          FROM ordered
+        )
         SELECT
           steamid,
-          name,
-          map,
-          kills,
-          deaths,
-          hs,
-          skill,
-          created_at,
-          LAG(kills) OVER (PARTITION BY steamid, server_name ORDER BY created_at) AS prev_kills,
-          LAG(deaths) OVER (PARTITION BY steamid, server_name ORDER BY created_at) AS prev_deaths,
-          LAG(hs) OVER (PARTITION BY steamid, server_name ORDER BY created_at) AS prev_hs
-        FROM csstats_snapshots
-        ${sf ? 'WHERE server_name = ? AND ' : 'WHERE '}${NOT_BOT}
-      ),
-      deltas AS (
-        SELECT
-          steamid,
-          name,
-          created_at,
-          GREATEST(kills - COALESCE(prev_kills, 0), 0) AS kills_delta,
-          GREATEST(deaths - COALESCE(prev_deaths, 0), 0) AS deaths_delta,
-          GREATEST(hs - COALESCE(prev_hs, 0), 0) AS hs_delta,
-          skill
-        FROM ordered
-      )
-      SELECT
-        steamid,
-        MAX(name) AS name,
-        SUM(kills_delta) AS kills,
-        SUM(deaths_delta) AS deaths,
-        SUM(hs_delta) AS hs,
-        MAX(skill) AS skill,
-        ROUND(SUM(kills_delta) / IF(SUM(deaths_delta) = 0, 1, SUM(deaths_delta)), 2) AS kd
-      FROM deltas
-      WHERE created_at >= DATE_SUB(NOW(), INTERVAL 30 DAY)
-      GROUP BY steamid
-      HAVING kills > 0 OR deaths > 0 OR hs > 0
-      ORDER BY kills DESC, kd DESC
-      LIMIT ? OFFSET ?
-    `, [...(sf ? sf.params : []), limit, offset])
+          MAX(name) AS name,
+          SUM(kills_delta) AS kills,
+          SUM(deaths_delta) AS deaths,
+          SUM(hs_delta) AS hs,
+          MAX(skill) AS skill,
+          ROUND(SUM(kills_delta) / IF(SUM(deaths_delta) = 0, 1, SUM(deaths_delta)), 2) AS kd
+        FROM deltas
+        WHERE created_at >= DATE_SUB(NOW(), INTERVAL 30 DAY)
+        GROUP BY steamid
+        HAVING kills > 0 OR deaths > 0 OR hs > 0
+        ORDER BY kills DESC, kd DESC
+        LIMIT ? OFFSET ?
+      `, [...(sf ? sf.params : []), limit, offset])
+      return rows
+    })
 
     res.json(rows)
   } catch (err) {
@@ -1485,7 +1537,8 @@ app.get('/player-rank-history/:steamid', async (req, res) => {
     const sf = getServerFilter(req)
     if (sf && sf.invalid) return res.status(400).json({ error: `Servidor não configurado: ${sf.invalid}` })
 
-    const [rows] = await db.query(`
+    const [rows] = await getCached(`rankhistory:${req.params.steamid}:${sf ? sf.server : '*'}`, CACHE_RANKING_TTL, async () => {
+      const [rows] = await db.query(`
       WITH daily AS (
         SELECT
           steamid,
@@ -1530,6 +1583,8 @@ app.get('/player-rank-history/:steamid', async (req, res) => {
       WHERE r.steamid = ?
       ORDER BY r.day ASC
     `, [req.params.steamid, ...(sf ? sf.params : []), ...(sf ? sf.params : []), req.params.steamid])
+      return rows
+    })
 
     res.json(rows)
   } catch (err) {
