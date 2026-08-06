@@ -96,7 +96,7 @@ function getServerFilter(req) {
 
 const loginLimiter = rateLimit({
   windowMs: 60 * 1000,
-  max: 5,
+  limit: 5,
   standardHeaders: true,
   legacyHeaders: false,
   message: { success: false, error: 'Muitas tentativas. Tente novamente em 1 minuto.' }
@@ -104,7 +104,7 @@ const loginLimiter = rateLimit({
 
 const commandLimiter = rateLimit({
   windowMs: 60 * 1000,
-  max: 30,
+  limit: 30,
   standardHeaders: true,
   legacyHeaders: false,
   message: { success: false, error: 'Muitos comandos. Tente novamente em 1 minuto.' }
@@ -2222,6 +2222,14 @@ app.get('/auth/steam/status', (req, res) => {
   })
 })
 
+// Tratador global de erros (Express 5 encaminha rejeições async para cá).
+function errorHandler(err, req, res, next) {
+  console.error('Erro não tratado:', err)
+  if (res.headersSent) return next(err)
+  res.status(500).json({ error: 'Erro interno do servidor' })
+}
+app.use(errorHandler)
+
 // INICIALIZA SERVIDOR
 async function start() {
   try {
@@ -2230,15 +2238,57 @@ async function start() {
     console.error('Falha ao garantir schema do banco:', err.message)
   }
   await setupSession()
-  app.listen(3000, '0.0.0.0', () => {
+
+  const server = app.listen(3000, '0.0.0.0', () => {
     console.log('API rodando na porta 3000')
     startSsePolling()
     setInterval(checkServerAlerts, 30000)
     checkServerAlerts()
   })
+  return server
 }
 
-start().catch((err) => {
+const serverPromise = start()
+serverPromise.then((srv) => {
+  setupGracefulShutdown(srv)
+}).catch((err) => {
   console.error('Falha ao inicializar API:', err)
+  process.exit(1)
+})
+
+// Encerramento gracioso: para de aceitar conexões, desconecta clientes SSE,
+// fecha o pool MySQL e o Redis, e encerra com exit 0.
+function setupGracefulShutdown(srv) {
+  const shutdown = () => {
+    console.log('Encerrando com graça (SIGTERM/SIGINT)...')
+
+    for (const client of sseClients) client.res.end()
+    sseClients.clear()
+
+    const forceExit = setTimeout(() => {
+      console.error('Shutdown excedeu 10s; forçando saída')
+      process.exit(1)
+    }, 10000)
+    forceExit.unref()
+
+    srv.close(async () => {
+      const closes = [db.end()]
+      if (redisClient) closes.push(withTimeout(redisClient.quit(), 3000).catch(() => {}))
+      await Promise.allSettled(closes)
+      clearTimeout(forceExit)
+      console.log('API encerrada')
+      process.exit(0)
+    })
+  }
+  process.on('SIGTERM', shutdown)
+  process.on('SIGINT', shutdown)
+}
+
+process.on('unhandledRejection', (reason) => {
+  console.error('UnhandledRejection:', reason)
+  process.exit(1)
+})
+process.on('uncaughtException', (err) => {
+  console.error('UncaughtException:', err)
   process.exit(1)
 })
