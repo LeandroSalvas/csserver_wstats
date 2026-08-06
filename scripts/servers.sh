@@ -30,6 +30,11 @@ ok()   { printf '\033[32m✔\033[0m %s\n' "$*"; }
 err()  { printf '\033[31m✖\033[0m %s\n' "$*" >&2; }
 info() { printf '%s\n' "$*"; }
 
+# Ids de servidor viram nomes de diretório/serviço: só a-z0-9, _ e -.
+valid_id() {
+  [[ "$1" =~ ^[a-z0-9][a-z0-9_-]*$ ]]
+}
+
 get_rcon_password() {
   local v
   v="$(grep -E '^RCON_PASSWORD=' "${ROOT}/.env" 2>/dev/null | head -1 | cut -d= -f2- | tr -d '"' | tr -d "'")"
@@ -59,6 +64,8 @@ cmd_init() {
     local id name host_port map maxplayers rotate
     IFS='|' read -r id name host_port map maxplayers rotate <<< "$line"
     : "${rotate:=yes}"
+
+    valid_id "$id" || { err "id inválido em servers.list: '$id' (use apenas a-z0-9, _ e -)."; return 1; }
 
     mkdir -p "${ROOT}/config/servers/${id}"
     mkdir -p "${ROOT}/live/${id}"
@@ -139,6 +146,7 @@ cmd_compose() {
   while read -r line; do
     local id name host_port map maxplayers rotate
     IFS='|' read -r id name host_port map maxplayers rotate <<< "$line"
+    valid_id "$id" || { err "id inválido em servers.list: '$id' (use apenas a-z0-9, _ e -)."; return 1; }
     ids+=("$id"); names+=("$name"); ports+=("$host_port"); maps+=("$map"); maxps+=("$maxplayers")
   done < <(parse_servers)
 
@@ -159,6 +167,11 @@ cmd_compose() {
 
   if [ "${ids[0]}" != "main" ]; then
     err "O primeiro servidor de servers.list deve ter id \"main\" (base do docker-compose.yml)."
+    return 1
+  fi
+
+  if [ "${ports[0]}" != "27015" ]; then
+    err "O servidor primário \"main\" deve usar host_port 27015 (fixo no docker-compose.yml base; a porta só é publicada pelo override para os demais servidores)."
     return 1
   fi
 
@@ -352,6 +365,11 @@ cmd_prune() {
     return 0
   fi
 
+  local id
+  for id in "${ids[@]}"; do
+    valid_id "$id" || { err "id inválido: '$id' — abortando prune."; return 1; }
+  done
+
   info "Prune vai apagar config/servers e live de: ${ids[*]}"
   if [ "$yes" -ne 1 ]; then
     read -r -p "Continuar? [S/n] " answer
@@ -360,7 +378,6 @@ cmd_prune() {
     [[ "$pm_ans" =~ ^(s|S|sim|SIM|y|Y|yes|YES)$ ]] && metrics=1
   fi
 
-  local id
   for id in "${ids[@]}"; do
     [ -d "${ROOT}/config/servers/${id}" ] && rm -rf "${ROOT}/config/servers/${id}" && ok "apagado config/servers/${id}"
     [ -d "${ROOT}/live/${id}" ] && rm -rf "${ROOT}/live/${id}" && ok "apagado live/${id}"

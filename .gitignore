@@ -15,3 +15,6 @@ config/servers/
 
 # Backup do banco com dados reais (contém IPs de jogadores) — não versionar
 csstats_backup.sql
+
+# Backup de config/servers.list gerado por scripts/setup.sh
+config/servers.list.bak

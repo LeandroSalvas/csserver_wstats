@@ -51,8 +51,10 @@ slug() {
   printf '%s\n' "$1" | tr '[:upper:]' '[:lower:]' | tr -cd 'a-z0-9'
 }
 
+# Próxima porta host livre: evita colidir com portas já usadas pelos servidores
+# atuais (CUR_PORTS) e pelos novos desta rodada (NEW_PORTS).
 next_free_port() {
-  local p=27014 used=" ${NEW_PORTS[*]} "
+  local p=27014 used=" ${NEW_PORTS[*]} ${CUR_PORTS[*]} "
   while true; do
     p=$((p + 1))
     [[ "$used" == *" $p "* ]] || break
@@ -160,6 +162,7 @@ prompt_new_server() {
       fi
       [ -n "$name" ] || { err "Nome não pode ser vazio."; continue; }
       [[ "$name" == *" "* ]] && { err "Nome não pode conter espaços (use _ se necessário)."; continue; }
+      [[ "$name" =~ [\"\\\|#] ]] && { err "Nome não pode conter aspas, barra, pipe ou #."; continue; }
     fi
 
     if [ "$is_primary" -eq 1 ]; then
@@ -188,9 +191,21 @@ prompt_new_server() {
     done
   fi
 
-  ask "Porta host do servidor #${idx}" "$(next_free_port)" port
+  while :; do
+    ask "Porta host do servidor #${idx}" "$(next_free_port)" port
+    if [ "$is_primary" -eq 1 ]; then
+      if [ "$port" != "27015" ]; then
+        err "O servidor primário (main) usa a porta fixa 27015 (host)."
+      fi
+      port="27015"
+    fi
+    [[ "$port" =~ ^[0-9]{1,5}$ ]] || { err "Porta inválida: '${port}'."; continue; }
+    break
+  done
   ask "Mapa inicial do servidor #${idx}" "de_dust2" map
+  [[ "$map" =~ ^[a-z0-9_]+$ ]] || { err "Nome de mapa inválido: '${map}' (use letras minúsculas, números e _)."; return 1; }
   ask "Slots do servidor #${idx}" "32" slots
+  [[ "$slots" =~ ^[0-9]+$ ]] && [ "$slots" -ge 1 ] && [ "$slots" -le 64 ] || { err "Slots inválidos: '${slots}' (1-64)."; return 1; }
 
   if is_in_array "$port" "${NEW_PORTS[@]}"; then
     err "Aviso: porta ${port} já usada por outro servidor desta lista."
@@ -288,6 +303,12 @@ build_new_list() {
 }
 
 write_list() {
+  # Backup do estado anterior (fonte de verdade editável à mão).
+  if [ -f "${SERVERS_LIST}" ]; then
+    cp "${SERVERS_LIST}" "${SERVERS_LIST}.bak"
+    ok "backup em servers.list.bak"
+  fi
+
   local tmp="${SERVERS_LIST}.tmp"
   {
     echo "# Lista de servidores CS 1.6 gerenciados pelo docker-compose."
