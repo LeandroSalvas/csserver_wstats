@@ -18,3 +18,9 @@ csstats_backup.sql
 
 # Backup de config/servers.list gerado por scripts/setup.sh
 config/servers.list.bak
+
+# Estado dos upgrades da API (imagens rollback-<ts> + HEAD por fase)
+.rollback-state
+
+# node_modules local (host não tem Node; gerado só dentro de containers)
+api/node_modules/
