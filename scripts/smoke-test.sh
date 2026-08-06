@@ -41,12 +41,27 @@ API_BASE="${API_BASE:-http://localhost:8080/api}"
 API_CONTAINER="${API_CONTAINER:-cs16-api}"
 REDIS_CONTAINER="${REDIS_CONTAINER:-csserver_wstats-redis-1}"
 
-EXPECT_NODE_MAJOR="${EXPECT_NODE_MAJOR:-26}"
-EXPECT_EXPRESS="${EXPECT_EXPRESS:-express@5.}"
-EXPECT_RATE_LIMIT="${EXPECT_RATE_LIMIT:-express-rate-limit@8}"
-EXPECT_GAMEDIG="${EXPECT_GAMEDIG:-gamedig@5}"
-EXPECT_REDIS="${EXPECT_REDIS:-redis@6}"
-EXPECT_CONNECT_REDIS="${EXPECT_CONNECT_REDIS:-connect-redis@10}"
+# Expectativas derivadas da fonte atual (Dockerfile/package.json) — vale tanto
+# para validar um upgrade quanto um rollback (a fonte reflete o estado restaurado).
+# Overrides explícitos por ambiente (EXPECT_*) têm precedência.
+derive_expectations() {
+  local df="${ROOT}/api/Dockerfile" pkg="${ROOT}/api/package.json" v
+  local node_major
+  node_major="$(grep -oE '^FROM node:[0-9]+' "$df" | grep -oE '[0-9]+$')"
+  EXPECT_NODE_MAJOR="${EXPECT_NODE_MAJOR:-${node_major:-26}}"
+
+  v="$(grep -oE '"express": "\^[0-9]+\.' "$pkg" | grep -oE '[0-9]+' | head -1)"
+  EXPECT_EXPRESS="${EXPECT_EXPRESS:-express@${v}.}"
+  v="$(grep -oE '"express-rate-limit": "\^[0-9]+\.' "$pkg" | grep -oE '[0-9]+' | head -1)"
+  EXPECT_RATE_LIMIT="${EXPECT_RATE_LIMIT:-express-rate-limit@${v}}"
+  v="$(grep -oE '"gamedig": "\^[0-9]+\.' "$pkg" | grep -oE '[0-9]+' | head -1)"
+  EXPECT_GAMEDIG="${EXPECT_GAMEDIG:-gamedig@${v}}"
+  v="$(grep -oE '"redis": "\^[0-9]+\.' "$pkg" | grep -oE '[0-9]+' | head -1)"
+  EXPECT_REDIS="${EXPECT_REDIS:-redis@${v}}"
+  v="$(grep -oE '"connect-redis": "\^[0-9]+\.' "$pkg" | grep -oE '[0-9]+' | head -1)"
+  EXPECT_CONNECT_REDIS="${EXPECT_CONNECT_REDIS:-connect-redis@${v}}"
+}
+derive_expectations
 
 get_rcon_password() {
   grep -E '^RCON_PASSWORD=' "${ROOT}/.env" 2>/dev/null | head -1 | cut -d= -f2- | tr -d '"' | tr -d "'"
@@ -100,9 +115,13 @@ run_block_composition() {
     fail "Node v${EXPECT_NODE_MAJOR}.x esperado, encontrado ${node_v:-ausente}"
   fi
 
-  local deps_out pat
+  # Deps da Fase A sempre; redis/connect-redis só na Fase B (ou full).
+  local deps_out pat deps=("$EXPECT_EXPRESS" "$EXPECT_RATE_LIMIT" "$EXPECT_GAMEDIG")
+  if [ "$PHASE" = "all" ] || [ "$PHASE" = "b" ]; then
+    deps+=("$EXPECT_REDIS" "$EXPECT_CONNECT_REDIS")
+  fi
   deps_out="$(docker exec "${API_CONTAINER}" npm ls --depth=0 2>/dev/null)"
-  for pat in "$EXPECT_EXPRESS" "$EXPECT_RATE_LIMIT" "$EXPECT_GAMEDIG" "$EXPECT_REDIS" "$EXPECT_CONNECT_REDIS"; do
+  for pat in "${deps[@]}"; do
     if printf '%s\n' "$deps_out" | grep -qF "$pat"; then
       pass "dep ${pat}"
     else
@@ -110,8 +129,13 @@ run_block_composition() {
     fi
   done
 
+  if [ "$ROLLBACK_MODE" -eq 1 ]; then
+    note "pulando robustez + graceful shutdown (--rollback)"
+    return
+  fi
+
   local src="${ROOT}/api/index.js"
-  local pats=("err, req, res, next" "process.on('unhandledRejection'" "process.on('uncaughtException'" "SIGTERM" "SIGINT" "server.close")
+  local pats=("err, req, res, next" "process.on('unhandledRejection'" "process.on('uncaughtException'" "SIGTERM" "SIGINT" "srv.close")
   local p
   for p in "${pats[@]}"; do
     if grep -qF "$p" "$src"; then
@@ -121,11 +145,7 @@ run_block_composition() {
     fi
   done
 
-  if [ "$ROLLBACK_MODE" -eq 1 ]; then
-    note "pulando teste de graceful shutdown (--rollback)"
-  else
-    test_graceful_shutdown
-  fi
+  test_graceful_shutdown
 }
 
 test_graceful_shutdown() {
