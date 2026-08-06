@@ -34,7 +34,7 @@ function renderMatches(tbody, rows) {
     const row = document.createElement('tr')
     row.innerHTML = `
       <td>${((matchesPage - 1) * MATCHES_LIMIT) + index + 1}</td>
-      <td><a href="map.html?map=${encodeURIComponent(item.map)}${serverParam()}">${escapeHtml(item.map)}</a></td>
+      <td><a href="/mapa/${encodeURIComponent(item.map)}">${escapeHtml(item.map)}</a></td>
       <td><span class="match-score match-score-t">${item.round_t}</span> : <span class="match-score match-score-ct">${item.round_ct}</span></td>
       <td>${winnerLabel(item)}</td>
       <td>${formatMatchDuration(item.duration_sec)}</td>

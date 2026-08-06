@@ -172,32 +172,32 @@ async function initServerSelector() {
 }
 
 const pageNavItems = [
-  { href: 'index.html', labelKey: 'nav.home' },
-  { href: 'maps.html', labelKey: 'nav.maps' },
-  { href: 'rankings.html', labelKey: 'nav.rankings' },
-  { href: 'advanced.html', labelKey: 'nav.advanced' },
-  { href: 'matches.html', labelKey: 'nav.matches' },
-  { href: 'connect.html', labelKey: 'nav.connect' },
-  { href: 'live.html', labelKey: 'nav.live' },
-  { href: 'admin.html', labelKey: 'nav.admin' },
-  { href: 'system.html', labelKey: 'nav.system' }
+  { path: '/', labelKey: 'nav.home' },
+  { path: '/mapas', labelKey: 'nav.maps' },
+  { path: '/ranking', labelKey: 'nav.rankings' },
+  { path: '/avancadas', labelKey: 'nav.advanced' },
+  { path: '/partidas', labelKey: 'nav.matches' },
+  { path: '/conectar', labelKey: 'nav.connect' },
+  { path: '/ao-vivo', labelKey: 'nav.live' },
+  { path: '/admin', labelKey: 'nav.admin' },
+  { path: '/sistema', labelKey: 'nav.system' }
 ]
 
 function renderPageNav() {
   const containers = document.querySelectorAll('.page-nav')
   if (!containers.length) return
 
-  const currentPage = window.location.pathname.split('/').pop() || 'index.html'
+  const currentPath = window.location.pathname
 
   containers.forEach((container) => {
     container.innerHTML = ''
 
     pageNavItems.forEach((item) => {
       const link = document.createElement('a')
-      link.href = item.href
+      link.href = item.path
       link.textContent = i18nUtils.t(item.labelKey)
 
-      if (item.href.split('/').pop() === currentPage) {
+      if (item.path === currentPath) {
         link.classList.add('active')
         link.setAttribute('aria-current', 'page')
       }
@@ -258,13 +258,12 @@ function applyActiveNav() {
   const links = Array.from(document.querySelectorAll('.page-nav a'))
   if (!links.length) return
 
-  const currentPage = window.location.pathname.split('/').pop() || 'index.html'
+  const currentPath = window.location.pathname
   links.forEach((link) => {
     const href = link.getAttribute('href')
     if (!href) return
 
-    const normalizedHref = href === '' ? 'index.html' : href.split('/').pop()
-    if (normalizedHref === currentPage) {
+    if (href === currentPath) {
       link.classList.add('active')
       link.setAttribute('aria-current', 'page')
     } else {
@@ -431,7 +430,7 @@ async function runPlayerSearch(q, results) {
     } else {
       res.forEach((p) => {
         const link = document.createElement('a')
-        link.href = `player.html?steamid=${encodeURIComponent(p.steamid)}${serverParam()}`
+        link.href = `/jogador/${encodeURIComponent(p.steamid)}`
 
         const name = document.createElement('span')
         name.className = 'sr-name'

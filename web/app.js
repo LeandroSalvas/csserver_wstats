@@ -83,7 +83,7 @@ async function loadTop10() {
       row.className = index === 0 ? 'top1' : index === 1 ? 'top2' : index === 2 ? 'top3' : ''
       row.innerHTML = `
         <td>${index + 1}</td>
-        <td><a href="player.html?steamid=${encodeURIComponent(p.steamid)}${serverParam()}">${escapeHtml(p.name)}</a></td>
+        <td><a href="/jogador/${encodeURIComponent(p.steamid)}">${escapeHtml(p.name)}</a></td>
         <td>${p.kills}</td>
         <td>${p.deaths}</td>
         <td>${p.kd}</td>
@@ -147,7 +147,7 @@ function setCurrentMapLink(mapName) {
     return
   }
   link.textContent = mapName
-  link.href = `map.html?map=${encodeURIComponent(mapName)}${serverParam()}`
+  link.href = `/mapa/${encodeURIComponent(mapName)}`
 }
 
 function refreshAll() {

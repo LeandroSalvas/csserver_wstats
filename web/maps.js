@@ -17,7 +17,7 @@ async function loadMaps() {
       const row = document.createElement('tr')
       row.innerHTML = `
         <td>${i + 1}</td>
-        <td><a href="map.html?map=${encodeURIComponent(m.map)}${serverParam()}">${escapeHtml(m.map)}</a></td>
+        <td><a href="/mapa/${encodeURIComponent(m.map)}">${escapeHtml(m.map)}</a></td>
         <td>${m.snapshots}</td>
       `
       fragment.appendChild(row)

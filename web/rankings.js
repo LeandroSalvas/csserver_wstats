@@ -30,7 +30,7 @@ async function loadRanking(period, page = 1) {
       const row = document.createElement('tr')
       row.innerHTML = `
         <td>${(page - 1) * PAGE_SIZE + i + 1}</td>
-        <td><a href="player.html?steamid=${encodeURIComponent(p.steamid)}${serverParam()}">${escapeHtml(p.name)}</a></td>
+        <td><a href="/jogador/${encodeURIComponent(p.steamid)}">${escapeHtml(p.name)}</a></td>
         <td>${p.kills}</td>
         <td>${p.deaths}</td>
         <td>${p.hs}</td>

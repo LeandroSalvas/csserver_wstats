@@ -107,7 +107,7 @@ function renderAdvancedTable(tableId, rows) {
   const renderers = {
     headshotsTable: (item, index) => `
       <td>${index + 1}</td>
-      <td><a href="player.html?steamid=${encodeURIComponent(item.steamid)}${serverParam()}">${escapeHtml(item.name)}</a></td>
+      <td><a href="/jogador/${encodeURIComponent(item.steamid)}">${escapeHtml(item.name)}</a></td>
       <td>${item.hs}</td>
       <td>${item.kills}</td>
       <td>${item.deaths}</td>
@@ -116,7 +116,7 @@ function renderAdvancedTable(tableId, rows) {
     `,
     accuracyTable: (item, index) => `
       <td>${index + 1}</td>
-      <td><a href="player.html?steamid=${encodeURIComponent(item.steamid)}${serverParam()}">${escapeHtml(item.name)}</a></td>
+      <td><a href="/jogador/${encodeURIComponent(item.steamid)}">${escapeHtml(item.name)}</a></td>
       <td>${formatNum(item.accuracy)}%</td>
       <td>${item.hs}</td>
       <td>${item.kills}</td>
@@ -125,17 +125,17 @@ function renderAdvancedTable(tableId, rows) {
     `,
     streakTable: (item, index) => `
       <td>${index + 1}</td>
-      <td><a href="player.html?steamid=${encodeURIComponent(item.steamid)}${serverParam()}">${escapeHtml(item.name)}</a></td>
+      <td><a href="/jogador/${encodeURIComponent(item.steamid)}">${escapeHtml(item.name)}</a></td>
       <td>${item.streak}</td>
     `,
     skillTable: (item, index) => `
       <td>${index + 1}</td>
-      <td><a href="player.html?steamid=${encodeURIComponent(item.steamid)}${serverParam()}">${escapeHtml(item.name)}</a></td>
+      <td><a href="/jogador/${encodeURIComponent(item.steamid)}">${escapeHtml(item.name)}</a></td>
       <td>${item.skill}</td>
     `,
     kdTable: (item, index) => `
       <td>${index + 1}</td>
-      <td><a href="player.html?steamid=${encodeURIComponent(item.steamid)}${serverParam()}">${escapeHtml(item.name)}</a></td>
+      <td><a href="/jogador/${encodeURIComponent(item.steamid)}">${escapeHtml(item.name)}</a></td>
       <td>${formatNum(item.kd)}</td>
       <td>${item.kills}</td>
       <td>${item.deaths}</td>
@@ -143,7 +143,7 @@ function renderAdvancedTable(tableId, rows) {
     `,
     assistsTable: (item, index) => `
       <td>${index + 1}</td>
-      <td><a href="player.html?steamid=${encodeURIComponent(item.steamid)}${serverParam()}">${escapeHtml(item.name)}</a></td>
+      <td><a href="/jogador/${encodeURIComponent(item.steamid)}">${escapeHtml(item.name)}</a></td>
       <td>${item.assists}</td>
       <td>${item.kills}</td>
       <td>${item.deaths}</td>
@@ -151,7 +151,7 @@ function renderAdvancedTable(tableId, rows) {
     `,
     damageTable: (item, index) => `
       <td>${index + 1}</td>
-      <td><a href="player.html?steamid=${encodeURIComponent(item.steamid)}${serverParam()}">${escapeHtml(item.name)}</a></td>
+      <td><a href="/jogador/${encodeURIComponent(item.steamid)}">${escapeHtml(item.name)}</a></td>
       <td>${item.dmg.toLocaleString('pt-BR')}</td>
       <td>${item.kills}</td>
       <td>${item.deaths}</td>
@@ -159,7 +159,7 @@ function renderAdvancedTable(tableId, rows) {
     `,
     tkTable: (item, index) => `
       <td>${index + 1}</td>
-      <td><a href="player.html?steamid=${encodeURIComponent(item.steamid)}${serverParam()}">${escapeHtml(item.name)}</a></td>
+      <td><a href="/jogador/${encodeURIComponent(item.steamid)}">${escapeHtml(item.name)}</a></td>
       <td>${item.tks}</td>
       <td>${item.kills}</td>
       <td>${item.deaths}</td>
@@ -167,7 +167,7 @@ function renderAdvancedTable(tableId, rows) {
     `,
     bombTable: (item, index) => `
       <td>${index + 1}</td>
-      <td><a href="player.html?steamid=${encodeURIComponent(item.steamid)}${serverParam()}">${escapeHtml(item.name)}</a></td>
+      <td><a href="/jogador/${encodeURIComponent(item.steamid)}">${escapeHtml(item.name)}</a></td>
       <td>${item.bombplants}</td>
       <td>${item.bombdefused}</td>
       <td>${item.bombdef}</td>
@@ -176,7 +176,7 @@ function renderAdvancedTable(tableId, rows) {
     `,
     connectTimeTable: (item, index) => `
       <td>${index + 1}</td>
-      <td><a href="player.html?steamid=${encodeURIComponent(item.steamid)}${serverParam()}">${escapeHtml(item.name)}</a></td>
+      <td><a href="/jogador/${encodeURIComponent(item.steamid)}">${escapeHtml(item.name)}</a></td>
       <td>${formatHours(item.connection_time)}</td>
       <td>${item.connects}</td>
       <td>${item.kills}</td>

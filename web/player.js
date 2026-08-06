@@ -1,5 +1,6 @@
+const pathMatch = window.location.pathname.match(/^\/jogador\/(.+)$/)
 const params = new URLSearchParams(window.location.search)
-const steamid = params.get('steamid')
+const steamid = params.get('steamid') || (pathMatch ? decodeURIComponent(pathMatch[1]) : null)
 const serverFromUrl = params.get('server')
 if (serverFromUrl) setSelectedServer(serverFromUrl)
 
@@ -193,7 +194,7 @@ async function loadLastMap() {
   const el = document.getElementById('lastMap')
   if (!el) return
   if (data?.map) {
-    el.innerHTML = `<a href="map.html?map=${encodeURIComponent(data.map)}${serverParam()}">${escapeHtml(data.map)}</a>`
+    el.innerHTML = `<a href="/mapa/${encodeURIComponent(data.map)}">${escapeHtml(data.map)}</a>`
   } else {
     el.innerText = '-'
   }
