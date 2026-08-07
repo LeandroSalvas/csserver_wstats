@@ -1,0 +1,65 @@
+# Stack do espectador web (WebRTC) — OPT-IN: só sobe com `--profile watch`
+# (ver scripts/watch.sh). O stack principal (docker compose up / servers.sh up)
+# não inclui estes serviços.
+services:
+  # Proxy WebRTC->UDP: serve a página do espectador e faz a ponte para o relay
+  # HLTV. Rede host: anuncia o IP da LAN como ICE host candidate (espectadores
+  # da mesma LAN conectam direto, sem hairpin NAT) e resolve os candidatos
+  # mDNS ".local" do browser pela LAN.
+  watch-main:
+    build: ./watch/webxash3d-proxy
+    image: csserver_wstats-watch-main
+    container_name: cs16-watch-main
+    restart: unless-stopped
+    profiles: ["watch"]
+    depends_on:
+      - cs16
+    network_mode: host
+    environment:
+      # O espectador conecta no relay HLTV (WATCH_HLTV_PORT), que por sua vez
+      # conecta no servidor de jogo (porta host 27015, fixa do servidor primário).
+      GAME_SERVER: "127.0.0.1:${WATCH_HLTV_PORT:-27020}"
+      LISTEN_HOST: "0.0.0.0"
+      LISTEN_PORT: "${WATCH_LISTEN_PORT:-27018}"
+      PUBLIC_IP: "${WATCH_PUBLIC_IP}"
+      PACKAGE_ZIP: "${WATCH_PACKAGE_ZIP:-/valve/valve.zip}"
+      UDP_PORT_RANGE: "${WATCH_UDP_PORT_RANGE:-27019-27050}"
+      CONSOLE_COMMANDS: "${WATCH_CONSOLE_COMMANDS:-spec_autodirector 1}"
+    command: ["-v"]
+    healthcheck:
+      test: ["CMD-SHELL", "wget --no-verbose --tries=1 --spider http://127.0.0.1:${WATCH_LISTEN_PORT:-27018}/health || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 15s
+    ulimits:
+      nofile:
+        soft: 65535
+        hard: 65535
+    volumes:
+      # Assets proprietários do Half-Life (zona cinzenta legal) — fora do repo
+      - ./valve/valve.zip:/valve/valve.zip:ro
+
+  # Relay HLTV entre o servidor de jogo (27015) e o espectador no browser.
+  # O proxy watch-main aponta para este relay. Usa a mesma imagem do servidor
+  # (hltv + proxy.so + libs steam em /home/cs16).
+  watch-hltv:
+    image: cs16_stats:local
+    container_name: cs16-watch-hltv
+    restart: unless-stopped
+    profiles: ["watch"]
+    network_mode: host
+    environment:
+      LD_LIBRARY_PATH: "/home/cs16"
+    volumes:
+      - ./config/watch/hltv.cfg:/home/cs16/hltv.cfg:ro
+      - ./config/watch/start-hltv.sh:/home/cs16/start-hltv.sh:ro
+      # Logs do relay + last_hltv_crash.txt persistidos fora do container
+      - ./live/watch:/home/cs16/watch_logs
+    entrypoint: ["/home/cs16/start-hltv.sh"]
+    healthcheck:
+      test: ["CMD-SHELL", "test -s /home/cs16/hltv.pid && kill -0 $(cat /home/cs16/hltv.pid) 2>/dev/null || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
