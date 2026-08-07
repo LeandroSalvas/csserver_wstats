@@ -1,0 +1,3 @@
+[submodule "watch/webxash3d-proxy"]
+	path = watch/webxash3d-proxy
+	url = git@github.com:LeandroSalvas/webxash3d-proxy.git
