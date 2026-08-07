@@ -40,7 +40,10 @@ require_public_ip() {
 cmd_up() {
   require_public_ip || return 1
   [ -f "${ROOT}/valve/valve.zip" ] || { err "Faltando valve/valve.zip (assets do Half-Life). Veja 'watch.sh backup/restore'."; return 1; }
-  compose_watch up -d --build
+  # Build explícito só do proxy (sem --build no up, para não reconstruir o
+  # cs16 e reiniciar o servidor de jogo).
+  compose_watch build watch-main
+  compose_watch up -d watch-main watch-hltv
 }
 
 cmd_down() {
