@@ -18,6 +18,10 @@ const API = '/api'
 const SERVER_HOST = 'zueiracstrike.duckdns.org'
 const SERVER_PORT = '27015'
 
+// URL pública do espectador web (WebRTC) — editado aqui
+// Exposto via swag em TLS dedicado (zueiracstrike-watch.subdomain.conf)
+const SPECTATOR_URL = 'https://zueiracstrike.duckdns.org:4445/'
+
 function escapeHtml(s) {
   return String(s ?? '')
     .replace(/&/g, '&amp;')
@@ -323,6 +327,12 @@ function exportTableCsv(table, filename) {
   URL.revokeObjectURL(url)
 }
 
+function initWatchLink() {
+  document.querySelectorAll('[data-watch-link]').forEach((el) => {
+    el.href = SPECTATOR_URL
+  })
+}
+
 function initCommon() {
   i18nUtils.init()
   document.querySelectorAll('.status-message').forEach((el) => el.setAttribute('aria-live', 'polite'))
@@ -331,6 +341,7 @@ function initCommon() {
   renderLanguageToggle()
   applyActiveNav()
   initConnectPage()
+  initWatchLink()
   initPlayerSearch()
   initServerSelector()
 }
