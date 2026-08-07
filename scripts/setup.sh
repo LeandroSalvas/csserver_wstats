@@ -83,6 +83,34 @@ ask() {
   printf -v "$var" '%s' "${_ans:-$def}"
 }
 
+# Menu de seleção entre opções pré-definidas (aceita o número da opção ou o valor).
+select_option() {
+  local msg="$1" def="$2" var="$3"; shift 3
+  local opts=("$@") i ans
+  if [ "$YES_MODE" -eq 1 ]; then
+    printf -v "$var" '%s' "$def"
+    return 0
+  fi
+  info ""
+  info "${msg}"
+  for i in "${!opts[@]}"; do
+    info "  $((i + 1)). ${opts[$i]}"
+  done
+  while :; do
+    read -r -p "Escolha (1-${#opts[@]}, default ${def}): " ans
+    ans="${ans:-$def}"
+    if [[ "$ans" =~ ^[0-9]+$ ]] && [ "$ans" -ge 1 ] && [ "$ans" -le "${#opts[@]}" ]; then
+      printf -v "$var" '%s' "${opts[$((ans - 1))]}"
+      return 0
+    fi
+    if [[ "$ans" =~ ^[0-9]+$ ]] && is_in_array "$ans" "${opts[@]}"; then
+      printf -v "$var" '%s' "$ans"
+      return 0
+    fi
+    err "Opção inválida: '$ans'"
+  done
+}
+
 # Lista os mapas disponíveis na imagem (home/cs16/cstrike/maps/*.bsp).
 # Fallback: mapas de config/mapcycle.txt (rotação curada, garantidamente instalados).
 get_available_maps() {
@@ -204,8 +232,7 @@ prompt_new_server() {
   done
   ask "Mapa inicial do servidor #${idx}" "de_dust2" map
   [[ "$map" =~ ^[a-z0-9_]+$ ]] || { err "Nome de mapa inválido: '${map}' (use letras minúsculas, números e _)."; return 1; }
-  ask "Slots do servidor #${idx}" "32" slots
-  [[ "$slots" =~ ^[0-9]+$ ]] && [ "$slots" -ge 1 ] && [ "$slots" -le 64 ] || { err "Slots inválidos: '${slots}' (1-64)."; return 1; }
+  select_option "Slots (vagas visíveis) do servidor #${idx} — 1 slot extra é reservado ao HLTV" "32" slots 8 16 24 32
 
   if is_in_array "$port" "${NEW_PORTS[@]}"; then
     err "Aviso: porta ${port} já usada por outro servidor desta lista."
@@ -314,6 +341,8 @@ write_list() {
     echo "# Lista de servidores CS 1.6 gerenciados pelo docker-compose."
     echo "# Formato: id hostname host_port map maxplayers rotate"
     echo "# - A primeira linha é o servidor primário (id \"main\"), usado por snapshots/rankings e partidas."
+    echo "# - maxplayers = vagas VISÍVEIS (par: 8/16/24/32); o maxplayers real é esse valor + 1 (slot reservado ao HLTV)."
+    echo "#   No teto 32 o +1 não é possível (CS 1.6 aceita no máx. 32) — o slot do HLTV é garantido pelo plugin slots_reserve."
     echo "# - host_port é a porta publicada no host (mapeada para a porta interna 27015 do container)."
     echo "# - rotate: yes = rotação de mapas (lista em config/servers/<id>/mapcycle.txt); no = só o mapa escolhido."
     echo "# - Edite à mão e rode: scripts/servers.sh up  — ou use scripts/setup.sh (interativo)."

@@ -15,7 +15,7 @@ services:
     environment:
       PORT: "27015"
       MAP: "fy_pool_day"
-      MAXPLAYERS: "8"
+      MAXPLAYERS: "9"
       SERVER_ID: "fypooldayonly"
     ports:
       - "27016:27015/udp"
@@ -32,6 +32,7 @@ services:
       - ./cs/plugins/live_scoreboard.amxx:/home/cs16/cstrike/addons/amxmodx/plugins/live_scoreboard.amxx
       - ./cs/plugins/live_killfeed.amxx:/home/cs16/cstrike/addons/amxmodx/plugins/live_killfeed.amxx
       - ./cs/plugins/csstatsx_sql.amxx:/home/cs16/cstrike/addons/amxmodx/plugins/csstatsx_sql.amxx
+      - ./cs/plugins/slots_reserve.amxx:/home/cs16/cstrike/addons/amxmodx/plugins/slots_reserve.amxx
       - ./live/fypooldayonly/live_scoreboard.json:/home/cs16/cstrike/addons/amxmodx/data/live/live_scoreboard.json
       - ./live/fypooldayonly/live_killfeed.json:/home/cs16/cstrike/addons/amxmodx/data/live/live_killfeed.json
   cs16zueira2:
@@ -40,7 +41,7 @@ services:
     environment:
       PORT: "27015"
       MAP: "de_dust"
-      MAXPLAYERS: "16"
+      MAXPLAYERS: "17"
       SERVER_ID: "zueira2"
     ports:
       - "27017:27015/udp"
@@ -57,6 +58,7 @@ services:
       - ./cs/plugins/live_scoreboard.amxx:/home/cs16/cstrike/addons/amxmodx/plugins/live_scoreboard.amxx
       - ./cs/plugins/live_killfeed.amxx:/home/cs16/cstrike/addons/amxmodx/plugins/live_killfeed.amxx
       - ./cs/plugins/csstatsx_sql.amxx:/home/cs16/cstrike/addons/amxmodx/plugins/csstatsx_sql.amxx
+      - ./cs/plugins/slots_reserve.amxx:/home/cs16/cstrike/addons/amxmodx/plugins/slots_reserve.amxx
       - ./live/zueira2/live_scoreboard.json:/home/cs16/cstrike/addons/amxmodx/data/live/live_scoreboard.json
       - ./live/zueira2/live_killfeed.json:/home/cs16/cstrike/addons/amxmodx/data/live/live_killfeed.json
   api:

@@ -1,6 +1,9 @@
 # Lista de servidores CS 1.6 gerenciados pelo docker-compose.
 # Formato: id hostname host_port map maxplayers rotate
 # - A primeira linha é o servidor primário (id "main"), usado por snapshots/rankings e partidas.
+# - maxplayers = vagas VISÍVEIS (par: 8/16/24/32); o maxplayers real é esse valor + 1
+#   (slot reservado ao HLTV), exceto no teto 32 (CS 1.6 não aceita +maxplayers 33 —
+#   lá o slot do HLTV é garantido pelo plugin slots_reserve).
 # - host_port é a porta publicada no host (mapeada para a porta interna 27015 do container).
 # - rotate: yes = rotação de mapas (lista em config/servers/<id>/mapcycle.txt); no = só o mapa escolhido.
 # - Edite à mão e rode: scripts/servers.sh up  — ou use scripts/setup.sh (interativo).

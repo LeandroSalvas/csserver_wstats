@@ -9,6 +9,9 @@ services:
       # Todos os containers usam a porta interna 27015; o publish no host fica no ports.
       PORT: "27015"
       MAP: "de_dust2"
+      # CS 1.6 limita +maxplayers em 32: numa sala de 32 não existe slot oculto
+      # (+1); o slot do HLTV é garantido pelo plugin slots_reserve (que barra o
+      # 32º ocupante não-HLTV). sv_visiblemaxplayers 32 == maxplayers real (no-op).
       MAXPLAYERS: "32"
       SERVER_ID: "main"
     volumes:
@@ -23,6 +26,7 @@ services:
       - ./cs/plugins/live_scoreboard.amxx:/home/cs16/cstrike/addons/amxmodx/plugins/live_scoreboard.amxx
       - ./cs/plugins/live_killfeed.amxx:/home/cs16/cstrike/addons/amxmodx/plugins/live_killfeed.amxx
       - ./cs/plugins/csstatsx_sql.amxx:/home/cs16/cstrike/addons/amxmodx/plugins/csstatsx_sql.amxx
+      - ./cs/plugins/slots_reserve.amxx:/home/cs16/cstrike/addons/amxmodx/plugins/slots_reserve.amxx
 
     ports:
       - "27015:27015/udp"

@@ -67,6 +67,12 @@ cmd_init() {
 
     valid_id "$id" || { err "id inválido em servers.list: '$id' (use apenas a-z0-9, _ e -)."; return 1; }
 
+    # vagas visíveis devem ser par (CS 1.6 aceita no máximo 32) — o compose soma +1 (reserva do HLTV)
+    if ! [[ "$maxplayers" =~ ^[0-9]+$ ]] || [ $((maxplayers % 2)) -ne 0 ] || [ "$maxplayers" -lt 2 ] || [ "$maxplayers" -gt 32 ]; then
+      err "Slots visíveis inválidos em servers.list para '$id': '$maxplayers' (use par entre 2 e 32)."
+      return 1
+    fi
+
     mkdir -p "${ROOT}/config/servers/${id}"
     mkdir -p "${ROOT}/live/${id}"
 
@@ -74,6 +80,7 @@ cmd_init() {
     if [ ! -f "$out" ]; then
       sed -e "s|__HOSTNAME__|${name}|g" -e "s|__RCON_PASSWORD__|${rcon_pass}|g" \
         -e "s|__SERVER_ID__|${id}|g" -e "s|__RANKBOTS__|0|g" \
+        -e "s|__VISIBLE_MAXPLAYERS__|${maxplayers}|g" \
         "${TEMPLATE_CFG}" > "$out"
       ok "gerado ${out}"
       changed=1
@@ -176,6 +183,17 @@ cmd_compose() {
   fi
 
   local out="${ROOT}/${OVERRIDE}"
+
+  # +maxplayers = vagas visíveis + 1 (slot reservado ao HLTV), com teto 32:
+  # o engine CS 1.6 não aceita +maxplayers acima de 32 (33 reverte para 32).
+  calc_max() {
+    if [ "$(( $1 + 1 ))" -gt 32 ]; then
+      printf '32'
+    else
+      printf '%s' "$(( $1 + 1 ))"
+    fi
+  }
+
   {
     echo "# Gerado por scripts/servers.sh compose — não edite manualmente."
     echo "# Consulte config/servers.list para alterar os servidores."
@@ -188,7 +206,7 @@ cmd_compose() {
     echo "    environment:"
     echo '      PORT: "27015"'
     echo "      MAP: \"${maps[0]}\""
-    echo "      MAXPLAYERS: \"${maxps[0]}\""
+    echo "      MAXPLAYERS: \"$(calc_max "${maxps[0]}")\""
     echo "      SERVER_ID: \"${ids[0]}\""
 
     # --- Servidores adicionais ---
@@ -202,7 +220,7 @@ cmd_compose() {
       echo "    environment:"
       echo '      PORT: "27015"'
       echo "      MAP: \"${maps[$i]}\""
-      echo "      MAXPLAYERS: \"${maxps[$i]}\""
+      echo "      MAXPLAYERS: \"$(calc_max "${maxps[$i]}")\""
       echo "      SERVER_ID: \"${ids[$i]}\""
       echo "    ports:"
       echo "      - \"${ports[$i]}:27015/udp\""
@@ -219,6 +237,7 @@ cmd_compose() {
       echo "      - ./cs/plugins/live_scoreboard.amxx:/home/cs16/cstrike/addons/amxmodx/plugins/live_scoreboard.amxx"
       echo "      - ./cs/plugins/live_killfeed.amxx:/home/cs16/cstrike/addons/amxmodx/plugins/live_killfeed.amxx"
       echo "      - ./cs/plugins/csstatsx_sql.amxx:/home/cs16/cstrike/addons/amxmodx/plugins/csstatsx_sql.amxx"
+      echo "      - ./cs/plugins/slots_reserve.amxx:/home/cs16/cstrike/addons/amxmodx/plugins/slots_reserve.amxx"
       echo "      - ./live/${ids[$i]}/live_scoreboard.json:/home/cs16/cstrike/addons/amxmodx/data/live/live_scoreboard.json"
       echo "      - ./live/${ids[$i]}/live_killfeed.json:/home/cs16/cstrike/addons/amxmodx/data/live/live_killfeed.json"
     done
