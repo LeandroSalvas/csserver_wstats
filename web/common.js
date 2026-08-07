@@ -183,6 +183,7 @@ const pageNavItems = [
   { path: '/partidas', labelKey: 'nav.matches' },
   { path: '/conectar', labelKey: 'nav.connect' },
   { path: '/ao-vivo', labelKey: 'nav.live' },
+  { path: '/cstv', labelKey: 'nav.cstv' },
   { path: '/admin', labelKey: 'nav.admin' },
   { path: '/sistema', labelKey: 'nav.system' }
 ]
@@ -330,6 +331,9 @@ function exportTableCsv(table, filename) {
 function initWatchLink() {
   document.querySelectorAll('[data-watch-link]').forEach((el) => {
     el.href = SPECTATOR_URL
+  })
+  document.querySelectorAll('[data-spectator-frame]').forEach((el) => {
+    el.src = SPECTATOR_URL
   })
 }
 

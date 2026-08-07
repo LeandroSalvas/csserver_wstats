@@ -1,0 +1,39 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title data-i18n="cstv.title">CSTV - CS 1.6</title>
+  <link rel="icon" type="image/svg+xml" href="favicon.svg">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+  <div class="container">
+    <div class="header">
+      <h1>📹 <span data-i18n="cstv.title">CSTV</span></h1>
+      <div class="lang-toggle-slot"></div>
+    </div>
+
+    <div class="page-nav"></div>
+
+    <div id="statusMessage" class="status-message"></div>
+
+    <div class="card">
+      <div class="card-header">
+        <h2 data-i18n="cstv.watch">Assista a partida ao vivo</h2>
+        <a class="button" data-watch-link href="#" target="_blank" rel="noopener" data-i18n="server.watchLaunch">Abrir espectador (browser)</a>
+      </div>
+      <iframe class="spectator-frame" data-spectator-frame
+        title="CSTV"
+        allow="autoplay; fullscreen; microphone; camera"
+        referrerpolicy="no-referrer"></iframe>
+      <p class="spectator-hint" data-i18n="cstv.hint">Câmera automática. Clique no vídeo para usar teclado e mouse.</p>
+    </div>
+
+  </div>
+
+  <script src="i18n/translations.js" defer></script>
+  <script src="common.js" defer></script>
+</body>
+</html>

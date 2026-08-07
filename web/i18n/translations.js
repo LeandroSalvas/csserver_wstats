@@ -8,6 +8,7 @@ const i18n = {
       matches: '🎮 Partidas',
       connect: '🔗 Conectar',
       live: '📡 Live Match',
+      cstv: '📹 CSTV',
       admin: '🛠️ Painel RCON',
       system: '🛡️ Sistema',
       search: 'Buscar jogador...'
@@ -209,6 +210,11 @@ const i18n = {
       killFeed: '🔫 Kill Feed',
       score: 'Placar'
     },
+    cstv: {
+      title: 'CSTV',
+      watch: 'Assista a partida ao vivo',
+      hint: 'Câmera automática. Clique no vídeo para usar teclado e mouse.'
+    },
     player: {
       title: 'Player Stats',
       steamid: 'SteamID',
@@ -306,6 +312,7 @@ const i18n = {
       matches: '🎮 Matches',
       connect: '🔗 Connect',
       live: '📡 Live Match',
+      cstv: '📹 CSTV',
       admin: '🛠️ RCON Panel',
       system: '🛡️ System',
       search: 'Search player...'
@@ -503,6 +510,11 @@ const i18n = {
       dead: 'Dead',
       killFeed: '🔫 Kill Feed',
       score: 'Score'
+    },
+    cstv: {
+      title: 'CSTV',
+      watch: 'Watch the live match',
+      hint: 'Automatic camera. Click the video to use keyboard and mouse.'
     },
     player: {
       title: 'Player Stats',

@@ -1634,3 +1634,20 @@ select:focus {
     animation: none !important;
   }
 }
+
+/* Espectador CSTV embutido (página /cstv) */
+.spectator-frame {
+  display: block;
+  width: 100%;
+  aspect-ratio: 16 / 9;
+  border: 0;
+  border-radius: 10px;
+  background: #000;
+}
+
+.spectator-hint {
+  margin-top: 10px;
+  margin-bottom: 0;
+  color: var(--text-muted, #aa9c94);
+  font-size: 0.9rem;
+}
