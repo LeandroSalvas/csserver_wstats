@@ -30,17 +30,7 @@ compose_watch() {
   (cd "${ROOT}" && docker compose ${WATCH_COMPOSE} --profile watch "$@")
 }
 
-require_public_ip() {
-  local v
-  v="$(grep -E '^WATCH_PUBLIC_IP=' "${ROOT}/.env" 2>/dev/null | head -1 | cut -d= -f2- | tr -d '"' | tr -d "'")"
-  if [ -z "${v:-}" ]; then
-    err "WATCH_PUBLIC_IP não definido no .env (IP público para os ICE candidates do WebRTC)."
-    return 1
-  fi
-}
-
 cmd_up() {
-  require_public_ip || return 1
   [ -f "${ROOT}/valve/valve.zip" ] || { err "Faltando valve/valve.zip (assets do Half-Life). Veja 'watch.sh backup/restore'."; return 1; }
   # Build explícito só do proxy (sem --build no up, para não reconstruir o
   # cs16 e reiniciar o servidor de jogo).
