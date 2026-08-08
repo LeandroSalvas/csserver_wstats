@@ -10,6 +10,8 @@
 #   watch.sh restart        Reinicia os serviços do espectador
 #   watch.sh backup [dest]  Copia valve/valve.zip para backup (default ./backups/)
 #   watch.sh restore <zip>  Restaura valve/valve.zip a partir de um backup
+#   watch.sh mudo           Verifica uma vez se o relay HLTV está mudo e reinicia
+#                           (para cron/teste; ver scripts/watch-mudo.sh)
 #
 # O stack principal (servers.sh up / docker compose up) NÃO sobe o espectador:
 # os serviços usam o profile "watch" e exigem --profile watch explícito.
@@ -111,5 +113,6 @@ case "${cmd}" in
   restart)   shift; cmd_restart "$@" ;;
   backup)    shift; cmd_backup "$@" ;;
   restore)   shift; cmd_restore "$@" ;;
+  mudo)      shift; exec "${SCRIPT_DIR}/watch-mudo.sh" "$@" ;;
   *)         sed -n '2,16p' "$0" | sed 's/^# //'; exit 1 ;;
 esac
