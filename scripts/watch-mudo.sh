@@ -1,32 +1,36 @@
 #!/bin/bash
-# watch-mudo.sh — recupera o relay HLTV quando ele fica "mudo" (processo vivo e
-# conectado ao servidor de jogo, mas sem repassar dados ao espectador). Causa
-# raiz conhecida (PATCHES.md §8), recorrente em rotação de mapas. Rode a cada
-# minuto via cron:
+# watch-mudo.sh — recupera o relay HLTV quando ele fica "mudo"/degradado
+# (processo vivo e conectado ao servidor de jogo, mas sem repassar stream
+# utilizável ao espectador). Causa raiz conhecida (PATCHES.md §8), recorrente em
+# rotação de mapas. Rode a cada minuto via cron:
 #
 #   * * * * * /home/salvas/csserver_wstats/scripts/watch-mudo.sh
 #
-# Detecção: o proxy (watch-main) derruba a bridge quando o upstream fica mudo —
-# "HLTV upstream stalled: no UDP data, tearing down bridge" (IDLE_TIMEOUT=25s no
-# bridge.rs). Isso só acontece com um browser conectado (a bridge existe por
-# cliente WebRTC). Exigimos ainda que NÃO haja "recving" recente (se o stream
-# voltou sozinho, não age).
+# Detecção (proxy watch-main, log "recving N bytes" por pacote UDP):
+#   - Saudável: pacotes de jogo (tamanho != 48) a ~10-20/s.
+#   - Mudo/degradado: só keepalives de 48 bytes (ou silêncio total, ou um
+#     gotejar de ~0.3-0.5/s). O keepalive do HLTV é exatamente 48 bytes a cada
+#     ~2s e reseta o teardown de idle do proxy, então nem "HLTV upstream
+#     stalled" nem a taxa total separam mudo de saudável — a contagem de
+#     pacotes != 48 separa (margem enorme: 16/s vs 0.5/s).
 #
-# Recuperação: kick do HLTV no servidor de jogo via RCON (a menos disruptiva —
-# o relay reconecta sozinho em ~20s). Docker restart NÃO resolve (comprovado:
-# o relay reiniciou e continuou mudo); o kick força o handshake netchan novo.
+# Só age se alguém esteve assistindo recentemente (bridge WebRTC aberta nos
+# últimos 10 min). Recuperação: kick do HLTV via RCON (a menos disruptiva — o
+# relay reconecta sozinho em ~20s e o handshake netchan novo volta a fluir).
+# Docker restart NÃO resolve (comprovado: o relay reiniciou e continuou mudo).
 # Se o kick falhar (relay sem conexão de jogo / RCON indisponível), escala para
-# restart do container.
+# restart do container. Falso positivo é inofensivo (blip de ~20s).
 
 set -uo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 ROOT="$(cd "${SCRIPT_DIR}/.." && pwd)"
 
-STALE_S="${STALE_S:-90}"                        # janela do evento "upstream stalled"
-FRESH_S="${FRESH_S:-30}"                        # stream deve estar parado nos últimos FRESH_S
-RESTART_COOLDOWN_S="${RESTART_COOLDOWN_S:-300}" # evita ações em cascata
-SERVERS_ID="${SERVERS_ID:-main}"                # servidor primário (host 27015)
+WINDOW_S="${WINDOW_S:-90}"                       # janela de amostragem do stream
+GAME_PKT_MIN="${GAME_PKT_MIN:-45}"               # min. de pacotes de jogo (≠48B) na janela (≈0.5/s)
+BRIDGE_LOOKBACK_S="${BRIDGE_LOOKBACK_S:-600}"    # alguém assistiu nos últimos N s?
+RESTART_COOLDOWN_S="${RESTART_COOLDOWN_S:-300}"  # evita ações em cascata
+SERVERS_ID="${SERVERS_ID:-main}"                 # servidor primário (host 27015)
 PROXY="cs16-watch-main"
 RELAY="cs16-watch-hltv"
 LOG="${ROOT}/live/watch/mudo.log"
@@ -48,14 +52,15 @@ if [ -n "$last_action" ] && [ $(( $(now_s) - last_action )) -lt "$RESTART_COOLDO
   exit 0
 fi
 
-# 1) A bridge foi derrubada por upstream parado (mudo) nos últimos STALE_S?
-stalled="$(docker logs --since "${STALE_S}s" "$PROXY" 2>&1 | grep -c "HLTV upstream stalled" || true)"
-[ "$stalled" -eq 0 ] && exit 0
+# Alguém assistiu recentemente? Sem bridge WebRTC aberta não há o que recuperar.
+bridges="$(docker logs --since "${BRIDGE_LOOKBACK_S}s" "$PROXY" 2>&1 | grep -c "Both channels open, starting bridge" || true)"
+[ "$bridges" -eq 0 ] && exit 0
 
-# 2) E o stream continua parado agora? Se voltou, não age.
-fresh="$(docker logs --since "${FRESH_S}s" "$PROXY" 2>&1 | grep -c "recving" || true)"
-[ "$fresh" -gt 0 ] && exit 0
+# Pacotes de jogo (≠48B) na janela? Se suficientes, o stream está saudável.
+game_pkts="$(docker logs --since "${WINDOW_S}s" "$PROXY" 2>&1 | grep -oE "recving [0-9]+" | awk '$2 != 48 {n++} END {print n+0}')"
+[ "$game_pkts" -ge "$GAME_PKT_MIN" ] && exit 0
 
+total="$(docker logs --since "${WINDOW_S}s" "$PROXY" 2>&1 | grep -c "recving" || true)"
 count=$(( $(cat "$COUNT_FILE" 2>/dev/null || echo 0) + 1 ))
 echo "$count" > "$COUNT_FILE"
 if [ "$count" -ge 3 ]; then
@@ -63,7 +68,7 @@ if [ "$count" -ge 3 ]; then
 fi
 
 echo "$(now_s)" > "$LAST_ACTION"
-log "RELAY MUDO (${stalled}x 'HLTV upstream stalled' em ${STALE_S}s) — kickando ZueiraHLTV no servidor ${SERVERS_ID}"
+log "RELAY MUDO (${game_pkts} pacotes de jogo em ${WINDOW_S}s; total ${total}) — kickando ZueiraHLTV no servidor ${SERVERS_ID}"
 kick_out="$("${SCRIPT_DIR}/servers.sh" rcon "${SERVERS_ID}" "kick ZueiraHLTV" 2>&1 | tr -d '\000')"
 if printf '%s' "$kick_out" | grep -q "was kicked"; then
   log "kick ok: relay reconectando (ZueiraHLTV)"
