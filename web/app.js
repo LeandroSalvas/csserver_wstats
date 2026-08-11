@@ -138,6 +138,64 @@ async function loadServer() {
   }
 }
 
+function formatMatchDuration(seconds) {
+  const total = Number(seconds) || 0
+  if (total <= 0) return '-'
+  const minutes = Math.floor(total / 60)
+  const secs = total % 60
+  return `${minutes}m ${secs}s`
+}
+
+function formatMatchDate(value) {
+  if (!value) return '-'
+  const date = new Date(value)
+  if (Number.isNaN(date.getTime())) return String(value)
+  return date.toLocaleString(i18nUtils.currentLang === 'pt' ? 'pt-BR' : 'en-GB')
+}
+
+function lastMatchWinnerLabel(item) {
+  if (item.winner === 'T') return '<span class="winner-t">T</span>'
+  if (item.winner === 'CT') return '<span class="winner-ct">CT</span>'
+  return `<span class="winner-draw">${escapeHtml(i18nUtils.t('matches.draw'))}</span>`
+}
+
+async function loadLastMatch() {
+  const content = document.getElementById('lastMatchContent')
+  const empty = document.getElementById('lastMatchEmpty')
+  if (!content || !empty) return
+
+  try {
+    const m = await fetchJson(`/matches/latest${serverQuery()}`)
+
+    if (!m) {
+      content.hidden = true
+      empty.hidden = false
+      empty.textContent = i18nUtils.t('match.noMatches')
+      return
+    }
+
+    empty.hidden = true
+    content.hidden = false
+
+    const mapLink = document.getElementById('lastMatchMap')
+    mapLink.textContent = m.map
+    mapLink.href = `/partida/${m.id}`
+    mapLink.title = i18nUtils.t('matches.details')
+
+    document.getElementById('lastMatchT').textContent = m.round_t
+    document.getElementById('lastMatchCT').textContent = m.round_ct
+    document.getElementById('lastMatchWinner').innerHTML = lastMatchWinnerLabel(m)
+    document.getElementById('lastMatchDuration').textContent = formatMatchDuration(m.duration_sec)
+    document.getElementById('lastMatchDate').textContent = formatMatchDate(m.ended_at)
+    document.getElementById('lastMatchServer').textContent = m.server || 'main'
+  } catch (err) {
+    console.error('Erro ao carregar última partida:', err)
+    content.hidden = true
+    empty.hidden = false
+    empty.textContent = i18nUtils.t('errors.loadFailed')
+  }
+}
+
 function setCurrentMapLink(mapName) {
   const link = document.getElementById('currentMapLink')
   if (!link) return
@@ -156,6 +214,7 @@ function refreshAll() {
   loadStats()
   loadServer()
   loadSystemStatus()
+  loadLastMatch()
 }
 
 let focusDebounceTimer = null
@@ -173,4 +232,5 @@ document.addEventListener('server-change', () => {
   loadTop10()
   loadStats()
   loadServer()
+  loadLastMatch()
 })

@@ -9,6 +9,7 @@ const i18n = {
       connect: '🔗 Conectar',
       live: '📡 Live Match',
       cstv: '📹 CSTV',
+      duel: '⚔️ Duelo',
       admin: '🛠️ Painel RCON',
       system: '🛡️ Sistema',
       search: 'Buscar jogador...'
@@ -122,7 +123,13 @@ const i18n = {
       noPlayersThisTeam: 'Nenhum jogador neste time',
       noRecentKills: 'Nenhuma kill recente',
       viewFullRanking: 'Ver ranking completo',
-      watchLive: 'Ver partida ao vivo'
+      watchLive: 'Ver partida ao vivo',
+      rounds: 'Rounds',
+      roundsT: 'Rounds T',
+      roundsCT: 'Rounds CT',
+      winrate: 'Winrate',
+      winrateT: 'Winrate T',
+      winrateCT: 'Winrate CT'
     },
     admin: {
       title: 'Painel RCON',
@@ -224,7 +231,24 @@ const i18n = {
       groupCombat: 'Combate',
       groupBomb: 'Bomba',
       groupTime: 'Tempo',
-      chartUnavailable: 'Gráfico indisponível neste momento.'
+      chartUnavailable: 'Gráfico indisponível neste momento.',
+      duelButton: '⚔️ Duelar'
+    },
+    duel: {
+      title: 'Duelo de Players',
+      searchA: 'Buscar jogador A...',
+      searchB: 'Buscar jogador B...',
+      swap: '⇄ Trocar',
+      copyLink: '🔗 Copiar link',
+      copied: 'Link copiado!',
+      empty: 'Digite o nome de dois jogadores para comparar.',
+      notFound: 'Jogador não encontrado.',
+      vs: 'VS',
+      combatTitle: 'Comparação de combate',
+      playerA: 'Jogador A',
+      playerB: 'Jogador B',
+      stat: 'Estatística',
+      noData: 'Sem dados para comparar.'
     },
     cmd: {
       status: 'Mostra status do servidor',
@@ -299,7 +323,27 @@ const i18n = {
       winner: 'Vencedor',
       duration: 'Duração',
       endedAt: 'Fim',
-      draw: 'Empate'
+      draw: 'Empate',
+      details: 'Detalhes'
+    },
+    match: {
+      title: 'Detalhes da Partida',
+      back: '← Voltar às partidas',
+      map: 'Mapa',
+      date: 'Data',
+      duration: 'Duração',
+      score: 'Placar',
+      winner: 'Vencedor',
+      server: 'Servidor',
+      players: 'Jogadores da partida',
+      teamT: 'Terroristas',
+      teamCT: 'Contra-Terroristas',
+      specs: 'Outros',
+      noPlayers: 'Sem dados de jogadores para esta partida. Partidas registradas antes da atualização não têm detalhes.',
+      noData: 'Partida não encontrada.',
+      lastTitle: '🕹️ Última Partida',
+      viewHistory: 'Ver histórico →',
+      noMatches: 'Nenhuma partida registrada ainda.'
     }
   },
 
@@ -426,7 +470,13 @@ const i18n = {
       noPlayersThisTeam: 'No players on this team',
       noRecentKills: 'No recent kills',
       viewFullRanking: 'View full ranking',
-      watchLive: 'Watch live match'
+      watchLive: 'Watch live match',
+      rounds: 'Rounds',
+      roundsT: 'Rounds T',
+      roundsCT: 'Rounds CT',
+      winrate: 'Winrate',
+      winrateT: 'Winrate T',
+      winrateCT: 'Winrate CT'
     },
     admin: {
       title: 'RCON Panel',
@@ -525,7 +575,24 @@ const i18n = {
       groupCombat: 'Combat',
       groupBomb: 'Bomb',
       groupTime: 'Time',
-      chartUnavailable: 'Chart unavailable right now.'
+      chartUnavailable: 'Chart unavailable right now.',
+      duelButton: '⚔️ Duel'
+    },
+    duel: {
+      title: 'Player Duel',
+      searchA: 'Search player A...',
+      searchB: 'Search player B...',
+      swap: '⇄ Swap',
+      copyLink: '🔗 Copy link',
+      copied: 'Link copied!',
+      empty: 'Type the names of two players to compare.',
+      notFound: 'Player not found.',
+      vs: 'VS',
+      combatTitle: 'Combat comparison',
+      playerA: 'Player A',
+      playerB: 'Player B',
+      stat: 'Stat',
+      noData: 'No data to compare.'
     },
     cmd: {
       status: 'Shows server status',
@@ -600,7 +667,27 @@ const i18n = {
       winner: 'Winner',
       duration: 'Duration',
       endedAt: 'Ended',
-      draw: 'Draw'
+      draw: 'Draw',
+      details: 'Details'
+    },
+    match: {
+      title: 'Match Details',
+      back: '← Back to matches',
+      map: 'Map',
+      date: 'Date',
+      duration: 'Duration',
+      score: 'Score',
+      winner: 'Winner',
+      server: 'Server',
+      players: 'Match players',
+      teamT: 'Terrorists',
+      teamCT: 'Counter-Terrorists',
+      specs: 'Others',
+      noPlayers: 'No player data for this match. Matches recorded before the update have no details.',
+      noData: 'Match not found.',
+      lastTitle: '🕹️ Last Match',
+      viewHistory: 'View history →',
+      noMatches: 'No matches recorded yet.'
     }
   }
 }

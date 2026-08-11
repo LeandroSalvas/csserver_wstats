@@ -1,0 +1,97 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title data-i18n="match.title">Detalhes da Partida - CS 1.6 Stats</title>
+  <link rel="icon" type="image/svg+xml" href="favicon.svg">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+  <div class="container">
+    <div class="header">
+      <h1>🎮 <span data-i18n="match.title">Detalhes da Partida</span></h1>
+      <div class="lang-toggle-slot"></div>
+    </div>
+
+    <div class="page-nav"></div>
+
+    <div id="statusMessage" class="status-message"></div>
+
+    <div class="card">
+      <h2 data-i18n="match.score">Placar</h2>
+      <div class="match-summary" id="matchSummary"></div>
+      <a class="match-back" href="/partidas" data-i18n="match.back">← Voltar às partidas</a>
+    </div>
+
+    <div class="card" id="playersCard" hidden>
+      <h2 data-i18n="match.players">Jogadores da partida</h2>
+      <div class="match-players-grid">
+        <div class="match-team match-team-t">
+          <div class="match-team-header">
+            <span data-i18n="match.teamT">Terroristas</span>
+            <span id="tCount">0</span>
+          </div>
+          <table>
+            <thead>
+              <tr>
+                <th data-i18n="labels.player">Player</th>
+                <th data-i18n="labels.kills">Kills</th>
+                <th data-i18n="labels.deaths">Deaths</th>
+                <th data-i18n="labels.hs">HS</th>
+                <th data-i18n="labels.kd">KD</th>
+              </tr>
+            </thead>
+            <tbody id="tPlayers"></tbody>
+          </table>
+        </div>
+
+        <div class="match-team match-team-ct">
+          <div class="match-team-header">
+            <span data-i18n="match.teamCT">Contra-Terroristas</span>
+            <span id="ctCount">0</span>
+          </div>
+          <table>
+            <thead>
+              <tr>
+                <th data-i18n="labels.player">Player</th>
+                <th data-i18n="labels.kills">Kills</th>
+                <th data-i18n="labels.deaths">Deaths</th>
+                <th data-i18n="labels.hs">HS</th>
+                <th data-i18n="labels.kd">KD</th>
+              </tr>
+            </thead>
+            <tbody id="ctPlayers"></tbody>
+          </table>
+        </div>
+      </div>
+
+      <div id="specsSection" hidden>
+        <h3 data-i18n="match.specs">Outros</h3>
+        <div class="table-responsive">
+          <table>
+            <thead>
+              <tr>
+                <th data-i18n="labels.player">Player</th>
+                <th data-i18n="labels.kills">Kills</th>
+                <th data-i18n="labels.deaths">Deaths</th>
+                <th data-i18n="labels.hs">HS</th>
+                <th data-i18n="labels.kd">KD</th>
+              </tr>
+            </thead>
+            <tbody id="specPlayers"></tbody>
+          </table>
+        </div>
+      </div>
+
+      <div id="noPlayers" hidden></div>
+    </div>
+  </div>
+
+  <script src="i18n/translations.js" defer></script>
+  <script src="common.js" defer></script>
+  <script src="partida.js" defer></script>
+</body>
+
+</html>

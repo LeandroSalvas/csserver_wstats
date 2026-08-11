@@ -39,6 +39,7 @@ function renderMatches(tbody, rows) {
       <td>${winnerLabel(item)}</td>
       <td>${formatMatchDuration(item.duration_sec)}</td>
       <td>${formatMatchDate(item.ended_at)}</td>
+      <td><a class="match-details-link" href="/partida/${item.id}" title="${escapeHtml(i18nUtils.t('matches.details'))}">${escapeHtml(i18nUtils.t('matches.details'))} ↗</a></td>
     `
     fragment.appendChild(row)
   })

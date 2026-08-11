@@ -1,0 +1,85 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title data-i18n="duel.title">Duelo de Players</title>
+  <link rel="icon" type="image/svg+xml" href="favicon.svg">
+  <link rel="stylesheet" href="style.css">
+  <script src="https://cdn.jsdelivr.net/npm/chart.js" defer></script>
+</head>
+
+<body>
+
+  <div class="container">
+
+    <div class="header">
+      <h1>⚔️ <span data-i18n="duel.title">Duelo de Players</span></h1>
+      <div class="lang-toggle-slot"></div>
+    </div>
+
+    <div class="page-nav"></div>
+
+    <div class="toolbar">
+      <select id="duelServer" class="server-selector"></select>
+    </div>
+
+    <div id="statusMessage" class="status-message"></div>
+
+    <div class="card">
+      <div class="duel-panel">
+        <div class="duel-side">
+          <div class="duel-search player-search">
+            <input id="duelSearchA" type="text" autocomplete="off" placeholder="">
+            <div id="duelResultsA" class="search-results"></div>
+          </div>
+          <div id="duelCardA" class="duel-player-card duel-empty">?</div>
+        </div>
+
+        <div class="duel-vs">
+          <span class="duel-vs-label" data-i18n="duel.vs">VS</span>
+          <button id="duelSwap" class="button duel-swap-btn" title=""></button>
+        </div>
+
+        <div class="duel-side">
+          <div class="duel-search player-search">
+            <input id="duelSearchB" type="text" autocomplete="off" placeholder="">
+            <div id="duelResultsB" class="search-results"></div>
+          </div>
+          <div id="duelCardB" class="duel-player-card duel-empty">?</div>
+        </div>
+      </div>
+      <div class="duel-actions">
+        <button id="duelCopyLink" class="button export-btn"></button>
+      </div>
+    </div>
+
+    <div class="card" id="duelCompareSection" hidden>
+      <h2 data-i18n="duel.combatTitle">⚔️ Comparação de combate</h2>
+      <canvas id="duelChart" height="100"></canvas>
+    </div>
+
+    <div class="card" id="duelTableSection" hidden>
+      <h2 data-i18n="duel.title">⚔️ Duelo de Players</h2>
+      <div class="table-responsive">
+        <table>
+          <thead>
+            <tr>
+              <th data-i18n="duel.stat">Estatística</th>
+              <th id="duelHeaderA"></th>
+              <th id="duelHeaderB"></th>
+            </tr>
+          </thead>
+          <tbody id="duelTable"></tbody>
+        </table>
+      </div>
+    </div>
+
+  </div>
+
+  <script src="i18n/translations.js" defer></script>
+  <script src="common.js" defer></script>
+  <script src="duelo.js" defer></script>
+</body>
+
+</html>

@@ -143,6 +143,25 @@ async function ensureSchema() {
     )
   `)
 
+  // Jogadores registrados em cada partida (enviados pelo plugin live_scoreboard
+  // dentro de last_match.players). Criada separadamente para bancos antigos.
+  await db.query(`
+    CREATE TABLE IF NOT EXISTS cs_matches_players (
+      id INT AUTO_INCREMENT PRIMARY KEY,
+      match_id INT NOT NULL,
+      server VARCHAR(32) NOT NULL DEFAULT 'main',
+      pid INT NOT NULL DEFAULT 0,
+      steamid VARCHAR(32) NOT NULL,
+      name VARCHAR(64) NOT NULL DEFAULT '',
+      team VARCHAR(16) NULL,
+      kills INT NOT NULL DEFAULT 0,
+      deaths INT NOT NULL DEFAULT 0,
+      hs INT NOT NULL DEFAULT 0,
+      UNIQUE KEY uq_match_player (match_id, pid),
+      KEY idx_mp_match (match_id)
+    )
+  `)
+
   // Migrações idempotentes para bancos existentes (multi-servidor).
   const ensureColumn = async (table, column, ddl) => {
     const [[row]] = await db.query(
@@ -873,7 +892,8 @@ app.get('/player/:steamid', async (req, res) => {
     const [rows] = await db.query(`
       SELECT steamid, name, skill, kills, deaths, hs, tks, shots, hits,
              dmg, bombdef, bombdefused, bombplants, bombexplosions,
-             connection_time, connects, assists, first_join, last_join, server_name
+             connection_time, connects, assists, first_join, last_join,
+             roundt, wint, roundct, winct, server_name
       FROM csstats
       WHERE steamid = ?
       ${sf ? sf.where : ''}
@@ -2030,10 +2050,44 @@ async function processLastMatch() {
           matchDurationHistogram.observe({ server: srv.id, map: last.map, winner }, durationSec)
         }
         console.log(`Partida registrada: ${srv.id}/${last.map} ${last.round_t}-${last.round_ct}`)
+        await insertMatchPlayers(result.insertId, srv.id, last)
       }
     } catch (err) {
       console.error(`Erro ao registrar partida (${srv.id}):`, err.message)
     }
+  }
+}
+
+async function insertMatchPlayers(matchId, serverId, last) {
+  const players = Array.isArray(last.players) ? last.players : []
+  if (!players.length) return
+
+  const values = []
+  const params = []
+
+  players.forEach((p, i) => {
+    values.push('(?,?,?,?,?,?,?,?,?)')
+    params.push(
+      matchId,
+      serverId,
+      i,
+      String(p.steamid || '').slice(0, 32),
+      String(p.name || '').slice(0, 64),
+      p.team || null,
+      Number(p.kills) || 0,
+      Number(p.deaths) || 0,
+      Number(p.hs) || 0
+    )
+  })
+
+  try {
+    await db.query(
+      `INSERT IGNORE INTO cs_matches_players (match_id, server, pid, steamid, name, team, kills, deaths, hs)
+       VALUES ${values.join(',')}`,
+      params
+    )
+  } catch (err) {
+    console.error(`Erro ao inserir jogadores da partida ${matchId}:`, err.message)
   }
 }
 
@@ -2087,6 +2141,26 @@ app.get('/matches/:id', async (req, res) => {
     res.json(rows[0] || null)
   } catch (err) {
     handleError(res, err, 'partida')
+  }
+})
+
+app.get('/matches/:id/players', async (req, res) => {
+  try {
+    const id = parseInt(req.params.id, 10)
+    if (!Number.isFinite(id) || id <= 0) {
+      return res.status(400).json({ error: 'ID de partida inválido' })
+    }
+
+    const [rows] = await db.query(`
+      SELECT id, match_id, steamid, name, team, kills, deaths, hs
+      FROM cs_matches_players
+      WHERE match_id = ?
+      ORDER BY kills DESC
+    `, [id])
+
+    res.json(rows)
+  } catch (err) {
+    handleError(res, err, 'jogadores da partida')
   }
 })
 

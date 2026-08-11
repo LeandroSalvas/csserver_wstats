@@ -62,6 +62,17 @@ async function loadPlayer() {
   document.getElementById('hours').innerText = formatHours(p.connection_time)
   document.getElementById('connects').innerText = p.connects ?? 0
   document.getElementById('firstJoin').innerText = formatDate(p.first_join)
+
+  const duelBtn = document.getElementById('duelBtn')
+  if (duelBtn) {
+    duelBtn.hidden = false
+    duelBtn.textContent = i18nUtils.t('player.duelButton')
+    const base = `/duelo?p=${encodeURIComponent(p.steamid)}`
+    duelBtn.onclick = () => {
+      const server = getSelectedServer()
+      window.location.href = server ? `${base}&server=${encodeURIComponent(server)}` : base
+    }
+  }
 }
 
 async function loadPlayerHistory() {

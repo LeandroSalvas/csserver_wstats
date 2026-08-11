@@ -184,6 +184,7 @@ const pageNavItems = [
   { path: '/conectar', labelKey: 'nav.connect' },
   { path: '/ao-vivo', labelKey: 'nav.live' },
   { path: '/cstv', labelKey: 'nav.cstv' },
+  { path: '/duelo', labelKey: 'nav.duel' },
   { path: '/admin', labelKey: 'nav.admin' },
   { path: '/sistema', labelKey: 'nav.system' }
 ]

@@ -56,6 +56,32 @@
 
   </div>
 
+  <div class="card last-match-card">
+    <div class="last-match-head">
+      <h2 data-i18n="match.lastTitle">🕹️ Última Partida</h2>
+      <a href="/partidas" data-i18n="match.viewHistory">Ver histórico →</a>
+    </div>
+
+    <div id="lastMatchContent" class="last-match-grid" hidden>
+      <div class="last-match-main">
+        <div class="last-match-map"><a id="lastMatchMap" href="#">-</a></div>
+        <div class="last-match-score">
+          <span id="lastMatchT" class="match-score match-score-t">-</span>
+          <span class="last-match-colon">:</span>
+          <span id="lastMatchCT" class="match-score match-score-ct">-</span>
+        </div>
+        <div id="lastMatchWinner" class="last-match-winner">-</div>
+      </div>
+      <div class="last-match-meta">
+        <div><span data-i18n="match.duration">Duração</span><strong id="lastMatchDuration">-</strong></div>
+        <div><span data-i18n="match.date">Data</span><strong id="lastMatchDate">-</strong></div>
+        <div><span data-i18n="match.server">Servidor</span><strong id="lastMatchServer">-</strong></div>
+      </div>
+    </div>
+
+    <div id="lastMatchEmpty" hidden></div>
+  </div>
+
   <div class="card">
 
     <h2 data-i18n="labels.topPlayers">🏆 Top Players</h2>
