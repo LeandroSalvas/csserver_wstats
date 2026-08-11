@@ -622,15 +622,17 @@ app.get('/top10', async (req, res) => {
 
     const [rows] = await db.query(`
       SELECT
-        name,
+        MAX(name) AS name,
         steamid,
-        kills,
-        deaths,
-        ROUND(kills / IF(deaths = 0, 1, deaths), 2) AS kd,
-        skill,
-        last_join
+        SUM(kills) AS kills,
+        SUM(deaths) AS deaths,
+        ROUND(SUM(kills) / IF(SUM(deaths) = 0, 1, SUM(deaths)), 2) AS kd,
+        MAX(skill) AS skill,
+        MAX(last_join) AS last_join
       FROM csstats
-      ${sf ? 'WHERE server_name = ? AND ' : 'WHERE '}${NOT_BOT}
+      WHERE ${NOT_BOT}
+      ${sf ? sf.where : ''}
+      GROUP BY steamid
       ORDER BY kills DESC
       LIMIT ? OFFSET ?
     `, [...(sf ? sf.params : []), limit, offset])
@@ -650,15 +652,17 @@ app.get('/top-headshots', async (req, res) => {
 
     const [rows] = await db.query(`
       SELECT
-        name,
+        MAX(name) AS name,
         steamid,
-        kills,
-        deaths,
-        hs,
-        skill,
-        ROUND(hs / IF(kills = 0, 1, kills) * 100, 2) AS accuracy
+        SUM(kills) AS kills,
+        SUM(deaths) AS deaths,
+        SUM(hs) AS hs,
+        MAX(skill) AS skill,
+        ROUND(SUM(hs) / IF(SUM(kills) = 0, 1, SUM(kills)) * 100, 2) AS accuracy
       FROM csstats
-      ${sf ? 'WHERE server_name = ? AND ' : 'WHERE '}${NOT_BOT}
+      WHERE ${NOT_BOT}
+      ${sf ? sf.where : ''}
+      GROUP BY steamid
       ORDER BY hs DESC, kills DESC
       LIMIT ? OFFSET ?
     `, [...(sf ? sf.params : []), limit, offset])
@@ -677,17 +681,18 @@ app.get('/top-accuracy', async (req, res) => {
 
     const [rows] = await db.query(`
       SELECT
-        name,
+        MAX(name) AS name,
         steamid,
-        kills,
-        deaths,
-        hs,
-        skill,
-        ROUND(hs / IF(kills = 0, 1, kills) * 100, 2) AS accuracy
+        SUM(kills) AS kills,
+        SUM(deaths) AS deaths,
+        SUM(hs) AS hs,
+        MAX(skill) AS skill,
+        ROUND(SUM(hs) / IF(SUM(kills) = 0, 1, SUM(kills)) * 100, 2) AS accuracy
       FROM csstats
-      WHERE kills >= 10
+      WHERE ${NOT_BOT}
       ${sf ? sf.where : ''}
-      ${NOT_BOT_WHERE}
+      GROUP BY steamid
+      HAVING SUM(kills) >= 10
       ORDER BY accuracy DESC, hs DESC
       LIMIT ? OFFSET ?
     `, [...(sf ? sf.params : []), limit, offset])
@@ -745,15 +750,17 @@ app.get('/top-assists', async (req, res) => {
 
     const [rows] = await db.query(`
       SELECT
-        name,
+        MAX(name) AS name,
         steamid,
-        assists,
-        kills,
-        deaths,
-        skill,
-        ROUND(assists / IF(kills = 0, 1, kills), 2) AS assists_per_kill
+        SUM(assists) AS assists,
+        SUM(kills) AS kills,
+        SUM(deaths) AS deaths,
+        MAX(skill) AS skill,
+        ROUND(SUM(assists) / IF(SUM(kills) = 0, 1, SUM(kills)), 2) AS assists_per_kill
       FROM csstats
-      ${sf ? 'WHERE server_name = ? AND ' : 'WHERE '}${NOT_BOT}
+      WHERE ${NOT_BOT}
+      ${sf ? sf.where : ''}
+      GROUP BY steamid
       ORDER BY assists DESC, kills DESC
       LIMIT ? OFFSET ?
     `, [...(sf ? sf.params : []), limit, offset])
@@ -774,15 +781,17 @@ app.get('/top-damage', async (req, res) => {
 
     const [rows] = await db.query(`
       SELECT
-        name,
+        MAX(name) AS name,
         steamid,
-        dmg,
-        kills,
-        deaths,
-        skill,
-        ROUND(dmg / IF(kills = 0, 1, kills), 1) AS dmg_per_kill
+        SUM(dmg) AS dmg,
+        SUM(kills) AS kills,
+        SUM(deaths) AS deaths,
+        MAX(skill) AS skill,
+        ROUND(SUM(dmg) / IF(SUM(kills) = 0, 1, SUM(kills)), 1) AS dmg_per_kill
       FROM csstats
-      ${sf ? 'WHERE server_name = ? AND ' : 'WHERE '}${NOT_BOT}
+      WHERE ${NOT_BOT}
+      ${sf ? sf.where : ''}
+      GROUP BY steamid
       ORDER BY dmg DESC, kills DESC
       LIMIT ? OFFSET ?
     `, [...(sf ? sf.params : []), limit, offset])
@@ -803,14 +812,16 @@ app.get('/top-tk', async (req, res) => {
 
     const [rows] = await db.query(`
       SELECT
-        name,
+        MAX(name) AS name,
         steamid,
-        tks,
-        kills,
-        deaths,
-        skill
+        SUM(tks) AS tks,
+        SUM(kills) AS kills,
+        SUM(deaths) AS deaths,
+        MAX(skill) AS skill
       FROM csstats
-      ${sf ? 'WHERE server_name = ? AND ' : 'WHERE '}${NOT_BOT}
+      WHERE ${NOT_BOT}
+      ${sf ? sf.where : ''}
+      GROUP BY steamid
       ORDER BY tks DESC, kills DESC
       LIMIT ? OFFSET ?
     `, [...(sf ? sf.params : []), limit, offset])
@@ -831,16 +842,18 @@ app.get('/top-bomb', async (req, res) => {
 
     const [rows] = await db.query(`
       SELECT
-        name,
+        MAX(name) AS name,
         steamid,
-        bombplants,
-        bombdefused,
-        bombdef,
-        bombexplosions,
-        skill
+        SUM(bombplants) AS bombplants,
+        SUM(bombdefused) AS bombdefused,
+        SUM(bombdef) AS bombdef,
+        SUM(bombexplosions) AS bombexplosions,
+        MAX(skill) AS skill
       FROM csstats
-      ${sf ? 'WHERE server_name = ? AND ' : 'WHERE '}${NOT_BOT}
-      ORDER BY (bombplants + bombdefused + bombdef + bombexplosions) DESC, bombplants DESC
+      WHERE ${NOT_BOT}
+      ${sf ? sf.where : ''}
+      GROUP BY steamid
+      ORDER BY (SUM(bombplants) + SUM(bombdefused) + SUM(bombdef) + SUM(bombexplosions)) DESC, SUM(bombplants) DESC
       LIMIT ? OFFSET ?
     `, [...(sf ? sf.params : []), limit, offset])
 
@@ -860,18 +873,19 @@ app.get('/top-connect-time', async (req, res) => {
 
     const [rows] = await db.query(`
       SELECT
-        name,
+        MAX(name) AS name,
         steamid,
-        connection_time,
-        connects,
-        kills,
-        deaths,
-        skill,
-        ROUND(connection_time / 3600, 1) AS hours_played
+        SUM(connection_time) AS connection_time,
+        SUM(connects) AS connects,
+        SUM(kills) AS kills,
+        SUM(deaths) AS deaths,
+        MAX(skill) AS skill,
+        ROUND(SUM(connection_time) / 3600, 1) AS hours_played
       FROM csstats
-      WHERE connection_time > 0
+      WHERE ${NOT_BOT}
       ${sf ? sf.where : ''}
-      ${NOT_BOT_WHERE}
+      GROUP BY steamid
+      HAVING SUM(connection_time) > 0
       ORDER BY connection_time DESC
       LIMIT ? OFFSET ?
     `, [...(sf ? sf.params : []), limit, offset])
@@ -890,16 +904,36 @@ app.get('/player/:steamid', async (req, res) => {
     if (sf && sf.invalid) return res.status(400).json({ error: `Servidor não configurado: ${sf.invalid}` })
 
     const [rows] = await db.query(`
-      SELECT steamid, name, skill, kills, deaths, hs, tks, shots, hits,
-             dmg, bombdef, bombdefused, bombplants, bombexplosions,
-             connection_time, connects, assists, first_join, last_join,
-             roundt, wint, roundct, winct, server_name
+      SELECT
+        steamid,
+        MAX(name) AS name,
+        MAX(skill) AS skill,
+        SUM(kills) AS kills,
+        SUM(deaths) AS deaths,
+        SUM(hs) AS hs,
+        SUM(tks) AS tks,
+        SUM(shots) AS shots,
+        SUM(hits) AS hits,
+        SUM(dmg) AS dmg,
+        SUM(bombdef) AS bombdef,
+        SUM(bombdefused) AS bombdefused,
+        SUM(bombplants) AS bombplants,
+        SUM(bombexplosions) AS bombexplosions,
+        SUM(connection_time) AS connection_time,
+        SUM(connects) AS connects,
+        SUM(assists) AS assists,
+        MIN(first_join) AS first_join,
+        MAX(last_join) AS last_join,
+        SUM(roundt) AS roundt,
+        SUM(wint) AS wint,
+        SUM(roundct) AS roundct,
+        SUM(winct) AS winct,
+        GROUP_CONCAT(DISTINCT server_name ORDER BY server_name) AS server_name
       FROM csstats
       WHERE steamid = ?
       ${sf ? sf.where : ''}
       ${NOT_BOT_WHERE}
-      ORDER BY last_join DESC
-      LIMIT 1
+      GROUP BY steamid
     `, [req.params.steamid, ...(sf ? sf.params : [])])
 
     res.json(rows[0] || null)
@@ -924,11 +958,12 @@ app.get('/player-search', async (req, res) => {
     if (sf && sf.invalid) return res.status(400).json({ error: `Servidor não configurado: ${sf.invalid}` })
 
     const [rows] = await db.query(`
-      SELECT steamid, name, kills, deaths, hs, skill
+      SELECT steamid, MAX(name) AS name, SUM(kills) AS kills, SUM(deaths) AS deaths, SUM(hs) AS hs, MAX(skill) AS skill
       FROM csstats
       WHERE (name LIKE ? OR steamid LIKE ?)
       ${sf ? sf.where : ''}
       ${NOT_BOT_WHERE}
+      GROUP BY steamid
       ORDER BY kills DESC
       LIMIT 10
     `, [`%${q}%`, `%${q}%`, ...(sf ? sf.params : [])])
@@ -949,9 +984,11 @@ app.get('/topskill', async (req, res) => {
     if (sf && sf.invalid) return res.status(400).json({ error: `Servidor não configurado: ${sf.invalid}` })
 
     const [rows] = await db.query(`
-      SELECT name, steamid, skill
+      SELECT MAX(name) AS name, steamid, MAX(skill) AS skill
       FROM csstats
-      ${sf ? 'WHERE server_name = ? AND ' : 'WHERE '}${NOT_BOT}
+      WHERE ${NOT_BOT}
+      ${sf ? sf.where : ''}
+      GROUP BY steamid
       ORDER BY skill DESC
       LIMIT ? OFFSET ?
     `, [...(sf ? sf.params : []), limit, offset])
@@ -973,15 +1010,16 @@ app.get('/topkd', async (req, res) => {
 
     const [rows] = await db.query(`
       SELECT
-        name,
+        MAX(name) AS name,
         steamid,
-        kills,
-        deaths,
-        ROUND(kills / IF(deaths = 0, 1, deaths), 2) AS kd
+        SUM(kills) AS kills,
+        SUM(deaths) AS deaths,
+        ROUND(SUM(kills) / IF(SUM(deaths) = 0, 1, SUM(deaths)), 2) AS kd
       FROM csstats
-      WHERE kills > 10
+      WHERE ${NOT_BOT}
       ${sf ? sf.where : ''}
-      ${NOT_BOT_WHERE}
+      GROUP BY steamid
+      HAVING SUM(kills) > 10
       ORDER BY kd DESC
       LIMIT ? OFFSET ?
     `, [...(sf ? sf.params : []), limit, offset])
@@ -1002,7 +1040,7 @@ app.get('/stats', async (req, res) => {
 
     const stats = await getCached(`stats:${sf ? sf.server : '*'}`, CACHE_STATS_TTL, async () => {
       const [[players]] = await db.query(
-        `SELECT COUNT(*) total FROM csstats ${sf ? 'WHERE server_name = ? AND ' : 'WHERE '}${NOT_BOT}`,
+        `SELECT COUNT(DISTINCT steamid) total FROM csstats ${sf ? 'WHERE server_name = ? AND ' : 'WHERE '}${NOT_BOT}`,
         sf ? sf.params : []
       )
 

@@ -122,6 +122,11 @@ public message_death_msg()
 
 mark_seen(id)
 {
+    if (is_user_bot(id))
+    {
+        return
+    }
+
     if (g_matchSeen[id])
     {
         return
@@ -330,6 +335,11 @@ snapshot_working_players()
 
     for (new id = 1; id <= maxPlayers; id++)
     {
+        if (is_user_bot(id))
+        {
+            continue
+        }
+
         if (!g_matchSeen[id])
         {
             continue
