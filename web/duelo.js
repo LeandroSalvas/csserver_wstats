@@ -171,8 +171,21 @@ function renderCompareTable() {
 
     if (valueA !== valueB) {
       const aWins = row.higherBetter ? valueA > valueB : valueA < valueB
+      const winLabel = i18nUtils.t('duel.win')
+      const loseLabel = i18nUtils.t('duel.lose')
+      const marker = (win) => {
+        const span = document.createElement('span')
+        span.className = win ? 'duel-marker-win' : 'duel-marker-lose'
+        span.textContent = win ? '▲' : '▼'
+        span.setAttribute('aria-hidden', 'true')
+        return span
+      }
       cellA.classList.add(aWins ? 'duel-win' : 'duel-lose')
       cellB.classList.add(aWins ? 'duel-lose' : 'duel-win')
+      cellA.setAttribute('aria-label', `${cellText(row, 'a')} — ${aWins ? winLabel : loseLabel}`)
+      cellB.setAttribute('aria-label', `${cellText(row, 'b')} — ${aWins ? loseLabel : winLabel}`)
+      cellA.prepend(marker(aWins))
+      cellB.prepend(marker(!aWins))
     }
 
     tr.appendChild(cellA)
@@ -189,6 +202,9 @@ function renderDuelChart() {
   const b = duelPlayers.b
   const canvas = document.getElementById('duelChart')
   if (!canvas) return
+
+  canvas.setAttribute('role', 'img')
+  canvas.setAttribute('aria-label', `${a.name || a.steamid} × ${b.name || b.steamid} — ${i18nUtils.t('duel.combatTitle')}`)
 
   if (chartInstances.duelChart) {
     chartInstances.duelChart.destroy()
@@ -231,6 +247,7 @@ function renderDuelChart() {
           data: [b.kills ?? 0, b.deaths ?? 0, b.hs ?? 0, b.assists ?? 0, b.dmg ?? 0],
           backgroundColor: 'rgba(52,211,153,0.75)',
           borderColor: '#34d399',
+          borderDash: [6, 4],
           borderWidth: 1
         }
       ]
@@ -320,12 +337,28 @@ function initSideSearch(side) {
 
   input.placeholder = i18nUtils.t(`duel.search${side === 'a' ? 'A' : 'B'}`)
 
+  const combobox = setupSearchListbox(input, results)
+
+  const clearResults = () => {
+    results.classList.remove('visible')
+    results.innerHTML = ''
+  }
+
+  const pickPlayer = (p) => {
+    input.value = ''
+    combobox.close()
+    results.innerHTML = ''
+    if (side === 'a') steamA = p.steamid
+    else steamB = p.steamid
+    updateUrl()
+    loadDuel()
+  }
+
   input.addEventListener('input', () => {
     const q = input.value.trim()
     window.clearTimeout(sideSearchDebounce)
     if (!q) {
-      results.classList.remove('visible')
-      results.innerHTML = ''
+      clearResults()
       return
     }
     sideSearchDebounce = window.setTimeout(async () => {
@@ -340,18 +373,11 @@ function initSideSearch(side) {
           results.appendChild(empty)
         } else {
           res.forEach((p) => {
-            const item = document.createElement('a')
-            item.href = '#'
-            item.addEventListener('click', (e) => {
-              e.preventDefault()
-              input.value = ''
-              results.classList.remove('visible')
-              results.innerHTML = ''
-              if (side === 'a') steamA = p.steamid
-              else steamB = p.steamid
-              updateUrl()
-              loadDuel()
-            })
+            const item = document.createElement('button')
+            item.type = 'button'
+            item.className = 'duel-option'
+            item.setAttribute('role', 'option')
+            item.addEventListener('click', () => pickPlayer(p))
 
             const name = document.createElement('span')
             name.className = 'sr-name'
@@ -377,6 +403,8 @@ function initSideSearch(side) {
         }
 
         results.classList.add('visible')
+        combobox.markOptions()
+        combobox.setExpanded(true)
       } catch (err) {
         results.innerHTML = ''
         const error = document.createElement('div')
@@ -384,6 +412,8 @@ function initSideSearch(side) {
         error.textContent = i18nUtils.t('errors.search')
         results.appendChild(error)
         results.classList.add('visible')
+        combobox.markOptions()
+        combobox.setExpanded(true)
       }
     }, 300)
   })
@@ -391,7 +421,7 @@ function initSideSearch(side) {
   document.addEventListener('click', (e) => {
     const wrap = input.closest('.duel-search')
     if (wrap && !wrap.contains(e.target)) {
-      results.classList.remove('visible')
+      combobox.close()
     }
   })
 }

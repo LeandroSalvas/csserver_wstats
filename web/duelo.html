@@ -5,17 +5,22 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title data-i18n="duel.title">Duelo de Players</title>
   <link rel="icon" type="image/svg+xml" href="/favicon.svg">
-  <link rel="stylesheet" href="/style.css?v=2">
-  <script src="/vendor/chart.umd.min.js" defer></script>
+  <link rel="stylesheet" href="/style.css?v=3">
+  <script src="/vendor/chart.umd.min.js?v=3" defer></script>
 </head>
 
 <body>
+
+<noscript>
+  <div class="noscript-warn" role="alert">
+    <strong>JavaScript desativado.</strong> Esta página precisa de JavaScript para carregar os dados.
+  </div>
+</noscript>
 
   <div class="container">
 
     <div class="header">
       <h1><span aria-hidden="true">⚔️</span> <span data-i18n="duel.title">Duelo de Players</span></h1>
-      <div class="lang-toggle-slot"></div>
     </div>
 
     <div class="page-nav"></div>
@@ -78,9 +83,9 @@
 
   </div>
 
-  <script src="/i18n/translations.js" defer></script>
-  <script src="/common.js" defer></script>
-  <script src="/duelo.js" defer></script>
+  <script src="/i18n/translations.js?v=3" defer></script>
+  <script src="/common.js?v=3" defer></script>
+  <script src="/duelo.js?v=3" defer></script>
 </body>
 
 </html>

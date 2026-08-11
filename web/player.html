@@ -5,17 +5,22 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title data-i18n="player.title">Player Stats</title>
   <link rel="icon" type="image/svg+xml" href="/favicon.svg">
-  <link rel="stylesheet" href="/style.css?v=2">
-  <script src="/vendor/chart.umd.min.js" defer></script>
+  <link rel="stylesheet" href="/style.css?v=3">
+  <script src="/vendor/chart.umd.min.js?v=3" defer></script>
 </head>
 
 <body>
+
+<noscript>
+  <div class="noscript-warn" role="alert">
+    <strong>JavaScript desativado.</strong> Esta página precisa de JavaScript para carregar os dados.
+  </div>
+</noscript>
 
   <div class="container">
 
     <div class="header">
       <h1><span aria-hidden="true">👤</span> <span data-i18n="player.title">Player Stats</span></h1>
-      <div class="lang-toggle-slot"></div>
     </div>
 
     <div class="page-nav"></div>
@@ -72,17 +77,17 @@
 
     <div class="card">
       <h2><span aria-hidden="true">📈</span> <span data-i18n="labels.killsEvolution">Evolução de Kills</span></h2>
-      <canvas id="killsChart" height="100"></canvas>
+      <canvas id="killsChart" height="100" data-i18n-aria-label="labels.killsEvolution" aria-label="Evolução de Kills"></canvas>
     </div>
 
     <div class="card">
       <h2><span aria-hidden="true">📊</span> <span data-i18n="labels.skillKdEvolution">Skill & K/D</span></h2>
-      <canvas id="skillKdChart" height="100"></canvas>
+      <canvas id="skillKdChart" height="100" data-i18n-aria-label="labels.skillKdEvolution" aria-label="Skill e K/D"></canvas>
     </div>
 
     <div class="card">
       <h2><span aria-hidden="true">🏅</span> <span data-i18n="labels.rankHistory">Histórico de posição</span></h2>
-      <canvas id="rankChart" height="100"></canvas>
+      <canvas id="rankChart" height="100" data-i18n-aria-label="labels.rankHistory" aria-label="Histórico de posição"></canvas>
     </div>
 
     <div class="card">
@@ -106,9 +111,9 @@
 
   </div>
 
-  <script src="/i18n/translations.js" defer></script>
-  <script src="/common.js" defer></script>
-  <script src="/player.js" defer></script>
+  <script src="/i18n/translations.js?v=3" defer></script>
+  <script src="/common.js?v=3" defer></script>
+  <script src="/player.js?v=3" defer></script>
 </body>
 
 </html>

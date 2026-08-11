@@ -12,19 +12,15 @@ async function loadMaps() {
       return
     }
 
-    const fragment = document.createDocumentFragment()
-    maps.forEach((m, i) => {
+    renderRows(table, maps, (m, i) => {
       const row = document.createElement('tr')
       row.innerHTML = `
         <td>${i + 1}</td>
         <td><a href="/mapa/${encodeURIComponent(m.map)}">${escapeHtml(m.map)}</a></td>
         <td>${m.snapshots}</td>
       `
-      fragment.appendChild(row)
+      return row
     })
-
-    table.innerHTML = ''
-    table.appendChild(fragment)
     animateTableUpdate(table)
   } catch (err) {
     console.error('Erro ao carregar mapas:', err)

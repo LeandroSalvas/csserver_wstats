@@ -248,13 +248,27 @@ run_block_functional() {
   code="$(http_status "${API_BASE}/rota-inexistente-xyz")"
   assert_status "404 para rota desconhecida" 404 "$code"
 
-  code="$(http_status "${API_BASE}/metrics")"
+  get_metrics_creds() {
+    grep -E '^METRICS_USER=' "${ROOT}/.env" 2>/dev/null | head -1 | cut -d= -f2- | tr -d '"' | tr -d "'"
+  }
+  get_metrics_pass() {
+    grep -E '^METRICS_PASS=' "${ROOT}/.env" 2>/dev/null | head -1 | cut -d= -f2- | tr -d '"' | tr -d "'"
+  }
+  local muser mpass
+  muser="$(get_metrics_creds)"
+  mpass="$(get_metrics_pass)"
+
+  code="$(curl -s -o /dev/null -w '%{http_code}' --max-time 10 -u "${muser}:${mpass}" "${API_BASE}/metrics")"
   assert_status "/metrics responde 200" 200 "$code"
-  body="$(curl -s --max-time 10 "${API_BASE}/metrics")"
+  body="$(curl -s --max-time 10 -u "${muser}:${mpass}" "${API_BASE}/metrics")"
   if printf '%s' "$body" | grep -q 'cs16_'; then
     pass "/metrics expõe métricas cs16_"
   else
     fail "/metrics sem métricas cs16_"
+  fi
+  if [ -n "$muser" ] && [ -n "$mpass" ]; then
+    code="$(curl -s -o /dev/null -w '%{http_code}' --max-time 10 "${API_BASE}/metrics")"
+    assert_status "/metrics sem auth → 401" 401 "$code"
   fi
 
   local sse_out
@@ -409,11 +423,15 @@ run_block_redis() {
   docker compose -f "${ROOT}/docker-compose.yml" -f "${ROOT}/docker-compose.servers.yml" stop redis >/dev/null 2>&1
   code="$(curl -s -o /dev/null -w '%{http_code}' --max-time 10 "${API_BASE}/servers")"
   assert_status "/servers segue 200 com redis parado" 200 "$code"
+  local hbody
   code="$(curl -s -o /dev/null -w '%{http_code}' --max-time 4 "${API_BASE}/health")"
-  if [ "$code" != "200" ]; then
-    pass "/health não responde 200 com redis parado (http ${code})"
+  hbody="$(curl -s --max-time 4 "${API_BASE}/health")"
+  if [ "$code" = "200" ] \
+     && printf '%s' "$hbody" | grep -q '"status":"degraded"' \
+     && printf '%s' "$hbody" | grep -q '"redis":"down"'; then
+    pass "/health degraded + redis down com redis parado"
   else
-    fail "/health respondeu 200 mesmo com redis parado"
+    fail "/health inesperado com redis parado (http ${code} body=${hbody})"
   fi
 
   docker compose -f "${ROOT}/docker-compose.yml" -f "${ROOT}/docker-compose.servers.yml" start redis >/dev/null 2>&1

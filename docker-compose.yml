@@ -93,6 +93,8 @@ services:
       STEAM_RETURN_URL: ${STEAM_RETURN_URL:-}
       STEAM_ADMIN_IDS: ${STEAM_ADMIN_IDS:-}
       CORS_ALLOWED_ORIGINS: ${CORS_ALLOWED_ORIGINS:-}
+      METRICS_USER: ${METRICS_USER:-}
+      METRICS_PASS: ${METRICS_PASS:-}
     healthcheck:
       test: ["CMD-SHELL", "wget --no-verbose --tries=1 --spider http://localhost:3000/health || exit 1"]
       interval: 10s
@@ -132,19 +134,28 @@ services:
     restart: always
     depends_on:
       - api
+    environment:
+      METRICS_USER: ${METRICS_USER:-}
+      METRICS_PASS: ${METRICS_PASS:-}
     volumes:
+      # O Prometheus nao expande variaveis no --config.file; o config efetivo
+      # (com as credenciais reais no lugar de __METRICS_USER__/__METRICS_PASS__)
+      # e gerado para /tmp/prometheus.yml pelo wrapper sh abaixo.
       - ./config/prometheus.yml:/etc/prometheus/prometheus.yml:ro
       - prometheus_data:/prometheus
     ports:
       - "127.0.0.1:9090:9090"
+    entrypoint: ["/bin/sh", "-c"]
     command:
-      - --config.file=/etc/prometheus/prometheus.yml
-      - --storage.tsdb.path=/prometheus
-      - --storage.tsdb.retention.time=30d
-      - --web.console.libraries=/usr/share/prometheus/console_libraries
-      - --web.console.templates=/usr/share/prometheus/consoles
-      - --web.enable-admin-api
-      - --web.enable-lifecycle
+      - |
+        sed -e "s/__METRICS_USER__/$$METRICS_USER/g" \
+            -e "s/__METRICS_PASS__/$$METRICS_PASS/g" \
+            /etc/prometheus/prometheus.yml > /tmp/prometheus.yml
+        exec /bin/prometheus --config.file=/tmp/prometheus.yml \
+          --storage.tsdb.path=/prometheus --storage.tsdb.retention.time=30d \
+          --web.console.libraries=/usr/share/prometheus/console_libraries \
+          --web.console.templates=/usr/share/prometheus/consoles \
+          --web.enable-admin-api --web.enable-lifecycle
 
   grafana:
     image: grafana/grafana:11.1.0

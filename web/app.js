@@ -1,8 +1,8 @@
 let top10NeedsLoadingUi = true
+let lastTop10Signature = ''
 
 async function loadSystemStatus() {
   try {
-    setStatus(i18nUtils.t('status.updatingSystem'))
     const health = await fetchJson('/health')
 
     const apiLabel = health.status === 'ok'
@@ -69,11 +69,21 @@ async function loadTop10() {
 
     updatePodium(players)
 
+    const signature = Array.isArray(players)
+      ? players.map((p) => `${p.steamid}|${p.kills}|${p.deaths}|${p.kd}|${p.skill}`).join(';')
+      : 'empty'
+    const changed = signature !== lastTop10Signature
+    lastTop10Signature = signature
+
     if (!Array.isArray(players) || players.length === 0) {
       showEmptyRow(table)
-      animateTableUpdate(table.closest('table'))
+      if (changed) animateTableUpdate(table.closest('table'))
       return
     }
+
+    // Sem mudança nos dados: não re-renderiza nem anima a tabela (evita o
+    // "flash" da home a cada ciclo de refresh de 15s).
+    if (!changed) return
 
     table.innerHTML = ''
     const fragment = document.createDocumentFragment()
@@ -95,6 +105,7 @@ async function loadTop10() {
     table.appendChild(fragment)
     animateTableUpdate(table.closest('table'))
   } catch (err) {
+    lastTop10Signature = ''
     top10NeedsLoadingUi = true
     console.error('Erro ao carregar top10:', err)
     setStatus(`${i18nUtils.t('errors.loadRanking')}: ${err.message}`, 'error')
@@ -229,6 +240,7 @@ document.addEventListener('DOMContentLoaded', () => {
 })
 
 document.addEventListener('server-change', () => {
+  lastTop10Signature = ''
   loadTop10()
   loadStats()
   loadServer()

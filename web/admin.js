@@ -65,6 +65,7 @@ const loginBtn = document.getElementById('loginBtn')
 const logoutBtn = document.getElementById('logoutBtn')
 const sendBtn = document.getElementById('sendBtn')
 const loginStatus = document.getElementById('loginStatus')
+const rconStatus = document.getElementById('rconStatus')
 const passwordInput = document.getElementById('rconPassword')
 const commandInput = document.getElementById('rconCommand')
 const output = document.getElementById('rconOutput')
@@ -118,11 +119,11 @@ async function checkSteamLoginStatus() {
     const data = await res.json()
 
     if (!data.enabled) {
-      steamLoginWrap.style.display = 'none'
+      steamLoginWrap.hidden = true
       return
     }
 
-    steamLoginWrap.style.display = 'block'
+    steamLoginWrap.hidden = false
     if (data.steamId && steamLoginStatus) {
       steamLoginStatus.innerText = `SteamID: ${data.steamId}`
     }
@@ -132,14 +133,16 @@ async function checkSteamLoginStatus() {
 }
 
 function showLogin() {
-  loginCard.style.display = 'block'
-  commandCard.style.display = 'none'
+  loginCard.hidden = false
+  commandCard.hidden = true
   stopLivePlayers()
+  if (rconStatus) rconStatus.textContent = i18nUtils.t('admin.disconnected')
 }
 
 function showConsole() {
-  loginCard.style.display = 'none'
-  commandCard.style.display = 'block'
+  loginCard.hidden = true
+  commandCard.hidden = false
+  if (rconStatus) rconStatus.textContent = i18nUtils.t('admin.connected')
 }
 
 function addToHistory(command) {

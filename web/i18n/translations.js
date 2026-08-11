@@ -12,6 +12,8 @@ const i18n = {
       duel: '⚔️ Duelo',
       admin: '🛠️ Painel RCON',
       system: '🛡️ Sistema',
+      watch: '📹 Assistir',
+      skipToContent: 'Pular para o conteúdo principal',
       search: 'Buscar jogador...',
       langToggle: 'Alterar idioma'
     },
@@ -150,6 +152,7 @@ const i18n = {
       authSuccess: 'Autenticado com sucesso.',
       errorAuth: 'Erro ao autenticar.',
       errorExecute: 'Erro ao executar comando.',
+      connected: 'Conectado',
       disconnected: 'Desconectado',
       liveTitle: 'Jogadores online',
       targetServer: 'Servidor alvo',
@@ -213,7 +216,6 @@ const i18n = {
       counterTerrorists: 'Counter-Terrorists',
       playersCount: 'players',
       status: 'Status',
-      score: 'Score',
       alive: 'Alive',
       dead: 'Dead',
       killFeed: 'Kill Feed',
@@ -251,7 +253,9 @@ const i18n = {
       playerB: 'Jogador B',
       stat: 'Estatística',
       pickPlayer: 'Selecione um jogador para comparar',
-      noData: 'Sem dados para comparar.'
+      noData: 'Sem dados para comparar.',
+      win: 'vencedor',
+      lose: 'perdedor'
     },
     cmd: {
       status: 'Mostra status do servidor',
@@ -360,8 +364,11 @@ const i18n = {
       connect: '🔗 Connect',
       live: '📡 Live Match',
       cstv: '📹 CSTV',
+      duel: '⚔️ Duel',
       admin: '🛠️ RCON Panel',
       system: '🛡️ System',
+      watch: '📹 Watch',
+      skipToContent: 'Skip to main content',
       search: 'Search player...',
       langToggle: 'Change language'
     },
@@ -500,6 +507,7 @@ const i18n = {
       authSuccess: 'Authenticated successfully.',
       errorAuth: 'Authentication error.',
       errorExecute: 'Error executing command.',
+      connected: 'Connected',
       disconnected: 'Disconnected',
       liveTitle: 'Players online',
       targetServer: 'Target server',
@@ -560,7 +568,6 @@ const i18n = {
       counterTerrorists: 'Counter-Terrorists',
       playersCount: 'players',
       status: 'Status',
-      score: 'Score',
       alive: 'Alive',
       dead: 'Dead',
       killFeed: 'Kill Feed',
@@ -598,7 +605,9 @@ const i18n = {
       playerB: 'Player B',
       stat: 'Stat',
       pickPlayer: 'Select a player to compare',
-      noData: 'No data to compare.'
+      noData: 'No data to compare.',
+      win: 'winner',
+      lose: 'loser'
     },
     cmd: {
       status: 'Shows server status',

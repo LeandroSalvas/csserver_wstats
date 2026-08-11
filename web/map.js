@@ -24,8 +24,7 @@ async function loadMapRanking() {
       return
     }
 
-    const fragment = document.createDocumentFragment()
-    players.forEach((p, i) => {
+    renderRows(table, players, (p, i) => {
       const row = document.createElement('tr')
       row.innerHTML = `
         <td>${i + 1}</td>
@@ -36,11 +35,8 @@ async function loadMapRanking() {
         <td>${p.kd}</td>
         <td>${p.skill}</td>
       `
-      fragment.appendChild(row)
+      return row
     })
-
-    table.innerHTML = ''
-    table.appendChild(fragment)
     animateTableUpdate(table)
   } catch (err) {
     console.error('Erro ao carregar ranking do mapa:', err)

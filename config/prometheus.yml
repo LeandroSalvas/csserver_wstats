@@ -5,6 +5,9 @@ global:
 scrape_configs:
   - job_name: cs16-api
     metrics_path: /metrics
+    basic_auth:
+      username: __METRICS_USER__
+      password: __METRICS_PASS__
     static_configs:
       - targets: ['api:3000']
 

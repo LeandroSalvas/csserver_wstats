@@ -65,7 +65,7 @@ async function loadPlayer() {
 
   const duelBtn = document.getElementById('duelBtn')
   if (duelBtn) {
-    duelBtn.hidden = false
+    duelBtn.hidden = !p.steamid
     duelBtn.textContent = i18nUtils.t('player.duelButton')
     const base = `/duelo?p=${encodeURIComponent(p.steamid)}`
     duelBtn.onclick = () => {
@@ -73,6 +73,18 @@ async function loadPlayer() {
       window.location.href = server ? `${base}&server=${encodeURIComponent(server)}` : base
     }
   }
+}
+
+function showChartEmpty(canvasId) {
+  const canvas = document.getElementById(canvasId)
+  if (!canvas) return
+  const parent = canvas.parentElement
+  if (!parent) return
+  const fallback = document.createElement('div')
+  fallback.className = 'chart-fallback'
+  fallback.textContent = i18nUtils.t('labels.noData')
+  canvas.remove()
+  parent.appendChild(fallback)
 }
 
 async function loadPlayerHistory() {
@@ -89,6 +101,8 @@ async function loadPlayerHistory() {
 
   if (!Array.isArray(history) || history.length === 0) {
     showEmptyRow(table)
+    showChartEmpty('killsChart')
+    showChartEmpty('skillKdChart')
     return
   }
 
@@ -149,6 +163,7 @@ async function loadPlayerHistory() {
       borderColor: '#fbbf24',
       backgroundColor: 'rgba(251,191,36,0.15)',
       fill: false,
+      borderDash: [6, 4],
       yAxisID: 'y1'
     }
   ], {
@@ -167,6 +182,7 @@ async function loadRankHistory() {
   const history = res
 
   if (!Array.isArray(history) || history.length === 0) {
+    showChartEmpty('rankChart')
     return
   }
 
@@ -232,6 +248,8 @@ async function loadPlayerData() {
 function renderChart(canvasId, labels, datasets, extraOptions = {}) {
   const canvas = document.getElementById(canvasId)
   if (!canvas) return
+
+  canvas.setAttribute('role', 'img')
 
   if (chartInstances[canvasId]) {
     chartInstances[canvasId].destroy()

@@ -5,13 +5,18 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title data-i18n="admin.title">Painel RCON - CS 1.6</title>
   <link rel="icon" type="image/svg+xml" href="/favicon.svg">
-  <link rel="stylesheet" href="/style.css?v=2">
+  <link rel="stylesheet" href="/style.css?v=3">
 </head>
 <body class="body-font-default">
+
+<noscript>
+  <div class="noscript-warn" role="alert">
+    <strong>JavaScript desativado.</strong> Esta página precisa de JavaScript para carregar os dados.
+  </div>
+</noscript>
   <div class="container">
     <div class="header">
       <h1><span aria-hidden="true">🛠️</span> <span data-i18n="admin.title">Painel RCON</span></h1>
-      <div class="lang-toggle-slot"></div>
     </div>
 
     <div class="page-nav"></div>
@@ -30,24 +35,25 @@
         <button type="button" id="passwordToggle" class="password-toggle" data-i18n="admin.showPassword">Mostrar senha</button>
         <button type="button" id="loginBtn" data-i18n="admin.connect">Conectar</button>
       </div>
-      <p id="loginStatus" style="margin-top:12px;"></p>
+      <p id="loginStatus" role="status" aria-live="polite" class="admin-login-status"></p>
 
-      <div id="steamLoginWrap" style="display:none; margin-top:16px; border-top:1px solid rgba(170,156,148,0.2); padding-top:16px;">
+      <div id="steamLoginWrap" class="admin-divider" hidden>
         <button type="button" id="steamLoginBtn" class="steam-login-btn">🎮 <span data-i18n="admin.steamLogin">Entrar com Steam</span></button>
-        <p id="steamLoginStatus" style="margin-top:8px;"></p>
+        <p id="steamLoginStatus" class="admin-steam-status"></p>
       </div>
     </div>
 
-    <div id="commandCard" style="display:none;">
+    <div id="commandCard" hidden>
       <div class="admin-grid">
         <div class="card">
           <div class="toolbar">
-            <h2 style="margin:0;" data-i18n="admin.console">Console RCON</h2>
+            <h2 class="admin-title-inline" data-i18n="admin.console">Console RCON</h2>
+            <p id="rconStatus" class="rcon-status" role="status" aria-live="polite"></p>
             <button type="button" id="logoutBtn" data-i18n="admin.disconnect">Desconectar</button>
           </div>
 
           <div class="toolbar">
-            <label for="rconServer" style="white-space:nowrap;" data-i18n="admin.targetServer">Servidor alvo</label>
+            <label for="rconServer" class="admin-label-nowrap" data-i18n="admin.targetServer">Servidor alvo</label>
             <select id="rconServer" class="server-selector"></select>
           </div>
 
@@ -69,15 +75,15 @@
             <button type="button" class="quick-cmd" data-cmd="stats">stats</button>
           </div>
 
-          <h3 style="margin-top:20px;" data-i18n="admin.response">Resposta</h3>
+          <h3 class="admin-section-gap" data-i18n="admin.response">Resposta</h3>
           <pre id="rconOutput" class="console-output"></pre>
         </div>
 
         <div class="card">
-          <h2 style="margin-top:0;" data-i18n="admin.historyTitle">Histórico de comandos</h2>
+          <h2 class="admin-title-inline" data-i18n="admin.historyTitle">Histórico de comandos</h2>
           <div id="commandHistory" class="history-list"></div>
 
-          <h2 style="margin-top:24px;" data-i18n="admin.referenceTitle">Referência de comandos</h2>
+          <h2 class="admin-history-title" data-i18n="admin.referenceTitle">Referência de comandos</h2>
 
           <input
             type="text"
@@ -85,7 +91,6 @@
             class="admin-input"
             data-i18n-placeholder="admin.searchPlaceholder"
             placeholder="Buscar comando..."
-            style="margin-bottom: 14px;"
             data-i18n-aria-label="admin.searchPlaceholder"
           />
 
@@ -93,8 +98,8 @@
         </div>
 
         <div class="card admin-live-card">
-          <h2 style="margin-top:0;" data-i18n="admin.liveTitle">Jogadores online</h2>
-          <div class="table-responsive" style="max-height:280px; overflow-y:auto;">
+          <h2 class="admin-title-inline" data-i18n="admin.liveTitle">Jogadores online</h2>
+          <div class="table-responsive admin-live-scroll">
             <table>
           <caption class="sr-only" data-i18n="admin.liveTitle">Jogadores online</caption>
               <thead>
@@ -114,8 +119,8 @@
     </div>
   </div>
 
-  <script src="/i18n/translations.js" defer></script>
-  <script src="/common.js" defer></script>
-  <script src="/admin.js" defer></script>
+  <script src="/i18n/translations.js?v=3" defer></script>
+  <script src="/common.js?v=3" defer></script>
+  <script src="/admin.js?v=3" defer></script>
 </body>
 </html>

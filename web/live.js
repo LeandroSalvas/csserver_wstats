@@ -108,14 +108,8 @@ function renderPlayers(elementId, players, teamKey) {
   tbody.innerHTML = ""
 
   if (!players.length) {
-    tbody.innerHTML = `
-      <tr>
-        <td colspan="5">${i18nUtils.t('labels.noPlayersThisTeam')}</td>
-      </tr>
-    `
+    tbody.innerHTML = ''
     previousScoreboard[teamKey] = new Map()
-    const table = tbody.closest('table')
-    if (table) animateTableUpdate(table)
     return
   }
 
@@ -258,11 +252,24 @@ function applyLiveState(data) {
   const tPlayers = players.filter((p) => p.team === 'T')
   const ctPlayers = players.filter((p) => p.team === 'CT')
 
-  document.getElementById('tCount').innerText = `${tPlayers.length} ${i18nUtils.t('live.playersCount')}`
-  document.getElementById('ctCount').innerText = `${ctPlayers.length} ${i18nUtils.t('live.playersCount')}`
+  const tCount = document.getElementById('tCount')
+  const ctCount = document.getElementById('ctCount')
+  if (tCount) {
+    tCount.hidden = tPlayers.length === 0
+    if (tPlayers.length > 0) tCount.innerText = `${tPlayers.length} ${i18nUtils.t('live.playersCount')}`
+  }
+  if (ctCount) {
+    ctCount.hidden = ctPlayers.length === 0
+    if (ctPlayers.length > 0) ctCount.innerText = `${ctPlayers.length} ${i18nUtils.t('live.playersCount')}`
+  }
 
   renderPlayers('tPlayers', tPlayers, 'T')
   renderPlayers('ctPlayers', ctPlayers, 'CT')
+
+  const liveScoreAnnounce = document.getElementById('liveScoreAnnounce')
+  if (liveScoreAnnounce) {
+    liveScoreAnnounce.textContent = `${data.hostname || ''} — ${i18nUtils.t('live.score')} ${roundT} a ${roundCT}`
+  }
 }
 
 function handleLiveError() {
@@ -275,8 +282,10 @@ function handleLiveError() {
   document.getElementById('liveCount').innerText = '0'
   document.getElementById('liveScoreT').innerText = '0'
   document.getElementById('liveScoreCT').innerText = '0'
-  document.getElementById('tCount').innerText = `0 ${i18nUtils.t('live.playersCount')}`
-  document.getElementById('ctCount').innerText = `0 ${i18nUtils.t('live.playersCount')}`
+  const tCount = document.getElementById('tCount')
+  const ctCount = document.getElementById('ctCount')
+  if (tCount) tCount.hidden = true
+  if (ctCount) ctCount.hidden = true
 
   renderPlayers('tPlayers', [], 'T')
   renderPlayers('ctPlayers', [], 'CT')

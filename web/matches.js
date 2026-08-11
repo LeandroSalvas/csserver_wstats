@@ -1,5 +1,13 @@
-let matchesPage = 1
+const urlParams = new URLSearchParams(window.location.search)
+let matchesPage = Math.max(1, Number.parseInt(urlParams.get('page') || '1', 10) || 1)
 const MATCHES_LIMIT = 20
+
+function updateUrl() {
+  const url = new URL(window.location.href)
+  if (matchesPage > 1) url.searchParams.set('page', String(matchesPage))
+  else url.searchParams.delete('page')
+  window.history.replaceState(null, '', url.toString())
+}
 
 async function loadMatches(page = 1) {
   const tbody = document.getElementById('matchesTable')
@@ -27,10 +35,7 @@ function renderMatches(tbody, rows) {
     return
   }
 
-  tbody.innerHTML = ''
-  const fragment = document.createDocumentFragment()
-
-  rows.forEach((item, index) => {
+  renderRows(tbody, rows, (item, index) => {
     const row = document.createElement('tr')
     row.innerHTML = `
       <td>${((matchesPage - 1) * MATCHES_LIMIT) + index + 1}</td>
@@ -41,10 +46,8 @@ function renderMatches(tbody, rows) {
       <td>${formatMatchDate(item.ended_at)}</td>
       <td><a class="match-details-link" href="/partida/${item.id}" title="${escapeHtml(i18nUtils.t('matches.details'))}">${escapeHtml(i18nUtils.t('matches.details'))} ↗</a></td>
     `
-    fragment.appendChild(row)
+    return row
   })
-
-  tbody.appendChild(fragment)
 }
 
 function winnerLabel(item) {
@@ -81,10 +84,14 @@ function updateMatchesPagination(rowsCount) {
 
 function initMatchesPage() {
   document.getElementById('prevPage').addEventListener('click', () => {
-    if (matchesPage > 1) loadMatches(matchesPage - 1)
+    if (matchesPage > 1) {
+      loadMatches(matchesPage - 1)
+      updateUrl()
+    }
   })
   document.getElementById('nextPage').addEventListener('click', () => {
     loadMatches(matchesPage + 1)
+    updateUrl()
   })
   loadMatches()
 }

@@ -5,14 +5,19 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title data-i18n="live.title">Live Match - CS 1.6</title>
   <link rel="icon" type="image/svg+xml" href="/favicon.svg">
-  <link rel="stylesheet" href="/style.css?v=2">
+  <link rel="stylesheet" href="/style.css?v=3">
 </head>
 <body>
+
+<noscript>
+  <div class="noscript-warn" role="alert">
+    <strong>JavaScript desativado.</strong> Esta página precisa de JavaScript para carregar os dados.
+  </div>
+</noscript>
 
   <div class="container">
     <div class="header">
       <h1><span aria-hidden="true">📡</span> <span data-i18n="live.title">Live Match</span></h1>
-      <div class="lang-toggle-slot"></div>
     </div>
 
     <div class="page-nav"></div>
@@ -20,7 +25,7 @@
     <div id="statusMessage" class="status-message"></div>
 
     <div class="card">
-      <a class="button" data-watch-link href="#" target="_blank" rel="noopener" data-i18n="server.watchLaunch" style="margin-bottom:16px">Abrir espectador (browser)</a>
+      <a class="button live-watch-btn" data-watch-link href="#" target="_blank" rel="noopener" data-i18n="server.watchLaunch">Abrir espectador (browser)</a>
       <select id="liveServer" class="server-selector"></select>
       <h2 id="liveHostname" data-i18n="server.hostname">Servidor</h2>
 
@@ -44,6 +49,7 @@
           </span>
         </div>
       </div>
+      <div id="liveScoreAnnounce" class="sr-only" aria-live="polite"></div>
     </div>
 
     <div class="scoreboard">
@@ -97,8 +103,8 @@
 </div>
   </div>
 
-  <script src="/i18n/translations.js" defer></script>
-  <script src="/common.js" defer></script>
-  <script src="/live.js" defer></script>
+  <script src="/i18n/translations.js?v=3" defer></script>
+  <script src="/common.js?v=3" defer></script>
+  <script src="/live.js?v=3" defer></script>
 </body>
 </html>

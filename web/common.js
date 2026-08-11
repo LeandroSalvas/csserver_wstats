@@ -224,6 +224,9 @@ function renderPageNav() {
   containers.forEach((container) => {
     container.innerHTML = ''
 
+    const row = document.createElement('div')
+    row.className = 'page-nav-row'
+
     pageNavItems.forEach((item) => {
       const link = document.createElement('a')
       link.href = item.path
@@ -234,8 +237,28 @@ function renderPageNav() {
         link.setAttribute('aria-current', 'page')
       }
 
-      container.appendChild(link)
+      row.appendChild(link)
     })
+
+    container.appendChild(row)
+
+    const utils = document.createElement('div')
+    utils.className = 'page-nav-utils'
+
+    const watch = document.createElement('a')
+    watch.className = 'nav-watch'
+    watch.setAttribute('data-watch-link', '')
+    watch.href = SPECTATOR_URL
+    watch.target = '_blank'
+    watch.rel = 'noopener'
+    watch.textContent = i18nUtils.t('nav.watch')
+    utils.appendChild(watch)
+
+    const langSlot = document.createElement('div')
+    langSlot.className = 'lang-toggle-slot'
+    utils.appendChild(langSlot)
+
+    container.appendChild(utils)
   })
 }
 
@@ -287,6 +310,19 @@ function showEmptyRow(table, columns = 6, text) {
   if (!table) return
   const emptyText = text || i18nUtils.t('labels.noData')
   table.innerHTML = `\n    <tr class="empty-row">\n      <td colspan="${columns}">${escapeHtml(emptyText)}</td>\n    </tr>\n  `
+}
+
+// Re-renderiza uma tabela a partir de um array de linhas. Cada item passa por
+// `renderRow(item, index)` que deve retornar um <tr> (ou null para pular).
+function renderRows(table, rows, renderRow) {
+  if (!table) return
+  const fragment = document.createDocumentFragment()
+  rows.forEach((row, index) => {
+    const tr = renderRow(row, index)
+    if (tr) fragment.appendChild(tr)
+  })
+  table.innerHTML = ''
+  table.appendChild(fragment)
 }
 
 function applyActiveNav() {
@@ -368,8 +404,26 @@ function initWatchLink() {
   })
 }
 
+function initSkipLink() {
+  if (document.getElementById('skip-link')) return
+
+  const link = document.createElement('a')
+  link.id = 'skip-link'
+  link.className = 'skip-link'
+  link.href = '#main-content'
+  link.textContent = i18nUtils.t('nav.skipToContent')
+  document.body.insertBefore(link, document.body.firstChild)
+
+  const main = document.querySelector('.container')
+  if (main) {
+    if (!main.id) main.id = 'main-content'
+    main.setAttribute('role', 'main')
+  }
+}
+
 function initCommon() {
   i18nUtils.init()
+  initSkipLink()
   document.querySelectorAll('.status-message').forEach((el) => el.setAttribute('aria-live', 'polite'))
   document.querySelectorAll('table th').forEach((th) => th.setAttribute('scope', 'col'))
   renderPageNav()
@@ -412,6 +466,95 @@ function initConnectPage() {
 
 let searchDebounceTimer = null
 
+// --- Busca com semântica de combobox/listbox (WCAG 4.1.2) ---
+const comboboxStates = new WeakMap()
+
+function setupSearchListbox(input, results) {
+  const resultsId = results.id || `search-results-${Math.random().toString(36).slice(2, 8)}`
+  results.id = resultsId
+
+  input.setAttribute('role', 'combobox')
+  input.setAttribute('aria-autocomplete', 'list')
+  input.setAttribute('aria-controls', resultsId)
+  input.setAttribute('aria-expanded', 'false')
+  results.setAttribute('role', 'listbox')
+
+  let activeIndex = -1
+
+  const options = () => Array.from(results.querySelectorAll('[role="option"]'))
+
+  const setExpanded = (open) => {
+    input.setAttribute('aria-expanded', open ? 'true' : 'false')
+    if (!open) {
+      activeIndex = -1
+      input.removeAttribute('aria-activedescendant')
+      options().forEach((opt) => opt.removeAttribute('aria-selected'))
+    }
+  }
+
+  const highlight = (idx) => {
+    const opts = options()
+    if (!opts.length) return
+    activeIndex = (idx + opts.length) % opts.length
+    opts.forEach((opt, i) => {
+      if (i === activeIndex) opt.setAttribute('aria-selected', 'true')
+      else opt.removeAttribute('aria-selected')
+    })
+    const el = opts[activeIndex]
+    input.setAttribute('aria-activedescendant', el.id)
+    el.scrollIntoView({ block: 'nearest' })
+  }
+
+  const close = () => {
+    results.classList.remove('visible')
+    setExpanded(false)
+  }
+
+  input.addEventListener('keydown', (e) => {
+    if (!results.classList.contains('visible')) {
+      if (e.key === 'Escape') close()
+      return
+    }
+
+    const opts = options()
+
+    if (e.key === 'ArrowDown') {
+      e.preventDefault()
+      highlight(activeIndex + 1)
+    } else if (e.key === 'ArrowUp') {
+      e.preventDefault()
+      highlight(activeIndex === -1 ? opts.length - 1 : activeIndex - 1)
+    } else if (e.key === 'Escape') {
+      e.preventDefault()
+      close()
+    } else if (e.key === 'Enter') {
+      const target = activeIndex >= 0 ? opts[activeIndex] : opts[0]
+      if (target) {
+        e.preventDefault()
+        target.click()
+      }
+    }
+  })
+
+  input.addEventListener('input', () => {
+    if (!results.classList.contains('visible')) setExpanded(false)
+  })
+
+  const state = {
+    setExpanded,
+    close,
+    markOptions() {
+      const baseId = results.id
+      options().forEach((opt, i) => {
+        opt.id = `${baseId}-opt-${i}`
+        opt.tabIndex = -1
+      })
+    }
+  }
+  comboboxStates.set(input, state)
+  return state
+}
+
 function initPlayerSearch() {
   const nav = document.querySelector('.page-nav')
   if (!nav) return
@@ -437,34 +580,30 @@ function initPlayerSearch() {
   results.className = 'search-results'
   wrap.appendChild(results)
 
-  input.addEventListener('keydown', (e) => {
-    if (e.key === 'Enter') {
-      const first = results.querySelector('a')
-      if (first) window.location.href = first.getAttribute('href')
-    }
-  })
+  const combobox = setupSearchListbox(input, results)
 
   input.addEventListener('input', () => {
     const q = input.value.trim()
     window.clearTimeout(searchDebounceTimer)
     if (!q) {
-      results.classList.remove('visible')
+      combobox.close()
       results.innerHTML = ''
       return
     }
-    searchDebounceTimer = window.setTimeout(() => runPlayerSearch(q, results), 300)
+    searchDebounceTimer = window.setTimeout(() => runPlayerSearch(q, results, combobox), 300)
   })
 
   document.addEventListener('click', (e) => {
     if (!wrap.contains(e.target)) {
-      results.classList.remove('visible')
+      combobox.close()
     }
   })
 
-  nav.appendChild(wrap)
+  const utils = nav.querySelector('.page-nav-utils') || nav
+  utils.appendChild(wrap)
 }
 
-async function runPlayerSearch(q, results) {
+async function runPlayerSearch(q, results, combobox) {
   try {
     const res = await fetchJson(`/player-search?q=${encodeURIComponent(q)}${serverParam()}`)
     results.innerHTML = ''
@@ -478,6 +617,7 @@ async function runPlayerSearch(q, results) {
       res.forEach((p) => {
         const link = document.createElement('a')
         link.href = `/jogador/${encodeURIComponent(p.steamid)}`
+        link.setAttribute('role', 'option')
 
         const name = document.createElement('span')
         name.className = 'sr-name'
@@ -503,6 +643,10 @@ async function runPlayerSearch(q, results) {
     }
 
     results.classList.add('visible')
+    if (combobox) {
+      combobox.markOptions()
+      combobox.setExpanded(true)
+    }
   } catch (err) {
     results.innerHTML = ''
     const error = document.createElement('div')
@@ -510,6 +654,10 @@ async function runPlayerSearch(q, results) {
     error.textContent = i18nUtils.t('errors.search')
     results.appendChild(error)
     results.classList.add('visible')
+    if (combobox) {
+      combobox.markOptions()
+      combobox.setExpanded(true)
+    }
   }
 }
 

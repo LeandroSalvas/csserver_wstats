@@ -1,6 +1,16 @@
-let currentPeriod = 'weekly'
-let currentPage = 1
+const urlParams = new URLSearchParams(window.location.search)
+let currentPeriod = urlParams.get('period') === 'monthly' ? 'monthly' : 'weekly'
+let currentPage = Math.max(1, Number.parseInt(urlParams.get('page') || '1', 10) || 1)
 const PAGE_SIZE = 20
+
+function updateUrl() {
+  const url = new URL(window.location.href)
+  if (currentPeriod !== 'weekly') url.searchParams.set('period', currentPeriod)
+  else url.searchParams.delete('period')
+  if (currentPage > 1) url.searchParams.set('page', String(currentPage))
+  else url.searchParams.delete('page')
+  window.history.replaceState(null, '', url.toString())
+}
 
 async function loadRanking(period, page = 1) {
   const title = document.getElementById('rankingTitle')
@@ -25,8 +35,7 @@ async function loadRanking(period, page = 1) {
       return
     }
 
-    const fragment = document.createDocumentFragment()
-    players.forEach((p, i) => {
+    renderRows(table, players, (p, i) => {
       const row = document.createElement('tr')
       row.innerHTML = `
         <td>${(page - 1) * PAGE_SIZE + i + 1}</td>
@@ -37,11 +46,8 @@ async function loadRanking(period, page = 1) {
         <td>${p.kd}</td>
         <td>${p.skill}</td>
       `
-      fragment.appendChild(row)
+      return row
     })
-
-    table.innerHTML = ''
-    table.appendChild(fragment)
     animateTableUpdate(table)
   } catch (err) {
     console.error('Erro ao carregar ranking:', err)
@@ -76,22 +82,26 @@ document.addEventListener('DOMContentLoaded', () => {
     currentPeriod = 'weekly'
     currentPage = 1
     setActivePeriod(currentPeriod)
+    updateUrl()
     loadRanking(currentPeriod, currentPage)
   })
   if (btnMonthly) btnMonthly.addEventListener('click', () => {
     currentPeriod = 'monthly'
     currentPage = 1
     setActivePeriod(currentPeriod)
+    updateUrl()
     loadRanking(currentPeriod, currentPage)
   })
   if (btnPrev) btnPrev.addEventListener('click', () => {
     if (currentPage > 1) {
       currentPage -= 1
+      updateUrl()
       loadRanking(currentPeriod, currentPage)
     }
   })
   if (btnNext) btnNext.addEventListener('click', () => {
     currentPage += 1
+    updateUrl()
     loadRanking(currentPeriod, currentPage)
   })
 
@@ -107,5 +117,6 @@ document.addEventListener('DOMContentLoaded', () => {
 
 document.addEventListener('server-change', () => {
   currentPage = 1
+  updateUrl()
   loadRanking(currentPeriod, currentPage)
 })

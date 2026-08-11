@@ -1,0 +1,552 @@
+// Estado e serviços dos servidores: configurações, GameDig, snapshots,
+// coletor de estatísticas do banco, alertas e comandos RCON.
+
+const { GameDig } = require('gamedig')
+const Rcon = require('rcon')
+
+const {
+  LIVE_DATA_DIR,
+  NOT_BOT,
+  NOT_BOT_WHERE,
+  GAMEDIG_HOST,
+  GAMEDIG_PORT,
+  SNAPSHOT_STALE_MS,
+  alertWebhookUrl
+} = require('./config')
+const { db } = require('./db')
+const {
+  playersRegisteredGauge,
+  accuracyGauge,
+  skillAvgGauge,
+  skillMaxGauge,
+  connectionTimeGauge,
+  statsTotalGauge,
+  activePlayersGauge,
+  killsGauge,
+  snapshotsByMapGauge,
+  serverOnlineGauge,
+  mapTimeGauge,
+  playersOnlineGauge,
+  roundTGauge,
+  roundCTGauge,
+  serverInfoGauge,
+  maxPlayersGauge
+} = require('./metrics')
+const { readLiveFile, withTimeout } = require('./helpers')
+
+function getServerConfigs() {
+  const raw = process.env.CS_SERVERS
+  if (!raw) return null
+  try {
+    const list = JSON.parse(raw)
+    if (!Array.isArray(list) || !list.length) return null
+    return list.map((s) => ({
+      ...s,
+      port: parseInt(s.port, 10) || 27015,
+      hostPort: s.hostPort != null ? parseInt(s.hostPort, 10) : (parseInt(s.port, 10) || 27015)
+    }))
+  } catch (err) {
+    console.error('CS_SERVERS inválido:', err.message)
+    return null
+  }
+}
+
+const serverConfigs = getServerConfigs()
+
+const primaryServer = serverConfigs && serverConfigs.length
+  ? serverConfigs[0]
+  : { id: 'main', name: GAMEDIG_HOST, host: GAMEDIG_HOST, port: GAMEDIG_PORT, hostPort: GAMEDIG_PORT, liveDir: LIVE_DATA_DIR }
+
+// Filtro opcional ?server= para queries por servidor.
+// Retorna null quando não informado, { invalid } quando o id não é configurado,
+// ou { server, where, params } para usar em queries (cláusulas AND).
+// Observação: quando casa por host, usa o id resolvido (server_name no banco é o id).
+function getServerFilter(req) {
+  const raw = String(req.query.server || '').trim()
+  if (!raw) return null
+
+  if (serverConfigs && serverConfigs.length) {
+    const found = serverConfigs.find((s) => s.id === raw || s.host === raw)
+    if (!found) return { invalid: raw }
+    return { server: found.id, where: ' AND server_name = ?', params: [found.id] }
+  }
+
+  return { server: raw, where: ' AND server_name = ?', params: [raw] }
+}
+
+// Retorna o servidor configurado por id OU host, ou null se não existir.
+function findServer(id) {
+  if (!id) return null
+  if (serverConfigs) return serverConfigs.find((s) => s.id === id || s.host === id) || null
+  return null
+}
+
+function resolveServer(id) {
+  if (!id) return primaryServer
+  const found = findServer(id)
+  return found || primaryServer
+}
+
+function resolveLiveDir(id) {
+  const srv = resolveServer(id)
+  return srv.liveDir || LIVE_DATA_DIR
+}
+
+function queryServer(srv) {
+  return GameDig.query({
+    type: 'counterstrike16',
+    host: srv.host,
+    port: parseInt(srv.port, 10)
+  })
+}
+
+async function getServerMap(srv) {
+  try {
+    const state = await queryServer(srv)
+    return state.map
+  } catch (err) {
+    console.error('Erro ao obter mapa:', srv.id, err.message)
+    return 'unknown'
+  }
+}
+
+const lastState = {}
+const lastMapByServer = {}
+let snapshotInProgress = false
+const lastServerInfo = {}
+
+async function saveSnapshotBatch(players, map, server) {
+  if (!players.length) return
+
+  const values = players.map(p => [p.steamid, p.name, map, p.kills, p.deaths, p.hs, p.skill, server])
+  const placeholders = values.map(() => '(?,?,?,?,?,?,?,?)').join(',')
+  const flatValues = values.flat()
+
+  await db.query(
+    `INSERT INTO csstats_snapshots (steamid,name,map,kills,deaths,hs,skill,server_name) VALUES ${placeholders}`,
+    flatValues
+  )
+  console.log(`snapshot salvo: ${players.length} jogadores (${server}/${map})`)
+}
+
+function pruneLastState() {
+  const now = Date.now()
+  for (const [key, entry] of Object.entries(lastState)) {
+    if (!entry._lastUpdated || (now - entry._lastUpdated) > SNAPSHOT_STALE_MS) {
+      delete lastState[key]
+    }
+  }
+}
+
+function snapshotKey(srv, steamid) {
+  return `${srv.id}:${steamid}`
+}
+
+async function snapshot() {
+  if (snapshotInProgress) return
+
+  snapshotInProgress = true
+
+  try {
+
+    const servers = serverConfigs && serverConfigs.length ? serverConfigs : [primaryServer]
+
+    for (const srv of servers) {
+
+      const map = await getServerMap(srv)
+
+      if (!map || map === 'unknown' || map === '') {
+        lastMapByServer[srv.id] = map
+        pruneLastState()
+        continue
+      }
+
+      const [players] = await db.query(`
+        SELECT steamid, name, kills, deaths, hs, skill
+        FROM csstats
+        WHERE server_name = ? AND ${NOT_BOT}
+      `, [srv.id])
+
+      if (lastMapByServer[srv.id] !== map) {
+
+        console.log('Mapa mudou:', srv.id, map)
+
+        const activePlayers = players.filter((p) => lastState[snapshotKey(srv, p.steamid)])
+        await saveSnapshotBatch(activePlayers, map, srv.id)
+
+        for (const p of activePlayers) {
+          p._lastUpdated = Date.now()
+          lastState[snapshotKey(srv, p.steamid)] = p
+        }
+
+        lastMapByServer[srv.id] = map
+        pruneLastState()
+        continue
+      }
+
+      const changedPlayers = []
+      for (const p of players) {
+
+        const key = snapshotKey(srv, p.steamid)
+        const prev = lastState[key]
+
+        if (!prev) {
+
+          p._lastUpdated = Date.now()
+          lastState[key] = p
+
+          if (p.kills > 0 || p.deaths > 0 || p.hs > 0) {
+            changedPlayers.push(p)
+          }
+
+          continue
+
+        }
+
+        const changed =
+          p.kills !== prev.kills ||
+          p.deaths !== prev.deaths ||
+          p.hs !== prev.hs ||
+          p.skill !== prev.skill
+
+        if (changed) {
+
+          changedPlayers.push(p)
+          p._lastUpdated = Date.now()
+          lastState[key] = p
+
+        }
+
+      }
+
+      if (changedPlayers.length) {
+        await saveSnapshotBatch(changedPlayers, map, srv.id)
+      }
+
+      pruneLastState()
+    }
+
+  } catch (err) {
+    console.error('Erro no snapshot:', err)
+  } finally {
+    snapshotInProgress = false
+  }
+
+}
+
+let dbStatsInProgress = false
+
+// Agregados do banco por servidor, expostos como métricas Prometheus.
+async function collectDbStats() {
+  if (dbStatsInProgress) return
+  dbStatsInProgress = true
+
+  const servers = serverConfigs && serverConfigs.length ? serverConfigs : [primaryServer]
+
+  try {
+    for (const srv of servers) {
+      const [[agg]] = await db.query(`
+        SELECT
+          COUNT(*) AS players_registered,
+          COALESCE(SUM(kills), 0) AS kills,
+          COALESCE(SUM(deaths), 0) AS deaths,
+          COALESCE(SUM(hs), 0) AS hs,
+          COALESCE(SUM(tks), 0) AS tks,
+          COALESCE(SUM(assists), 0) AS assists,
+          COALESCE(SUM(dmg), 0) AS dmg,
+          COALESCE(SUM(bombplants), 0) AS bombplants,
+          COALESCE(SUM(bombdefused), 0) AS bombdefused,
+          COALESCE(SUM(bombexplosions), 0) AS bombexplosions,
+          COALESCE(SUM(connects), 0) AS connects,
+          COALESCE(SUM(shots), 0) AS shots,
+          COALESCE(SUM(hits), 0) AS hits,
+          COALESCE(AVG(skill), 0) AS skill_avg,
+          COALESCE(MAX(skill), 0) AS skill_max,
+          COALESCE(SUM(connection_time), 0) AS connection_time
+        FROM csstats
+        WHERE server_name = ? AND ${NOT_BOT}
+      `, [srv.id])
+
+      playersRegisteredGauge.set({ server: srv.id }, agg.players_registered)
+      accuracyGauge.set({ server: srv.id }, agg.shots > 0 ? (agg.hits / agg.shots) * 100 : 0)
+      skillAvgGauge.set({ server: srv.id }, Number(agg.skill_avg))
+      skillMaxGauge.set({ server: srv.id }, agg.skill_max)
+      connectionTimeGauge.set({ server: srv.id }, Number(agg.connection_time))
+
+      const statsMap = {
+        kills: agg.kills,
+        deaths: agg.deaths,
+        hs: agg.hs,
+        tks: agg.tks,
+        assists: agg.assists,
+        dmg: agg.dmg,
+        bombplants: agg.bombplants,
+        bombdefused: agg.bombdefused,
+        bombexplosions: agg.bombexplosions,
+        connects: agg.connects
+      }
+      for (const [stat, value] of Object.entries(statsMap)) {
+        statsTotalGauge.set({ server: srv.id, stat }, Number(value))
+      }
+
+      const [[{ active7d }]] = await db.query(`
+        SELECT COUNT(DISTINCT steamid) AS active7d
+        FROM csstats_snapshots
+        WHERE server_name = ? AND created_at >= DATE_SUB(NOW(), INTERVAL 7 DAY) AND ${NOT_BOT}
+      `, [srv.id])
+      const [[{ active30d }]] = await db.query(`
+        SELECT COUNT(DISTINCT steamid) AS active30d
+        FROM csstats_snapshots
+        WHERE server_name = ? AND created_at >= DATE_SUB(NOW(), INTERVAL 30 DAY) AND ${NOT_BOT}
+      `, [srv.id])
+      activePlayersGauge.set({ server: srv.id, period: '7d' }, active7d)
+      activePlayersGauge.set({ server: srv.id, period: '30d' }, active30d)
+
+      const [[{ kills7d }]] = await db.query(`
+        WITH baseline AS (
+          SELECT s.steamid, s.server_name, s.kills, s.created_at
+          FROM csstats_snapshots s
+          JOIN (
+            SELECT steamid, server_name, MAX(created_at) AS max_created
+            FROM csstats_snapshots
+            WHERE server_name = ? AND created_at < DATE_SUB(NOW(), INTERVAL 7 DAY) AND ${NOT_BOT}
+            GROUP BY steamid, server_name
+          ) b ON b.steamid = s.steamid AND b.server_name = s.server_name AND b.max_created = s.created_at
+        ),
+        windowed AS (
+          SELECT steamid, server_name, kills, created_at
+          FROM csstats_snapshots
+          WHERE server_name = ? AND created_at >= DATE_SUB(NOW(), INTERVAL 7 DAY) AND ${NOT_BOT}
+        ),
+        combined AS (
+          SELECT steamid, kills, created_at FROM windowed
+          UNION ALL
+          SELECT steamid, kills, created_at FROM baseline
+        ),
+        ordered AS (
+          SELECT kills, created_at,
+            LAG(kills) OVER (PARTITION BY steamid, server_name ORDER BY created_at) AS prev_kills
+          FROM combined
+        )
+        SELECT COALESCE(SUM(GREATEST(kills - COALESCE(prev_kills, 0), 0)), 0) AS kills7d
+        FROM ordered
+        WHERE created_at >= DATE_SUB(NOW(), INTERVAL 7 DAY)
+      `, [srv.id, srv.id])
+      const [[{ kills30d }]] = await db.query(`
+        WITH baseline AS (
+          SELECT s.steamid, s.server_name, s.kills, s.created_at
+          FROM csstats_snapshots s
+          JOIN (
+            SELECT steamid, server_name, MAX(created_at) AS max_created
+            FROM csstats_snapshots
+            WHERE server_name = ? AND created_at < DATE_SUB(NOW(), INTERVAL 30 DAY) AND ${NOT_BOT}
+            GROUP BY steamid, server_name
+          ) b ON b.steamid = s.steamid AND b.server_name = s.server_name AND b.max_created = s.created_at
+        ),
+        windowed AS (
+          SELECT steamid, server_name, kills, created_at
+          FROM csstats_snapshots
+          WHERE server_name = ? AND created_at >= DATE_SUB(NOW(), INTERVAL 30 DAY) AND ${NOT_BOT}
+        ),
+        combined AS (
+          SELECT steamid, kills, created_at FROM windowed
+          UNION ALL
+          SELECT steamid, kills, created_at FROM baseline
+        ),
+        ordered AS (
+          SELECT kills, created_at,
+            LAG(kills) OVER (PARTITION BY steamid, server_name ORDER BY created_at) AS prev_kills
+          FROM combined
+        )
+        SELECT COALESCE(SUM(GREATEST(kills - COALESCE(prev_kills, 0), 0)), 0) AS kills30d
+        FROM ordered
+        WHERE created_at >= DATE_SUB(NOW(), INTERVAL 30 DAY)
+      `, [srv.id, srv.id])
+      killsGauge.set({ server: srv.id, period: '7d' }, Number(kills7d))
+      killsGauge.set({ server: srv.id, period: '30d' }, Number(kills30d))
+
+      const [mapRows] = await db.query(`
+        SELECT map, COUNT(*) AS snapshots
+        FROM csstats_snapshots
+        WHERE server_name = ? AND map IS NOT NULL AND map <> '' AND map <> 'unknown' AND ${NOT_BOT}
+        GROUP BY map
+      `, [srv.id])
+      for (const row of mapRows) {
+        snapshotsByMapGauge.set({ server: srv.id, map: row.map }, row.snapshots)
+      }
+    }
+  } catch (err) {
+    console.error('Erro no coletor de estatísticas do banco:', err)
+  } finally {
+    dbStatsInProgress = false
+  }
+}
+
+function runRconCommand(password, command, serverId) {
+  const srv = resolveServer(serverId)
+  return new Promise((resolve, reject) => {
+    const client = new Rcon(srv.host, parseInt(srv.port, 10), password, {
+      tcp: false,
+      challenge: true
+    })
+
+    let output = ''
+    let settled = false
+    let responseTimer = null
+
+    const finishOk = (text) => {
+      if (settled) return
+      settled = true
+      if (responseTimer) clearTimeout(responseTimer)
+      try { client.disconnect() } catch (e) { console.error('RCON disconnect error:', e.message) }
+      resolve(text && text.trim() ? text.trim() : 'Comando enviado com sucesso, sem retorno textual.')
+    }
+
+    const finishErr = (err) => {
+      if (settled) return
+      settled = true
+      if (responseTimer) clearTimeout(responseTimer)
+      try { client.disconnect() } catch (e) { console.error('RCON disconnect error:', e.message) }
+      reject(err)
+    }
+
+    client.on('auth', () => {
+      client.send(command)
+    })
+
+    client.on('response', (str) => {
+      output += str + '\n'
+
+      if (responseTimer) clearTimeout(responseTimer)
+      responseTimer = setTimeout(() => finishOk(output), 300)
+    })
+
+    client.on('error', (err) => {
+      finishErr(err)
+    })
+
+    client.on('end', () => {
+      if (!settled) finishOk(output)
+    })
+
+    try {
+      client.connect()
+    } catch (err) {
+      finishErr(err)
+    }
+
+    setTimeout(() => {
+      if (!settled) finishOk(output)
+    }, 5000)
+  })
+}
+
+// ALERTAS DE SERVIDOR
+let serverAlertState = {}
+const alertEvents = []
+
+function pushAlertEvent(serverId, type) {
+  alertEvents.push({ serverId, type, at: new Date().toISOString() })
+  if (alertEvents.length > 20) {
+    alertEvents.shift()
+  }
+}
+
+async function sendAlert(text) {
+  if (!alertWebhookUrl) return
+  try {
+    const isDiscord = /discord(app)?\.com\/api\/webhooks/i.test(alertWebhookUrl)
+    await withTimeout(fetch(alertWebhookUrl, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(isDiscord ? { content: text } : { text })
+    }), 5000)
+  } catch (err) {
+    console.error('Erro ao enviar alerta:', err.message)
+  }
+}
+
+async function checkServerAlerts() {
+  const servers = serverConfigs && serverConfigs.length ? serverConfigs : [primaryServer]
+
+  for (const srv of servers) {
+    const prev = serverAlertState[srv.id]
+    try {
+      const state = await queryServer(srv)
+      const online = true
+
+      updateLiveServerGauges(srv, state)
+
+      if (prev === undefined) {
+        serverAlertState[srv.id] = online
+        continue
+      }
+
+      if (online !== serverAlertState[srv.id]) {
+        serverAlertState[srv.id] = online
+        pushAlertEvent(srv.id, 'online')
+        await sendAlert(`🟢 Servidor ${srv.name || srv.host} online — mapa ${state.map}, ${state.players.length}/${state.maxplayers} jogadores`)
+      }
+    } catch (err) {
+      serverOnlineGauge.set({ server: srv.id }, 0)
+      mapTimeGauge.set({ server: srv.id }, 0)
+      playersOnlineGauge.set({ server: srv.id }, 0)
+      roundTGauge.set({ server: srv.id }, 0)
+      roundCTGauge.set({ server: srv.id }, 0)
+
+      if (prev === undefined) {
+        serverAlertState[srv.id] = false
+        continue
+      }
+
+      if (serverAlertState[srv.id] !== false) {
+        serverAlertState[srv.id] = false
+        pushAlertEvent(srv.id, 'offline')
+        await sendAlert(`🔴 Servidor ${srv.name || srv.host} offline`)
+      }
+    }
+  }
+}
+
+function updateLiveServerGauges(srv, state) {
+  const scoreboard = readLiveFile('live_scoreboard.json', resolveLiveDir(srv.id))
+
+  serverOnlineGauge.set({ server: srv.id }, 1)
+  const map = state.map || 'unknown'
+  const hostname = state.name || srv.id
+  const prev = lastServerInfo[srv.id]
+  if (prev && (prev.map !== map || prev.hostname !== hostname)) {
+    serverInfoGauge.remove({ server: srv.id, map: prev.map, hostname: prev.hostname })
+  }
+  lastServerInfo[srv.id] = { map, hostname }
+  serverInfoGauge.set({ server: srv.id, map, hostname }, 1)
+  maxPlayersGauge.set({ server: srv.id }, parseInt(state.maxplayers, 10) || 0)
+  playersOnlineGauge.set({ server: srv.id }, state.players.length)
+
+  const roundT = scoreboard && Number.isFinite(scoreboard.round_t) ? scoreboard.round_t : 0
+  const roundCT = scoreboard && Number.isFinite(scoreboard.round_ct) ? scoreboard.round_ct : 0
+  roundTGauge.set({ server: srv.id }, roundT)
+  roundCTGauge.set({ server: srv.id }, roundCT)
+
+  const mapStarted = scoreboard && Number.isFinite(scoreboard.map_started_at)
+    ? scoreboard.map_started_at * 1000
+    : 0
+  mapTimeGauge.set({ server: srv.id }, mapStarted ? Math.max(0, (Date.now() - mapStarted) / 1000) : 0)
+}
+
+module.exports = {
+  serverConfigs,
+  primaryServer,
+  getServerFilter,
+  findServer,
+  resolveServer,
+  resolveLiveDir,
+  queryServer,
+  getServerMap,
+  runRconCommand,
+  checkServerAlerts,
+  updateLiveServerGauges,
+  serverAlertState,
+  alertEvents,
+  alertWebhookUrl
+}
