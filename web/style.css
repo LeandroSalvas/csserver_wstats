@@ -1330,36 +1330,41 @@ button.quick-cmd:hover {
   color: var(--accent-text-bright);
 }
 
+/* Acessibilidade: conteúdo visível apenas para leitores de tela */
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
 /* STATUS MESSAGE */
 
 .status-message {
   display: block;
+  box-sizing: border-box;
+  min-height: 42px;
+  margin-bottom: 16px;
+  padding: 10px 16px;
   opacity: 0;
   visibility: hidden;
-  max-height: 0;
-  margin-bottom: 0;
-  padding: 0 16px;
-  overflow: hidden;
   border-radius: 12px;
   font-size: 0.95rem;
   line-height: 1.5;
   border: 1px solid transparent;
   transition:
     opacity 0.22s ease,
-    visibility 0.22s ease,
-    max-height 0.32s ease,
-    margin-bottom 0.24s ease,
-    padding-top 0.24s ease,
-    padding-bottom 0.24s ease;
+    visibility 0.22s ease;
 }
 
 .status-message.visible {
   opacity: 1;
   visibility: visible;
-  max-height: 8rem;
-  margin-bottom: 20px;
-  padding-top: 14px;
-  padding-bottom: 14px;
 }
 
 .status-message.info {
@@ -1699,6 +1704,13 @@ select:focus {
   font-size: 2rem;
   color: var(--text-faint);
   min-height: 140px;
+}
+
+.duel-empty-text {
+  font-size: 0.95rem;
+  text-align: center;
+  line-height: 1.5;
+  padding: 0 8px;
 }
 
 .duel-player-name {

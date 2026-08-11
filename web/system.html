@@ -13,7 +13,7 @@
 
 <div class="container">
   <div class="header">
-    <h1>🛡️ <span data-i18n="system.title">Status do Sistema</span></h1>
+    <h1><span aria-hidden="true">🛡️</span> <span data-i18n="system.title">Status do Sistema</span></h1>
     <div class="lang-toggle-slot"></div>
   </div>
 
@@ -42,6 +42,7 @@
     <h2 data-i18n="system.servers">Servidores</h2>
     <div class="table-responsive">
       <table class="servers-table">
+          <caption class="sr-only" data-i18n="system.servers">Servidores</caption>
         <thead>
           <tr>
             <th data-i18n="labels.name">Nome</th>

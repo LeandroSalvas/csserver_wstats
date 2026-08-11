@@ -11,7 +11,7 @@
 
   <div class="container">
     <div class="header">
-      <h1>📊 <span data-i18n="nav.advanced">Estatísticas Avançadas</span></h1>
+      <h1><span aria-hidden="true">📊</span> <span data-i18n="nav.advanced">Estatísticas Avançadas</span></h1>
       <div class="lang-toggle-slot"></div>
     </div>
 
@@ -20,7 +20,7 @@
     <div class="toolbar">
       <select id="advancedServer" class="server-selector"></select>
       <div id="advancedNote" class="advanced-note">Exibindo o top 10</div>
-      <button id="advancedToggle">Ver top 50</button>
+      <button type="button" id="advancedToggle">Ver top 50</button>
     </div>
 
     <div id="statusMessage" class="status-message"></div>
@@ -29,6 +29,7 @@
       <h2 data-i18n="advanced.headshots">Top Headshots</h2>
       <div class="table-responsive">
         <table>
+          <caption class="sr-only" data-i18n="advanced.headshots">Top Headshots</caption>
           <thead>
             <tr>
               <th data-i18n="labels.rank">#</th>
@@ -49,6 +50,7 @@
       <h2 data-i18n="advanced.accuracy">Top Accuracy</h2>
       <div class="table-responsive">
         <table>
+          <caption class="sr-only" data-i18n="advanced.accuracy">Top Accuracy</caption>
           <thead>
             <tr>
               <th data-i18n="labels.rank">#</th>
@@ -69,6 +71,7 @@
       <h2 data-i18n="advanced.streak">Top Kill Streak</h2>
       <div class="table-responsive">
         <table>
+          <caption class="sr-only" data-i18n="advanced.streak">Top Kill Streak</caption>
           <thead>
             <tr>
               <th data-i18n="labels.rank">#</th>
@@ -85,6 +88,7 @@
       <h2 data-i18n="advanced.skill">Top Skill</h2>
       <div class="table-responsive">
         <table>
+          <caption class="sr-only" data-i18n="advanced.skill">Top Skill</caption>
           <thead>
             <tr>
               <th data-i18n="labels.rank">#</th>
@@ -101,6 +105,7 @@
       <h2 data-i18n="advanced.kd">Top KD</h2>
       <div class="table-responsive">
         <table>
+          <caption class="sr-only" data-i18n="advanced.kd">Top KD</caption>
           <thead>
             <tr>
               <th data-i18n="labels.rank">#</th>
@@ -120,6 +125,7 @@
       <h2 data-i18n="advanced.assists">Top Assists</h2>
       <div class="table-responsive">
         <table>
+          <caption class="sr-only" data-i18n="advanced.assists">Top Assists</caption>
           <thead>
             <tr>
               <th data-i18n="labels.rank">#</th>
@@ -139,6 +145,7 @@
       <h2 data-i18n="advanced.damage">Top Damage</h2>
       <div class="table-responsive">
         <table>
+          <caption class="sr-only" data-i18n="advanced.damage">Top Damage</caption>
           <thead>
             <tr>
               <th data-i18n="labels.rank">#</th>
@@ -158,6 +165,7 @@
       <h2 data-i18n="advanced.tk">Top Team Kills</h2>
       <div class="table-responsive">
         <table>
+          <caption class="sr-only" data-i18n="advanced.tk">Top Team Kills</caption>
           <thead>
             <tr>
               <th data-i18n="labels.rank">#</th>
@@ -177,6 +185,7 @@
       <h2 data-i18n="advanced.bomb">Top Bomb</h2>
       <div class="table-responsive">
         <table>
+          <caption class="sr-only" data-i18n="advanced.bomb">Top Bomb</caption>
           <thead>
             <tr>
               <th data-i18n="labels.rank">#</th>
@@ -197,6 +206,7 @@
       <h2 data-i18n="advanced.connectTime">Top Tempo de Conexão</h2>
       <div class="table-responsive">
         <table>
+          <caption class="sr-only" data-i18n="advanced.connectTime">Top Tempo de Conexão</caption>
           <thead>
             <tr>
               <th data-i18n="labels.rank">#</th>

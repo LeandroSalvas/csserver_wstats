@@ -6,7 +6,7 @@
   <title data-i18n="duel.title">Duelo de Players</title>
   <link rel="icon" type="image/svg+xml" href="/favicon.svg">
   <link rel="stylesheet" href="/style.css?v=2">
-  <script src="https://cdn.jsdelivr.net/npm/chart.js" defer></script>
+  <script src="/vendor/chart.umd.min.js" defer></script>
 </head>
 
 <body>
@@ -14,7 +14,7 @@
   <div class="container">
 
     <div class="header">
-      <h1>⚔️ <span data-i18n="duel.title">Duelo de Players</span></h1>
+      <h1><span aria-hidden="true">⚔️</span> <span data-i18n="duel.title">Duelo de Players</span></h1>
       <div class="lang-toggle-slot"></div>
     </div>
 
@@ -30,7 +30,7 @@
       <div class="duel-panel">
         <div class="duel-side">
           <div class="duel-search player-search">
-            <input id="duelSearchA" type="text" autocomplete="off" placeholder="">
+            <input id="duelSearchA" type="text" autocomplete="off" placeholder="" data-i18n-aria-label="duel.searchA">
             <div id="duelResultsA" class="search-results"></div>
           </div>
           <div id="duelCardA" class="duel-player-card duel-empty">?</div>
@@ -38,31 +38,32 @@
 
         <div class="duel-vs">
           <span class="duel-vs-label" data-i18n="duel.vs">VS</span>
-          <button id="duelSwap" class="button duel-swap-btn" title=""></button>
+          <button type="button" id="duelSwap" class="button duel-swap-btn" title=""></button>
         </div>
 
         <div class="duel-side">
           <div class="duel-search player-search">
-            <input id="duelSearchB" type="text" autocomplete="off" placeholder="">
+            <input id="duelSearchB" type="text" autocomplete="off" placeholder="" data-i18n-aria-label="duel.searchB">
             <div id="duelResultsB" class="search-results"></div>
           </div>
           <div id="duelCardB" class="duel-player-card duel-empty">?</div>
         </div>
       </div>
       <div class="duel-actions">
-        <button id="duelCopyLink" class="button export-btn"></button>
+        <button type="button" id="duelCopyLink" class="button export-btn"></button>
       </div>
     </div>
 
     <div class="card" id="duelCompareSection" hidden>
-      <h2 data-i18n="duel.combatTitle">⚔️ Comparação de combate</h2>
+      <h2><span aria-hidden="true">⚔️</span> <span data-i18n="duel.combatTitle">Comparação de combate</span></h2>
       <canvas id="duelChart" height="100"></canvas>
     </div>
 
     <div class="card" id="duelTableSection" hidden>
-      <h2 data-i18n="duel.title">⚔️ Duelo de Players</h2>
+      <h2><span aria-hidden="true">⚔️</span> <span data-i18n="duel.title">Duelo de Players</span></h2>
       <div class="table-responsive">
         <table>
+          <caption class="sr-only" data-i18n="duel.title">Duelo de Players</caption>
           <thead>
             <tr>
               <th data-i18n="duel.stat">Estatística</th>

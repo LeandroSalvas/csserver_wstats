@@ -11,7 +11,7 @@
 
   <div class="container">
     <div class="header">
-      <h1>🎮 <span data-i18n="match.title">Detalhes da Partida</span></h1>
+      <h1><span aria-hidden="true">🎮</span> <span data-i18n="match.title">Detalhes da Partida</span></h1>
       <div class="lang-toggle-slot"></div>
     </div>
 
@@ -34,6 +34,7 @@
             <span id="tCount">0</span>
           </div>
           <table>
+          <caption class="sr-only" data-i18n="match.teamT">Terroristas</caption>
             <thead>
               <tr>
                 <th data-i18n="labels.player">Player</th>
@@ -53,6 +54,7 @@
             <span id="ctCount">0</span>
           </div>
           <table>
+          <caption class="sr-only" data-i18n="match.teamCT">Contra-Terroristas</caption>
             <thead>
               <tr>
                 <th data-i18n="labels.player">Player</th>
@@ -71,6 +73,7 @@
         <h3 data-i18n="match.specs">Outros</h3>
         <div class="table-responsive">
           <table>
+          <caption class="sr-only" data-i18n="match.specs">Outros</caption>
             <thead>
               <tr>
                 <th data-i18n="labels.player">Player</th>

@@ -15,7 +15,7 @@ async function loadMapRanking() {
   }
 
   try {
-    title.innerText = `${i18nUtils.t('labels.rankingMap')}: ${mapName}`
+    title.innerHTML = `<span aria-hidden="true">🗺️</span> ${i18nUtils.t('labels.rankingMap')}: ${escapeHtml(mapName)}`
     const players = await fetchJson(`/map-ranking/${encodeURIComponent(mapName)}${serverQuery()}`)
     clearStatus()
 

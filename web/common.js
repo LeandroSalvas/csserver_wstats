@@ -76,12 +76,23 @@ function setStatusChip(elementId, value) {
   element.className = `status-pill ${normalized}`
 }
 
-async function fetchJson(path) {
-  const res = await fetch(`${API}${path}`, { cache: 'no-store' })
-  if (!res.ok) {
-    throw new Error(`${res.status} ${res.statusText}`)
+async function fetchJson(path, timeoutMs = 15000) {
+  const controller = new AbortController()
+  const timer = window.setTimeout(() => controller.abort(), timeoutMs)
+  try {
+    const res = await fetch(`${API}${path}`, { cache: 'no-store', signal: controller.signal })
+    if (!res.ok) {
+      throw new Error(`${res.status} ${res.statusText}`)
+    }
+    return res.json()
+  } catch (err) {
+    if (err.name === 'AbortError') {
+      throw new Error(i18nUtils.t('errors.timeout'))
+    }
+    throw err
+  } finally {
+    window.clearTimeout(timer)
   }
-  return res.json()
 }
 
 // --- Seleção de servidor (multi-servidor) ---
@@ -159,11 +170,14 @@ async function initServerSelector() {
     })
 
     let selected = getSelectedServer()
-    if (!selected || !servers.some((srv) => srv.id === selected)) {
-      selected = servers[0].id
-      setSelectedServer(selected)
+    if (selected && servers.some((srv) => srv.id === selected)) {
+      select.value = selected
+    } else {
+      // Sem escolha válida: exibe o servidor primário sem persistir (evita
+      // gravar um default silencioso no localStorage) e limpa seleção inválida.
+      if (selected) setSelectedServer('')
+      select.value = servers[0].id
     }
-    select.value = selected
 
     if (!select.dataset.listenerAttached) {
       select.addEventListener('change', () => {
@@ -189,6 +203,18 @@ const pageNavItems = [
   { path: '/sistema', labelKey: 'nav.system' }
 ]
 
+// Diz se um item da nav deve ficar ativo dado o pathname atual.
+// Subpáginas de detalhe não têm entrada própria na nav; mapeamos
+// /jogador/*, /mapa/* e /partida/* para os itens de listagem correlatos.
+function isNavItemActive(item, currentPath) {
+  if (item.path === currentPath) return true
+  if (currentPath.startsWith(item.path + '/')) return true
+  if (currentPath.startsWith('/jogador/') && item.path === '/ranking') return true
+  if (currentPath.startsWith('/mapa/') && item.path === '/mapas') return true
+  if (currentPath.startsWith('/partida/') && item.path === '/partidas') return true
+  return false
+}
+
 function renderPageNav() {
   const containers = document.querySelectorAll('.page-nav')
   if (!containers.length) return
@@ -203,7 +229,7 @@ function renderPageNav() {
       link.href = item.path
       link.textContent = i18nUtils.t(item.labelKey)
 
-      if (item.path === currentPath) {
+      if (isNavItemActive(item, currentPath)) {
         link.classList.add('active')
         link.setAttribute('aria-current', 'page')
       }
@@ -218,7 +244,10 @@ function renderLanguageToggle() {
   slots.forEach((slot) => {
     slot.innerHTML = ''
     const btn = document.createElement('button')
+    btn.type = 'button'
     btn.className = 'lang-toggle'
+    btn.setAttribute('aria-label', i18nUtils.t('nav.langToggle'))
+    btn.setAttribute('aria-pressed', i18nUtils.currentLang === 'pt' ? 'true' : 'false')
     btn.innerHTML = i18nUtils.getToggleHtml()
     btn.onclick = () => {
       i18nUtils.setLang(i18nUtils.currentLang === 'pt' ? 'en' : 'pt')
@@ -269,11 +298,12 @@ function applyActiveNav() {
     const href = link.getAttribute('href')
     if (!href) return
 
-    if (href === currentPath) {
-      link.classList.add('active')
+    const item = pageNavItems.find((i) => i.path === href)
+    const active = item ? isNavItemActive(item, currentPath) : false
+    link.classList.toggle('active', active)
+    if (active) {
       link.setAttribute('aria-current', 'page')
     } else {
-      link.classList.remove('active')
       link.removeAttribute('aria-current')
     }
   })
@@ -400,6 +430,7 @@ function initPlayerSearch() {
   input.type = 'search'
   input.placeholder = i18nUtils.t('nav.search')
   input.autocomplete = 'off'
+  input.setAttribute('data-i18n-aria-label', 'nav.search')
   wrap.appendChild(input)
 
   const results = document.createElement('div')

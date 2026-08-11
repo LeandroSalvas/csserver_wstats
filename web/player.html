@@ -6,7 +6,7 @@
   <title data-i18n="player.title">Player Stats</title>
   <link rel="icon" type="image/svg+xml" href="/favicon.svg">
   <link rel="stylesheet" href="/style.css?v=2">
-  <script src="https://cdn.jsdelivr.net/npm/chart.js" defer></script>
+  <script src="/vendor/chart.umd.min.js" defer></script>
 </head>
 
 <body>
@@ -14,7 +14,7 @@
   <div class="container">
 
     <div class="header">
-      <h1>👤 <span data-i18n="player.title">Player Stats</span></h1>
+      <h1><span aria-hidden="true">👤</span> <span data-i18n="player.title">Player Stats</span></h1>
       <div class="lang-toggle-slot"></div>
     </div>
 
@@ -22,7 +22,7 @@
 
     <div class="toolbar">
       <select id="playerServer" class="server-selector"></select>
-      <button id="duelBtn" class="button duel-challenge-btn" hidden></button>
+      <button type="button" id="duelBtn" class="button duel-challenge-btn" hidden></button>
     </div>
 
     <div id="statusMessage" class="status-message"></div>
@@ -71,24 +71,25 @@
     </div>
 
     <div class="card">
-      <h2 data-i18n="labels.killsEvolution">📈 Evolução de Kills</h2>
+      <h2><span aria-hidden="true">📈</span> <span data-i18n="labels.killsEvolution">Evolução de Kills</span></h2>
       <canvas id="killsChart" height="100"></canvas>
     </div>
 
     <div class="card">
-      <h2 data-i18n="labels.skillKdEvolution">📊 Skill & K/D</h2>
+      <h2><span aria-hidden="true">📊</span> <span data-i18n="labels.skillKdEvolution">Skill & K/D</span></h2>
       <canvas id="skillKdChart" height="100"></canvas>
     </div>
 
     <div class="card">
-      <h2 data-i18n="labels.rankHistory">🏅 Histórico de posição</h2>
+      <h2><span aria-hidden="true">🏅</span> <span data-i18n="labels.rankHistory">Histórico de posição</span></h2>
       <canvas id="rankChart" height="100"></canvas>
     </div>
 
     <div class="card">
-      <h2 data-i18n="labels.recentHistory">🕒 Histórico recente</h2>
+      <h2><span aria-hidden="true">🕒</span> <span data-i18n="labels.recentHistory">Histórico recente</span></h2>
       <div class="table-responsive">
         <table>
+          <caption class="sr-only" data-i18n="labels.recentHistory">Histórico recente</caption>
           <thead>
             <tr>
               <th data-i18n="labels.data">Data</th>

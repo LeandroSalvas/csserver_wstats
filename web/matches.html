@@ -11,7 +11,7 @@
 
   <div class="container">
     <div class="header">
-      <h1>🎮 <span data-i18n="nav.matches">Partidas</span></h1>
+      <h1><span aria-hidden="true">🎮</span> <span data-i18n="nav.matches">Partidas</span></h1>
       <div class="lang-toggle-slot"></div>
     </div>
 
@@ -27,6 +27,7 @@
       <h2 data-i18n="matches.title">Histórico de Partidas</h2>
       <div class="table-responsive">
         <table>
+          <caption class="sr-only" data-i18n="matches.title">Histórico de Partidas</caption>
           <thead>
             <tr>
               <th data-i18n="labels.rank">#</th>
@@ -43,9 +44,9 @@
       </div>
 
       <div class="pagination">
-        <button id="prevPage" class="page-btn" data-i18n="labels.prev">← Anterior</button>
+        <button type="button" id="prevPage" class="page-btn" data-i18n="labels.prev">← Anterior</button>
         <span id="pageInfo" class="page-info">1</span>
-        <button id="nextPage" class="page-btn" data-i18n="labels.next">Próxima →</button>
+        <button type="button" id="nextPage" class="page-btn" data-i18n="labels.next">Próxima →</button>
       </div>
     </div>
   </div>

@@ -68,7 +68,7 @@ function renderSideCard(side) {
 
   if (!p) {
     card.className = 'duel-player-card duel-empty'
-    card.innerHTML = '?'
+    card.innerHTML = `<div class="duel-empty-text">${escapeHtml(i18nUtils.t('duel.pickPlayer'))}</div>`
     if (header) header.textContent = i18nUtils.t(`duel.player${side === 'a' ? 'A' : 'B'}`)
     return
   }

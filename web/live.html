@@ -11,7 +11,7 @@
 
   <div class="container">
     <div class="header">
-      <h1>📡 <span data-i18n="live.title">Live Match</span></h1>
+      <h1><span aria-hidden="true">📡</span> <span data-i18n="live.title">Live Match</span></h1>
       <div class="lang-toggle-slot"></div>
     </div>
 
@@ -54,6 +54,7 @@
         </div>
 
         <table>
+          <caption class="sr-only" data-i18n="live.terrorists">Terroristas</caption>
           <thead>
             <tr>
               <th data-i18n="labels.player">Player</th>
@@ -74,6 +75,7 @@
         </div>
 
         <table>
+          <caption class="sr-only" data-i18n="live.counterTerrorists">Contra-Terroristas</caption>
           <thead>
             <tr>
               <th data-i18n="labels.player">Player</th>
@@ -88,7 +90,7 @@
       </div>
     </div>
     <div class="card">
-  <h2 data-i18n="live.killFeed">🔫 Kill Feed</h2>
+  <h2><span aria-hidden="true">🔫</span> <span data-i18n="live.killFeed">Kill Feed</span></h2>
   <div id="killFeed" class="kill-feed">
     <div class="kill-feed-empty" data-i18n="labels.noRecentKills">Nenhuma kill recente.</div>
   </div>

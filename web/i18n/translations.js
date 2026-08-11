@@ -12,7 +12,8 @@ const i18n = {
       duel: '⚔️ Duelo',
       admin: '🛠️ Painel RCON',
       system: '🛡️ Sistema',
-      search: 'Buscar jogador...'
+      search: 'Buscar jogador...',
+      langToggle: 'Alterar idioma'
     },
     status: {
       online: 'Online',
@@ -59,7 +60,8 @@ const i18n = {
       executing: 'Executando...',
       noReturnText: '(sem retorno textual)',
       failToLoad: 'Falha ao carregar',
-      search: 'Erro na busca'
+      search: 'Erro na busca',
+      timeout: 'Tempo esgotado — a API não respondeu'
     },
     search: {
       noResults: 'Nenhum jogador encontrado'
@@ -214,7 +216,7 @@ const i18n = {
       score: 'Score',
       alive: 'Alive',
       dead: 'Dead',
-      killFeed: '🔫 Kill Feed',
+      killFeed: 'Kill Feed',
       score: 'Placar'
     },
     cstv: {
@@ -248,6 +250,7 @@ const i18n = {
       playerA: 'Jogador A',
       playerB: 'Jogador B',
       stat: 'Estatística',
+      pickPlayer: 'Selecione um jogador para comparar',
       noData: 'Sem dados para comparar.'
     },
     cmd: {
@@ -341,7 +344,7 @@ const i18n = {
       specs: 'Outros',
       noPlayers: 'Sem dados de jogadores para esta partida. Partidas registradas antes da atualização não têm detalhes.',
       noData: 'Partida não encontrada.',
-      lastTitle: '🕹️ Última Partida',
+      lastTitle: 'Última Partida',
       viewHistory: 'Ver histórico →',
       noMatches: 'Nenhuma partida registrada ainda.'
     }
@@ -359,7 +362,8 @@ const i18n = {
       cstv: '📹 CSTV',
       admin: '🛠️ RCON Panel',
       system: '🛡️ System',
-      search: 'Search player...'
+      search: 'Search player...',
+      langToggle: 'Change language'
     },
     status: {
       online: 'Online',
@@ -406,7 +410,8 @@ const i18n = {
       executing: 'Executing...',
       noReturnText: '(no text return)',
       failToLoad: 'Failed to load',
-      search: 'Search failed'
+      search: 'Search failed',
+      timeout: 'Timeout — the API did not respond'
     },
     search: {
       noResults: 'No player found'
@@ -558,7 +563,7 @@ const i18n = {
       score: 'Score',
       alive: 'Alive',
       dead: 'Dead',
-      killFeed: '🔫 Kill Feed',
+      killFeed: 'Kill Feed',
       score: 'Score'
     },
     cstv: {
@@ -592,6 +597,7 @@ const i18n = {
       playerA: 'Player A',
       playerB: 'Player B',
       stat: 'Stat',
+      pickPlayer: 'Select a player to compare',
       noData: 'No data to compare.'
     },
     cmd: {
@@ -685,7 +691,7 @@ const i18n = {
       specs: 'Others',
       noPlayers: 'No player data for this match. Matches recorded before the update have no details.',
       noData: 'Match not found.',
-      lastTitle: '🕹️ Last Match',
+      lastTitle: 'Last Match',
       viewHistory: 'View history →',
       noMatches: 'No matches recorded yet.'
     }
@@ -715,10 +721,12 @@ const i18nUtils = {
   setLang(lang) {
     this.currentLang = lang
     localStorage.setItem('lang', lang)
+    document.documentElement.lang = lang === 'pt' ? 'pt-BR' : 'en'
     this.apply()
   },
 
   apply() {
+    document.documentElement.lang = this.currentLang === 'pt' ? 'pt-BR' : 'en'
     document.querySelectorAll('[data-i18n]').forEach((el) => {
       const key = el.dataset.i18n
       el.textContent = this.t(key)
@@ -734,6 +742,9 @@ const i18nUtils = {
     document.querySelectorAll('[data-i18n-title]').forEach((el) => {
       const key = el.dataset.i18nTitle
       el.title = this.t(key)
+    })
+    document.querySelectorAll('[data-i18n-aria-label]').forEach((el) => {
+      el.setAttribute('aria-label', this.t(el.dataset.i18nAriaLabel))
     })
     document.dispatchEvent(new CustomEvent('i18n applied'))
   },

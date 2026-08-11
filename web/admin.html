@@ -10,7 +10,7 @@
 <body class="body-font-default">
   <div class="container">
     <div class="header">
-      <h1>🛠️ <span data-i18n="admin.title">Painel RCON</span></h1>
+      <h1><span aria-hidden="true">🛠️</span> <span data-i18n="admin.title">Painel RCON</span></h1>
       <div class="lang-toggle-slot"></div>
     </div>
 
@@ -25,14 +25,15 @@
           data-i18n-placeholder="admin.passwordPlaceholder"
           placeholder="Digite a senha RCON"
           class="admin-input"
+          data-i18n-aria-label="admin.passwordPlaceholder"
         />
         <button type="button" id="passwordToggle" class="password-toggle" data-i18n="admin.showPassword">Mostrar senha</button>
-        <button id="loginBtn" data-i18n="admin.connect">Conectar</button>
+        <button type="button" id="loginBtn" data-i18n="admin.connect">Conectar</button>
       </div>
       <p id="loginStatus" style="margin-top:12px;"></p>
 
       <div id="steamLoginWrap" style="display:none; margin-top:16px; border-top:1px solid rgba(170,156,148,0.2); padding-top:16px;">
-        <button id="steamLoginBtn" class="steam-login-btn">🎮 <span data-i18n="admin.steamLogin">Entrar com Steam</span></button>
+        <button type="button" id="steamLoginBtn" class="steam-login-btn">🎮 <span data-i18n="admin.steamLogin">Entrar com Steam</span></button>
         <p id="steamLoginStatus" style="margin-top:8px;"></p>
       </div>
     </div>
@@ -42,7 +43,7 @@
         <div class="card">
           <div class="toolbar">
             <h2 style="margin:0;" data-i18n="admin.console">Console RCON</h2>
-            <button id="logoutBtn" data-i18n="admin.disconnect">Desconectar</button>
+            <button type="button" id="logoutBtn" data-i18n="admin.disconnect">Desconectar</button>
           </div>
 
           <div class="toolbar">
@@ -57,14 +58,15 @@
               data-i18n-placeholder="admin.commandPlaceholder"
               placeholder="Ex.: status, users, changelevel de_dust2, amx_map de_inferno"
               class="admin-input"
+              data-i18n-aria-label="admin.commandPlaceholder"
             />
-            <button id="sendBtn" data-i18n="admin.execute">Executar</button>
+            <button type="button" id="sendBtn" data-i18n="admin.execute">Executar</button>
           </div>
 
           <div class="toolbar">
-            <button class="quick-cmd" data-cmd="status">status</button>
-            <button class="quick-cmd" data-cmd="users">users</button>
-            <button class="quick-cmd" data-cmd="stats">stats</button>
+            <button type="button" class="quick-cmd" data-cmd="status">status</button>
+            <button type="button" class="quick-cmd" data-cmd="users">users</button>
+            <button type="button" class="quick-cmd" data-cmd="stats">stats</button>
           </div>
 
           <h3 style="margin-top:20px;" data-i18n="admin.response">Resposta</h3>
@@ -84,6 +86,7 @@
             data-i18n-placeholder="admin.searchPlaceholder"
             placeholder="Buscar comando..."
             style="margin-bottom: 14px;"
+            data-i18n-aria-label="admin.searchPlaceholder"
           />
 
           <div id="commandReference" class="cmd-reference"></div>
@@ -93,6 +96,7 @@
           <h2 style="margin-top:0;" data-i18n="admin.liveTitle">Jogadores online</h2>
           <div class="table-responsive" style="max-height:280px; overflow-y:auto;">
             <table>
+          <caption class="sr-only" data-i18n="admin.liveTitle">Jogadores online</caption>
               <thead>
                 <tr>
                   <th data-i18n="labels.player">Player</th>

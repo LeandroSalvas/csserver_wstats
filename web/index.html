@@ -14,7 +14,7 @@
 <div class="container">
 
   <div class="header">
-    <h1>🎮 CS 1.6 Server Stats</h1>
+    <h1><span aria-hidden="true">🎮</span> CS 1.6 Server Stats</h1>
     <div class="lang-toggle-slot"></div>
   </div>
 
@@ -38,7 +38,7 @@
 
   <div class="card last-match-card">
     <div class="last-match-head">
-      <h2 data-i18n="match.lastTitle">🕹️ Última Partida</h2>
+      <h2><span aria-hidden="true">🕹️</span> <span data-i18n="match.lastTitle">Última Partida</span></h2>
       <a href="/partidas" data-i18n="match.viewHistory">Ver histórico →</a>
     </div>
 
@@ -84,25 +84,25 @@
 
   <div class="card">
 
-    <h2 data-i18n="labels.topPlayers">🏆 Top Players</h2>
+    <h2><span aria-hidden="true">🏆</span> <span data-i18n="labels.topPlayers">Top Players</span></h2>
 
     <!-- PODIUM -->
     <div class="podium">
 
       <div class="podium-player second" id="p2">
-        <h3>🥈</h3>
+        <h3><span aria-hidden="true">🥈</span></h3>
         <div class="name">-</div>
         <div class="stat">-</div>
       </div>
 
       <div class="podium-player first" id="p1">
-        <h3>🥇</h3>
+        <h3><span aria-hidden="true">🥇</span></h3>
         <div class="name">-</div>
         <div class="stat">-</div>
       </div>
 
       <div class="podium-player third" id="p3">
-        <h3>🥉</h3>
+        <h3><span aria-hidden="true">🥉</span></h3>
         <div class="name">-</div>
         <div class="stat">-</div>
       </div>
@@ -115,6 +115,7 @@
 
     <div class="table-responsive">
       <table>
+          <caption class="sr-only" data-i18n="match.lastTitle">Última Partida</caption>
         <thead>
           <tr>
             <th data-i18n="labels.rank">#</th>

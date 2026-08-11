@@ -11,7 +11,7 @@
 
   <div class="container">
     <div class="header">
-      <h1>🏆 <span data-i18n="labels.ranking">Rankings por período</span></h1>
+      <h1><span aria-hidden="true">🏆</span> <span data-i18n="labels.ranking">Rankings por período</span></h1>
       <div class="lang-toggle-slot"></div>
     </div>
 
@@ -25,15 +25,16 @@
 
     <div class="card">
       <div class="toolbar">
-        <button id="btnWeekly" class="period-btn active" data-i18n="labels.weekly">Semanal</button>
-        <button id="btnMonthly" class="period-btn" data-i18n="labels.monthly">Mensal</button>
-        <button id="btnExportCsv" data-i18n="labels.exportCsv">⬇ Exportar CSV</button>
+        <button type="button" id="btnWeekly" class="period-btn active" data-i18n="labels.weekly">Semanal</button>
+        <button type="button" id="btnMonthly" class="period-btn" data-i18n="labels.monthly">Mensal</button>
+        <button type="button" id="btnExportCsv" data-i18n="labels.exportCsv">⬇ Exportar CSV</button>
       </div>
 
       <h2 id="rankingTitle" data-i18n="labels.rankingWeekly">Ranking semanal</h2>
 
       <div class="table-responsive">
         <table>
+          <caption class="sr-only" data-i18n="labels.ranking">Ranking</caption>
           <thead>
             <tr>
               <th data-i18n="labels.rank">#</th>
@@ -50,9 +51,9 @@
       </div>
 
       <div class="pagination" id="rankingPagination">
-        <button id="btnPrev" data-i18n="pagination.prev">← Anterior</button>
+        <button type="button" id="btnPrev" data-i18n="pagination.prev">← Anterior</button>
         <span id="pageInfo">1</span>
-        <button id="btnNext" data-i18n="pagination.next">Próxima →</button>
+        <button type="button" id="btnNext" data-i18n="pagination.next">Próxima →</button>
       </div>
     </div>
   </div>
