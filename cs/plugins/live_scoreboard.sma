@@ -208,10 +208,10 @@ recover_match_state()
 
     fclose(fp)
 
-    new mapname[64]
-    get_mapname(mapname, charsmax(mapname))
-
-    if (!foundMap || equal(prevMap, mapname) || prevT + prevCT <= 0)
+    // Servidores sem rotação reiniciam o mesmo mapa (mp_timelimit faz
+    // changelevel para si próprio). O state file é gravado após o reset
+    // (round_t=0), então a sessão anterior vira last_match mesmo com mapa igual.
+    if (!foundMap || prevT + prevCT <= 0)
     {
         g_lmCount = 0
         return
