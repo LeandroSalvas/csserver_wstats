@@ -103,25 +103,30 @@ check_server() {
   fi
 }
 
-args="${*:-}"
-if [ -z "$args" ]; then
-  while read -r line; do
-    local id context
-    IFS='|' read -r id context <<< "$line"
-    check_server "$id" "$context"
-  done < <(parse_servers)
-else
-  for id in $args; do
-    local found=0 context
+main() {
+  local args="${*:-}"
+  if [ -z "$args" ]; then
+    local line id context
     while read -r line; do
-      IFS='|' read -r line_id context <<< "$line"
-      if [ "$line_id" = "$id" ]; then
-        check_server "$id" "$context"
-        found=1
-        break
-      fi
+      IFS='|' read -r id context <<< "$line"
+      check_server "$id" "$context"
     done < <(parse_servers)
-    [ "$found" -eq 1 ] || { echo "watch-mudo: servidor não encontrado em servers.list: ${id}" >&2; }
-  done
-fi
+  else
+    local id found line_id context line
+    for id in $args; do
+      found=0
+      while read -r line; do
+        IFS='|' read -r line_id context <<< "$line"
+        if [ "$line_id" = "$id" ]; then
+          check_server "$id" "$context"
+          found=1
+          break
+        fi
+      done < <(parse_servers)
+      [ "$found" -eq 1 ] || { echo "watch-mudo: servidor não encontrado em servers.list: ${id}" >&2; }
+    done
+  fi
+}
+
+main "$@"
 exit 0
