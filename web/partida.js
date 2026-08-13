@@ -44,7 +44,7 @@ function renderSummary(match) {
     [i18nUtils.t('match.winner'), winnerLabel(match)],
     [i18nUtils.t('match.duration'), formatMatchDuration(match.duration_sec)],
     [i18nUtils.t('match.date'), formatMatchDate(match.ended_at)],
-    [i18nUtils.t('match.server'), escapeHtml(match.server || 'main')]
+    [i18nUtils.t('match.server'), escapeHtml(match.serverName || match.server || 'main')]
   ]
 
   el.innerHTML = rows

@@ -97,6 +97,15 @@ function queryServer(srv) {
     type: 'counterstrike16',
     host: srv.host,
     port: parseInt(srv.port, 10)
+  }).then((state) => {
+    // O HLTV conecta como um player normal (não é flagado como bot pelo
+    // protocolo) e entraria em state.players, inflando a contagem de ocupados.
+    // Os relays usam nome "<context>-hltv" (config/watch/<id>/hltv.cfg), então
+    // filtrar pelo sufixo cobre todos os servidores.
+    if (Array.isArray(state.players)) {
+      state.players = state.players.filter((p) => !/^.*-hltv$/i.test(String(p.name || '')))
+    }
+    return state
   })
 }
 

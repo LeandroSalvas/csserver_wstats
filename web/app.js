@@ -198,7 +198,7 @@ async function loadLastMatch() {
     document.getElementById('lastMatchWinner').innerHTML = lastMatchWinnerLabel(m)
     document.getElementById('lastMatchDuration').textContent = formatMatchDuration(m.duration_sec)
     document.getElementById('lastMatchDate').textContent = formatMatchDate(m.ended_at)
-    document.getElementById('lastMatchServer').textContent = m.server || 'main'
+    document.getElementById('lastMatchServer').textContent = m.serverName || m.server || 'main'
   } catch (err) {
     console.error('Erro ao carregar última partida:', err)
     content.hidden = true

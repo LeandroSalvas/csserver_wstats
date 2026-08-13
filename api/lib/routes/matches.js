@@ -4,8 +4,27 @@ const {
   db,
   getPagination,
   getServerFilter,
-  handleError
+  handleError,
+  serverConfigs,
+  primaryServer
 } = require('../core')
+
+// Mapa id -> nome de exibição. A coluna cs_matches.server guarda o id; o nome
+// (ex.: "Zueira") vive apenas na config CS_SERVERS. Usamos o mapa para anexar
+// `serverName` às respostas sem trocar o `server` (id), que serve de filtro/link.
+function buildServerNameMap() {
+  const list = serverConfigs && serverConfigs.length ? serverConfigs : [primaryServer]
+  const map = {}
+  for (const srv of list) map[srv.id] = srv.name || srv.id
+  return map
+}
+
+const serverNameById = buildServerNameMap()
+
+function withServerName(row) {
+  if (!row) return row
+  return { ...row, serverName: serverNameById[row.server] || row.server }
+}
 
 function register(app) {
   app.get('/matches', async (req, res) => {
@@ -22,7 +41,7 @@ function register(app) {
         LIMIT ? OFFSET ?
       `, [...(sf ? sf.params : []), limit, offset])
 
-      res.json(rows)
+      res.json(rows.map(withServerName))
     } catch (err) {
       handleError(res, err, 'listagem de partidas')
     }
@@ -41,7 +60,7 @@ function register(app) {
         LIMIT 1
       `, sf ? sf.params : [])
 
-      res.json(rows[0] || null)
+      res.json(withServerName(rows[0] || null))
     } catch (err) {
       handleError(res, err, 'última partida')
     }
@@ -55,7 +74,7 @@ function register(app) {
         WHERE id = ?
       `, [req.params.id])
 
-      res.json(rows[0] || null)
+      res.json(withServerName(rows[0] || null))
     } catch (err) {
       handleError(res, err, 'partida')
     }

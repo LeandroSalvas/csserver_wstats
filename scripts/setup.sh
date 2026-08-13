@@ -86,6 +86,12 @@ ask() {
 # Menu de seleção entre opções pré-definidas (aceita o número da opção ou o valor).
 select_option() {
   local msg="$1" def="$2" var="$3"; shift 3
+  local hint=""
+  if [ "$1" = "--" ]; then
+    shift
+    hint="$1"
+    shift
+  fi
   local opts=("$@") i ans
   if [ "$YES_MODE" -eq 1 ]; then
     printf -v "$var" '%s' "$def"
@@ -107,7 +113,11 @@ select_option() {
       printf -v "$var" '%s' "$ans"
       return 0
     fi
-    err "Opção inválida: '$ans'"
+    if [ -n "$hint" ]; then
+      err "Opção inválida: '$ans' — ${hint}"
+    else
+      err "Opção inválida: '$ans'"
+    fi
   done
 }
 
@@ -232,7 +242,7 @@ prompt_new_server() {
   done
   ask "Mapa inicial do servidor #${idx}" "de_dust2" map
   [[ "$map" =~ ^[a-z0-9_]+$ ]] || { err "Nome de mapa inválido: '${map}' (use letras minúsculas, números e _)."; return 1; }
-  select_option "Slots (vagas visíveis) do servidor #${idx} — 1 slot extra é reservado ao HLTV" "32" slots 8 16 24 32
+  select_option "Slots (vagas visíveis) do servidor #${idx} — máximo 30 (1 slot extra é reservado ao HLTV)" "30" slots -- "o máximo de vagas visíveis é 30 (30 + 1 reservada ao HLTV; o engine aceita no máx. 32)" 8 16 24 30
 
   if is_in_array "$port" "${NEW_PORTS[@]}"; then
     err "Aviso: porta ${port} já usada por outro servidor desta lista."
@@ -341,8 +351,8 @@ write_list() {
     echo "# Lista de servidores CS 1.6 gerenciados pelo docker-compose."
     echo "# Formato: id hostname host_port map maxplayers rotate context"
     echo "# - A primeira linha é o servidor primário (id \"main\"), usado por snapshots/rankings e partidas."
-    echo "# - maxplayers = vagas VISÍVEIS (par: 8/16/24/32); o maxplayers real é esse valor + 1 (slot reservado ao HLTV)."
-    echo "#   No teto 32 o +1 não é possível (CS 1.6 aceita no máx. 32) — o slot do HLTV é garantido pelo plugin slots_reserve."
+    echo "# - maxplayers = vagas VISÍVEIS (par entre 2 e 30, máximo 30); o maxplayers real é esse valor + 1"
+    echo "#   (slot escondido reservado ao HLTV). 30+1=31 fica abaixo do teto de 32 do engine."
     echo "# - host_port é a porta publicada no host (mapeada para a porta interna 27015 do container)."
     echo "# - rotate: yes = rotação de mapas (lista em config/servers/<id>/mapcycle.txt); no = só o mapa escolhido."
     echo "# - context: slug do path do espectador web (default = slug do nome; use apenas a-z0-9, único por servidor)."

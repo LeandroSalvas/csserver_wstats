@@ -25,6 +25,14 @@ SERVERS_LIST="${ROOT}/config/servers.list"
 TEMPLATE_CFG="${ROOT}/config/templates/server.cfg"
 COMPOSE_BASE="docker-compose.yml"
 OVERRIDE="docker-compose.servers.yml"
+# Arquivo do espectador (profiles: ["watch"]). Incluído apenas para que o compose
+# conheça as services e o `up --remove-orphans` NÃO remova os containers watch
+# em execução (sem --profile, essas services nunca são iniciadas por aqui).
+WATCH_OVERRIDE="docker-compose.watch.yml"
+COMPOSE_FILES=(-f "${COMPOSE_BASE}" -f "${OVERRIDE}")
+if [ -f "${ROOT}/${WATCH_OVERRIDE}" ]; then
+  COMPOSE_FILES+=(-f "${WATCH_OVERRIDE}")
+fi
 
 ok()   { printf '\033[32m✔\033[0m %s\n' "$*"; }
 err()  { printf '\033[31m✖\033[0m %s\n' "$*" >&2; }
@@ -87,9 +95,10 @@ cmd_init() {
     valid_id "$id" || { err "id inválido em servers.list: '$id' (use apenas a-z0-9, _ e -)."; return 1; }
     valid_context "$context" || { err "context inválido em servers.list para '$id': '$context' (use apenas a-z0-9)."; return 1; }
 
-    # vagas visíveis devem ser par (CS 1.6 aceita no máximo 32) — o compose soma +1 (reserva do HLTV)
-    if ! [[ "$maxplayers" =~ ^[0-9]+$ ]] || [ $((maxplayers % 2)) -ne 0 ] || [ "$maxplayers" -lt 2 ] || [ "$maxplayers" -gt 32 ]; then
-      err "Slots visíveis inválidos em servers.list para '$id': '$maxplayers' (use par entre 2 e 32)."
+    # vagas visíveis devem ser par (máximo 30: o compose soma +1 para o slot escondido
+    # do HLTV e o engine CS 1.6 aceita no máximo 32 — 30+1=31 fica sempre abaixo do teto)
+    if ! [[ "$maxplayers" =~ ^[0-9]+$ ]] || [ $((maxplayers % 2)) -ne 0 ] || [ "$maxplayers" -lt 2 ] || [ "$maxplayers" -gt 30 ]; then
+      err "Slots visíveis inválidos em servers.list para '$id': '$maxplayers' (use par entre 2 e 30)."
       return 1
     fi
 
@@ -270,8 +279,9 @@ cmd_compose() {
 
   local out="${ROOT}/${OVERRIDE}"
 
-  # +maxplayers = vagas visíveis + 1 (slot reservado ao HLTV), com teto 32:
-  # o engine CS 1.6 não aceita +maxplayers acima de 32 (33 reverte para 32).
+  # +maxplayers = vagas visíveis + 1 (slot escondido reservado ao HLTV). O engine
+  # CS 1.6 não aceita +maxplayers acima de 32; com máximo de 30 vagas visíveis
+  # (30+1=31) o cap é só uma segurança extra.
   calc_max() {
     if [ "$(( $1 + 1 ))" -gt 32 ]; then
       printf '32'
@@ -492,11 +502,11 @@ write_swag_snippet() {
 }
 
 cmd_config() {
-  docker compose -f "${COMPOSE_BASE}" -f "${OVERRIDE}" config "$@"
+  docker compose "${COMPOSE_FILES[@]}" config "$@"
 }
 
 cmd_build() {
-  docker compose -f "${COMPOSE_BASE}" -f "${OVERRIDE}" build
+  docker compose "${COMPOSE_FILES[@]}" build
 }
 
 cmd_up() {
@@ -515,15 +525,15 @@ cmd_up() {
     cmd_build || return 1
   fi
 
-  docker compose -f "${COMPOSE_BASE}" -f "${OVERRIDE}" up -d --remove-orphans
+  docker compose "${COMPOSE_FILES[@]}" up -d --remove-orphans
 }
 
 cmd_down() {
-  docker compose -f "${COMPOSE_BASE}" -f "${OVERRIDE}" down "$@"
+  docker compose "${COMPOSE_FILES[@]}" down "$@"
 }
 
 cmd_ps() {
-  docker compose -f "${COMPOSE_BASE}" -f "${OVERRIDE}" ps
+  docker compose "${COMPOSE_FILES[@]}" ps
 }
 
 cmd_status() {
@@ -539,7 +549,7 @@ cmd_status() {
   done < <(parse_servers)
   info ""
   info "=== Containers ==="
-  docker compose -f "${COMPOSE_BASE}" -f "${OVERRIDE}" ps
+  docker compose "${COMPOSE_FILES[@]}" ps
   info ""
   info "Dica: scripts/servers.sh rcon <id> <comando> para RCON direto; a página Sistema mostra o status online."
 }
@@ -637,7 +647,7 @@ cmd_rcon() {
   [ -n "$id" ] || { err "Uso: servers.sh rcon <id> <comando>"; return 1; }
   [ -n "$command" ] || { err "Comando RCON vazio"; return 1; }
 
-  docker compose -f "${COMPOSE_BASE}" -f "${OVERRIDE}" exec -T api node -e '
+  docker compose "${COMPOSE_FILES[@]}" exec -T api node -e '
     const Rcon = require("rcon")
     const [srvId, command] = process.argv.slice(1)
     const list = (() => {

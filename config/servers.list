@@ -1,14 +1,14 @@
 # Lista de servidores CS 1.6 gerenciados pelo docker-compose.
 # Formato: id name host_port map maxplayers rotate context
 # - A primeira linha é o servidor primário (id "main"), usado por snapshots/rankings e partidas.
-# - maxplayers = vagas VISÍVEIS (par: 8/16/24/32); o maxplayers real é esse valor + 1
-#   (slot reservado ao HLTV), exceto no teto 32 (CS 1.6 não aceita +maxplayers 33 —
-#   lá o slot do HLTV é garantido pelo plugin slots_reserve).
+# - maxplayers = vagas VISÍVEIS (par entre 2 e 30, máximo 30); o maxplayers real é
+#   esse valor + 1 (slot escondido reservado ao HLTV). 30+1=31 fica sempre abaixo do
+#   teto de 32 do engine, então o slot escondido existe em qualquer configuração.
 # - host_port é a porta publicada no host (mapeada para a porta interna 27015 do container).
 # - rotate: yes = rotação de mapas (lista em config/servers/<id>/mapcycle.txt); no = só o mapa escolhido.
 # - context: slug do path do espectador web (ex.: /zueira). Obrigatório e único;
 #   default (se omitido) = slugify(name). Altere com cuidado: quebra URLs salvas.
 # - Edite à mão e rode: scripts/servers.sh up  — ou use scripts/setup.sh (interativo).
-main Zueira 27015 de_dust2 32 yes zueira
+main Zueira 27015 de_dust2 30 yes zueira
 fypooldayonly fy_pool_day_only 27016 fy_pool_day 8 no fypooldayonly
 zueira2 Zueira2 27017 de_dust 16 no zueira2

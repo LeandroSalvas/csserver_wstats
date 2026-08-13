@@ -274,7 +274,7 @@ Regras e detalhes:
 - A 1ª linha é o primário e deve manter o id `main`.
 - `porta_host` é a porta publicada no host; dentro do container todos usam a porta interna `27015`.
 - `context` (7ª coluna, opcional) é o slug do path do espectador web (`WATCH_PUBLIC_BASE/<context>/`); deve ser único e usar apenas `a-z0-9`. Default = slug do nome.
-- `maxplayers` = slots **visíveis** (pares: 8/16/24/32). O engine usa `visible + 1` (slot oculto reservado ao HLTV via plugin `slots_reserve`), exceto no teto de 32 (o plugin reserva o 32º slot). `pb_minbots 2` garante um piso de 2 bots.
+- `maxplayers` = slots **visíveis** (pares entre 2 e 30, máximo 30). O engine usa `visible + 1` (slot escondido reservado ao HLTV via plugin `slots_reserve`); como 30+1=31 fica sempre abaixo do teto de 32 do engine, o slot escondido existe em qualquer configuração. A API não conta o HLTV (`<context>-hltv`) nos `players`/`playersList`. `pb_minbots 2` garante um piso de 2 bots.
 - `rotate`: `yes` (padrão) = rotação de mapas, com a lista em `config/servers/<id>/mapcycle.txt` (o assistente pergunta quais mapas da imagem entram na rotação); `no` = o `mapcycle.txt` fica apenas com o mapa escolhido (servidor sem troca de mapa).
 - Se o `mapcycle.txt` do servidor ainda não existir com `rotate=yes`, o `init` copia o `config/mapcycle.txt` compartilhado como padrão; com `rotate=no`, ele regrava o mapa único se o conteúdo mudar.
 - Os `server.cfg` são gerados a partir de `config/templates/server.cfg` usando o `RCON_PASSWORD` do `.env` (uma única senha para todos os servidores).
@@ -924,7 +924,7 @@ Rules and details:
 - The 1st line is the primary and must keep the id `main`.
 - `host_port` is the host-published port; inside the container all servers use the internal port `27015`.
 - `context` (optional 7th column) is the web-spectator path slug (`WATCH_PUBLIC_BASE/<context>/`); must be unique and use only `a-z0-9`. Default = slugified name.
-- `maxplayers` = **visible** slots (even: 8/16/24/32). The engine uses `visible + 1` (hidden slot reserved for HLTV via the `slots_reserve` plugin), except at the 32 cap (the plugin reserves the 32nd slot). `pb_minbots 2` keeps a 2-bot floor.
+- `maxplayers` = **visible** slots (even, 2..30, max **30**). The engine uses `visible + 1` (hidden slot reserved for HLTV via the `slots_reserve` plugin); since 30+1=31 is always below the engine's 32 cap, the hidden slot always exists. The API excludes the HLTV (`<context>-hltv`) from `players`/`playersList`. `pb_minbots 2` keeps a 2-bot floor.
 - `rotate`: `yes` (default) = map rotation, with the list in `config/servers/<id>/mapcycle.txt` (the wizard asks which maps from the image go into the rotation); `no` = the `mapcycle.txt` holds only the chosen map (no map changes).
 - If the server's `mapcycle.txt` does not exist yet with `rotate=yes`, `init` copies the shared `config/mapcycle.txt` as the default; with `rotate=no` it rewrites the single map when the content changes.
 - `server.cfg` files are generated from `config/templates/server.cfg` using the `RCON_PASSWORD` from `.env` (a single password for all servers).

@@ -7,7 +7,7 @@ services:
     environment:
       PORT: "27015"
       MAP: "de_dust2"
-      MAXPLAYERS: "32"
+      MAXPLAYERS: "31"
       SERVER_ID: "main"
   cs16fypooldayonly:
     image: cs16_stats:local
