@@ -60,9 +60,7 @@ const commandCategories = {
 }
 
 const commandCard = document.getElementById('commandCard')
-const logoutBtn = document.getElementById('logoutBtn')
 const sendBtn = document.getElementById('sendBtn')
-const rconStatus = document.getElementById('rconStatus')
 const commandInput = document.getElementById('rconCommand')
 const output = document.getElementById('rconOutput')
 const historyList = document.getElementById('commandHistory')
@@ -81,16 +79,18 @@ function rconSafeName(name) {
 }
 
 async function checkSession() {
-  // A sessão já foi carregada pelo common.js (getCurrentUser/getCsrfToken).
+  // A sessão já foi carregada pelo common.js (getCurrentUser/getCsrfToken);
+  // o DOMContentLoaded aguarda window.authSessionPromise antes de chamar aqui.
   // Se não houver admin ativo, o guardPage() redirecionou para /login.
   if (!isActiveAdmin(getCurrentUser())) {
     if (output) output.textContent = ''
-    if (rconStatus) rconStatus.textContent = i18nUtils.t('admin.disconnected')
     return
   }
 
-  if (rconStatus) rconStatus.textContent = i18nUtils.t('admin.connected')
   startLivePlayers()
+  // Restaura o comportamento de antes do refactor de auth: ao entrar, o console
+  // já imprime o resultado do `status` na área de resposta.
+  sendCommand('status')
 }
 
 function addToHistory(command) {
@@ -230,25 +230,6 @@ function handleSessionExpired() {
   window.location.replace('/login?next=' + encodeURIComponent(window.location.pathname))
 }
 
-async function logout() {
-  try {
-    await fetch(`${API}/admin/logout`, {
-      method: 'POST',
-      headers: {
-        'x-csrf-token': getCsrfToken() || ''
-      },
-      credentials: 'include'
-    })
-  } catch (err) {
-    console.error(err)
-  }
-
-  stopLivePlayers()
-  commandHistory = []
-  renderHistory()
-  window.location.href = '/login'
-}
-
 let livePlayersTimer = null
 
 function startLivePlayers() {
@@ -326,7 +307,6 @@ function renderLivePlayers(players) {
   livePlayersTbody.appendChild(fragment)
 }
 
-logoutBtn.addEventListener('click', logout)
 sendBtn.addEventListener('click', () => sendCommand())
 
 document.addEventListener('server-change', () => {
@@ -337,7 +317,11 @@ commandInput.addEventListener('keydown', (e) => {
   if (e.key === 'Enter') sendCommand()
 })
 
-document.addEventListener('DOMContentLoaded', () => {
+document.addEventListener('DOMContentLoaded', async () => {
+  // Aguarda a sessão (authSessionPromise do common.js) para que checkSession()
+  // veja o usuário logado de verdade — senão startLivePlayers() é pulado.
+  await window.authSessionPromise
+
   document.querySelectorAll('.quick-cmd').forEach((btn) => {
     btn.addEventListener('click', () => {
       sendCommand(btn.dataset.cmd)

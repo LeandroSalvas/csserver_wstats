@@ -20,6 +20,9 @@ let csrfToken = null
 // Inicia o fetch da sessão imediatamente (paralelo ao restante do carregamento);
 // initCommon() o aguarda antes de renderizar nav/guardar páginas.
 const authSessionPromise = loadAuthSession()
+// Exposto para as páginas que precisam aguardar a sessão antes de carregar
+// dados de admin (evita o race de isActiveAdmin() rodar com user ainda null).
+window.authSessionPromise = authSessionPromise
 
 async function loadAuthSession() {
   try {
@@ -51,7 +54,7 @@ function getCsrfToken() {
 // data-requires-admin e a sessão não é de um admin ativo. (Complemento da
 // proteção no servidor via nginx auth_request — evita flash de conteúdo.)
 function guardPage() {
-  const requires = document.body && document.body.dataset.requiresAdmin
+  const requires = document.body && document.body.hasAttribute('data-requires-admin')
   if (!requires) return
   if (isActiveAdmin(currentUser)) return
   const next = encodeURIComponent(window.location.pathname + window.location.search)
@@ -106,9 +109,7 @@ function renderAuthBadge() {
       renderPageNav()
       renderLanguageToggle()
       applyActiveNav()
-      if (document.body && document.body.dataset.requiresAdmin) {
-        window.location.href = '/'
-      }
+      window.location.href = '/'
     }
     wrap.appendChild(logout)
     slot.appendChild(wrap)

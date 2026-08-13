@@ -246,7 +246,10 @@ cancelAddBtn.addEventListener('click', () => {
 addServerBtn.addEventListener('click', addServer)
 addMap.addEventListener('focus', loadMaps)
 
-document.addEventListener('DOMContentLoaded', () => {
+document.addEventListener('DOMContentLoaded', async () => {
+  // Aguarda a sessão para que isActiveAdmin() veja o usuário logado de verdade
+  // (senão o load é pulado e só o botão Atualizar carregava os dados).
+  await window.authSessionPromise
   if (!isActiveAdmin(getCurrentUser())) return
   loadServers()
   loadMaps()

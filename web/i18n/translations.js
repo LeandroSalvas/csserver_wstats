@@ -168,7 +168,6 @@ const i18n = {
       authTitle: 'Autenticação RCON',
       passwordPlaceholder: 'Digite a senha RCON',
       connect: 'Conectar',
-      disconnect: 'Desconectar',
       console: 'Console RCON',
       commandPlaceholder: 'Ex.: status, users, changelevel de_dust2, amx_map de_inferno',
       execute: 'Executar',
@@ -180,8 +179,6 @@ const i18n = {
       authSuccess: 'Autenticado com sucesso.',
       errorAuth: 'Erro ao autenticar.',
       errorExecute: 'Erro ao executar comando.',
-      connected: 'Conectado',
-      disconnected: 'Desconectado',
       liveTitle: 'Jogadores online',
       targetServer: 'Servidor alvo',
       kick: 'Kick',
@@ -209,7 +206,8 @@ const i18n = {
       backHome: '← Voltar para o início',
       guestNote: 'Você entrou com status pendente. Um Superadmin precisa aprovar seu acesso em /usuarios antes de liberar as áreas administrativas.',
       sessionExpired: 'Sessão expirada. Faça login novamente.',
-      loginWithSocial: 'ou entre com:'
+      loginWithSocial: 'ou entre com:',
+      logout: 'Sair'
     },
     serverManager: {
       title: 'Gerenciamento de Servidores',
@@ -645,7 +643,6 @@ const i18n = {
       authTitle: 'RCON Authentication',
       passwordPlaceholder: 'Enter RCON password',
       connect: 'Connect',
-      disconnect: 'Disconnect',
       console: 'RCON Console',
       commandPlaceholder: 'Ex.: status, users, changelevel de_dust2, amx_map de_inferno',
       execute: 'Execute',
@@ -657,8 +654,6 @@ const i18n = {
       authSuccess: 'Authenticated successfully.',
       errorAuth: 'Authentication error.',
       errorExecute: 'Error executing command.',
-      connected: 'Connected',
-      disconnected: 'Disconnected',
       liveTitle: 'Players online',
       targetServer: 'Target server',
       kick: 'Kick',
@@ -686,7 +681,8 @@ const i18n = {
       backHome: '← Back to home',
       guestNote: 'You signed in with a pending status. A Superadmin must approve your access in /usuarios before the admin areas are unlocked.',
       sessionExpired: 'Session expired. Please sign in again.',
-      loginWithSocial: 'or sign in with:'
+      loginWithSocial: 'or sign in with:',
+      logout: 'Logout'
     },
     serverManager: {
       title: 'Server Management',

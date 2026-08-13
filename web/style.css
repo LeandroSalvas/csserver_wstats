@@ -2554,6 +2554,11 @@ table td.duel-lose {
   font-size: 0.8rem;
 }
 
+/* Status sem texto não vira cápsula órfã no toolbar (ex.: /servidores, /usuarios). */
+.rcon-status:empty {
+  display: none;
+}
+
 .admin-login-status {
   margin-top: 12px;
 }
