@@ -4,7 +4,7 @@
   "tags": ["cs16", "game"],
   "timezone": "browser",
   "schemaVersion": 39,
-  "version": 1,
+  "version": 2,
   "refresh": "15s",
   "time": { "from": "now-6h", "to": "now" },
   "templating": {
@@ -202,7 +202,14 @@
       "targets": [
         { "expr": "cs16_players_online{server=~\"$server\"}", "legendFormat": "{{server}}", "refId": "A" }
       ],
-      "fieldConfig": { "defaults": { "unit": "short", "color": { "fixedColor": "#fb923c", "mode": "fixed" } }, "overrides": [] },
+      "fieldConfig": {
+        "defaults": { "unit": "short", "color": { "mode": "palette-classic" } },
+        "overrides": [
+          { "matcher": { "id": "byRegexp", "options": "/^main$/" }, "properties": [ { "id": "color", "value": { "fixedColor": "#22d3ee", "mode": "fixed" } } ] },
+          { "matcher": { "id": "byRegexp", "options": "/^fypooldayonly$/" }, "properties": [ { "id": "color", "value": { "fixedColor": "#a78bfa", "mode": "fixed" } } ] },
+          { "matcher": { "id": "byRegexp", "options": "/^zueira2$/" }, "properties": [ { "id": "color", "value": { "fixedColor": "#f472b6", "mode": "fixed" } } ] }
+        ]
+      },
       "options": { "legend": { "displayMode": "list", "placement": "bottom", "calcs": ["last", "max"] } }
     },
     {
@@ -218,7 +225,15 @@
           "refId": "A"
         }
       ],
-      "fieldConfig": { "defaults": { "unit": "short", "color": { "fixedColor": "#fb923c", "mode": "fixed" } }, "overrides": [] },
+      "fieldConfig": {
+        "defaults": { "unit": "short", "color": { "mode": "palette-classic" } },
+        "overrides": [
+          { "matcher": { "id": "byRegexp", "options": "/^main /" }, "properties": [ { "id": "color", "value": { "fixedColor": "#22d3ee", "mode": "fixed" } } ] },
+          { "matcher": { "id": "byRegexp", "options": "/^fypooldayonly /" }, "properties": [ { "id": "color", "value": { "fixedColor": "#a78bfa", "mode": "fixed" } } ] },
+          { "matcher": { "id": "byRegexp", "options": "/^zueira2 /" }, "properties": [ { "id": "color", "value": { "fixedColor": "#f472b6", "mode": "fixed" } } ] },
+          { "matcher": { "id": "byRegexp", "options": "/ 30d$/" }, "properties": [ { "id": "custom.lineStyle", "value": { "fill": "solid", "dash": [10, 10] } } ] }
+        ]
+      },
       "options": { "legend": { "displayMode": "list", "placement": "bottom", "calcs": ["last"] } }
     },
     {
@@ -242,7 +257,14 @@
           "refId": "A"
         }
       ],
-      "fieldConfig": { "defaults": { "unit": "short", "color": { "fixedColor": "#fb923c", "mode": "fixed" } }, "overrides": [] },
+      "fieldConfig": {
+        "defaults": { "unit": "short", "color": { "mode": "palette-classic" } },
+        "overrides": [
+          { "matcher": { "id": "byRegexp", "options": "/ kills$/" }, "properties": [ { "id": "color", "value": { "fixedColor": "#ef4444", "mode": "fixed" } } ] },
+          { "matcher": { "id": "byRegexp", "options": "/ deaths$/" }, "properties": [ { "id": "color", "value": { "fixedColor": "#3b82f6", "mode": "fixed" } } ] },
+          { "matcher": { "id": "byRegexp", "options": "/ hs$/" }, "properties": [ { "id": "color", "value": { "fixedColor": "#fbbf24", "mode": "fixed" } } ] }
+        ]
+      },
       "options": {
         "orientation": "auto",
         "groupWidth": 70,
@@ -304,7 +326,14 @@
       "targets": [
         { "expr": "cs16_stats_total{stat=\"connects\",server=~\"$server\"}", "legendFormat": "{{server}}", "refId": "A" }
       ],
-      "fieldConfig": { "defaults": { "unit": "short", "color": { "fixedColor": "#fb923c", "mode": "fixed" } }, "overrides": [] },
+      "fieldConfig": {
+        "defaults": { "unit": "short", "color": { "mode": "palette-classic" } },
+        "overrides": [
+          { "matcher": { "id": "byRegexp", "options": "/^main$/" }, "properties": [ { "id": "color", "value": { "fixedColor": "#22d3ee", "mode": "fixed" } } ] },
+          { "matcher": { "id": "byRegexp", "options": "/^fypooldayonly$/" }, "properties": [ { "id": "color", "value": { "fixedColor": "#a78bfa", "mode": "fixed" } } ] },
+          { "matcher": { "id": "byRegexp", "options": "/^zueira2$/" }, "properties": [ { "id": "color", "value": { "fixedColor": "#f472b6", "mode": "fixed" } } ] }
+        ]
+      },
       "options": { "legend": { "displayMode": "list", "placement": "bottom", "calcs": ["last"] } }
     },
     {
@@ -406,7 +435,14 @@
           "refId": "A"
         }
       ],
-      "fieldConfig": { "defaults": { "unit": "short", "color": { "fixedColor": "#fb923c", "mode": "fixed" } }, "overrides": [] },
+      "fieldConfig": {
+        "defaults": { "unit": "short", "color": { "mode": "palette-classic" } },
+        "overrides": [
+          { "matcher": { "id": "byRegexp", "options": "/^main$/" }, "properties": [ { "id": "color", "value": { "fixedColor": "#22d3ee", "mode": "fixed" } } ] },
+          { "matcher": { "id": "byRegexp", "options": "/^fypooldayonly$/" }, "properties": [ { "id": "color", "value": { "fixedColor": "#a78bfa", "mode": "fixed" } } ] },
+          { "matcher": { "id": "byRegexp", "options": "/^zueira2$/" }, "properties": [ { "id": "color", "value": { "fixedColor": "#f472b6", "mode": "fixed" } } ] }
+        ]
+      },
       "options": {
         "orientation": "auto",
         "groupWidth": 70,
@@ -430,7 +466,7 @@
           "refId": "A"
         }
       ],
-      "fieldConfig": { "defaults": { "unit": "short", "color": { "fixedColor": "#fb923c", "mode": "fixed" } }, "overrides": [] },
+      "fieldConfig": { "defaults": { "unit": "short", "color": { "mode": "palette-classic" } }, "overrides": [] },
       "options": {
         "orientation": "horizontal",
         "groupWidth": 70,
@@ -454,7 +490,7 @@
           "refId": "A"
         }
       ],
-      "fieldConfig": { "defaults": { "unit": "short", "color": { "fixedColor": "#fb923c", "mode": "fixed" } }, "overrides": [] },
+      "fieldConfig": { "defaults": { "unit": "short", "color": { "fixedColor": "#4ade80", "mode": "fixed" } }, "overrides": [] },
       "options": { "legend": { "displayMode": "list", "placement": "bottom", "calcs": ["last"] } }
     }
   ]
