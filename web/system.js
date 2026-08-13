@@ -64,13 +64,16 @@ async function loadServersTable() {
     servers.forEach((srv) => { serverNameById[srv.id] = srv.name })
 
     if (!Array.isArray(servers) || servers.length === 0) {
-      showEmptyRow(tbody, 6, i18nUtils.t('labels.noData'))
+      showEmptyRow(tbody, 7, i18nUtils.t('labels.noData'))
       return
     }
 
     servers.forEach((srv) => {
       const row = document.createElement('tr')
       const online = srv.online
+      const watchLink = srv.spectatorUrl
+        ? `<a href="${escapeHtml(srv.spectatorUrl)}" target="_blank" rel="noopener" class="watch-link">${i18nUtils.t('server.watchLaunch')}</a>`
+        : '<span class="muted">-</span>'
       row.innerHTML = `
         <td>${escapeHtml(srv.name)}</td>
         <td>${escapeHtml(srv.host)}</td>
@@ -78,6 +81,7 @@ async function loadServersTable() {
         <td>${escapeHtml(srv.map)}</td>
         <td>${srv.players}/${srv.maxplayers}</td>
         <td><span class="status-pill ${online ? 'status-ok' : 'status-error'}">${i18nUtils.t(online ? 'status.online' : 'status.offline')}</span></td>
+        <td>${watchLink}</td>
       `
       tbody.appendChild(row)
     })

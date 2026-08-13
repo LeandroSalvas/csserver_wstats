@@ -30,10 +30,10 @@ Além destes, há os serviços **opt-in** do espectador web (`profiles: ["watch"
 
 | Serviço | Descrição |
 |---------|-----------|
-| `watch-main` | Proxy WebRTC→UDP: serve a página do espectador e faz a ponte para o relay HLTV |
-| `watch-hltv` | Relay HLTV entre o servidor de jogo (27015) e o espectador no browser |
+| `watch-main-<id>` | Proxy WebRTC→UDP por servidor: serve a página do espectador e faz a ponte para o relay HLTV |
+| `watch-hltv-<id>` | Relay HLTV por servidor: entre o servidor de jogo (`127.0.0.1:<host_port>`) e o espectador no browser |
 
-Na implantação de produção há ainda serviços externos: **swag** (proxy TLS, porta 4445) + **duckdns** (DNS dinâmico) para expor o espectador em `https://zueiracstrike.duckdns.org:4445`.
+Na implantação de produção há ainda serviços externos: **swag** (proxy TLS, porta 4445) + **duckdns** (DNS dinâmico) para expor cada espectador em `https://zueiracstrike.duckdns.org:4445/<context>/`.
 
 ### Funcionalidades
 
@@ -64,8 +64,8 @@ Na implantação de produção há ainda serviços externos: **swag** (proxy TLS
 
 #### Espectador Web (WebRTC)
 
-- Assistir o servidor primário **no navegador** via relay HLTV (cliente Xash3D WASM), sem instalar nada
-- Página CSTV (`/cstv.html`) com o espectador embutido em iframe
+- Assistir **qualquer servidor** no navegador via relay HLTV (cliente Xash3D WASM), sem instalar nada — um par `watch-main`/`watch-hltv` por servidor de `config/servers.list`, cada um em seu path `/contexto/`
+- Página CSTV (`/cstv.html`) com o espectador embutido em iframe + seletor de servidor
 - Auto-recuperação: watchdog de stall no cliente (rejoin + reload silencioso) e teardown de idle na bridge do proxy — a sessão sobrevive até reinícios do servidor de jogo
 - Opt-in (não sobe na stack padrão), gerenciado por `./scripts/watch.sh`
 
@@ -76,8 +76,7 @@ Na implantação de produção há ainda serviços externos: **swag** (proxy TLS
 - Portas disponíveis:
   - **8080** (painel web)
   - **27015** (servidor primário UDP/TCP), **27016+** (demais servidores, uma porta cada)
-  - **27018** (espectador: página + signaling WebSocket)
-  - **27019-27050** (UDP WebRTC do espectador)
+  - **27100+** (relay HLTV UDP por servidor), **27200+** (espectador: página + signaling WebSocket), **27300+** (UDP WebRTC, faixa de 64 portas por servidor)
   - **4445** (HTTPS do espectador via swag, produção)
   - **3001** (Grafana) e **9090** (Prometheus, bind local)
 
@@ -154,14 +153,20 @@ Abra o navegador em `http://<seu-host>:8080`
 
 **Espectador web (opt-in):**
 
+As portas são derivadas por índice `i` em `config/servers.list` (relay `WATCH_HLTV_BASE+i`, listen `WATCH_LISTEN_BASE+i`, ICE `WATCH_UDP_BASE+(i*WATCH_UDP_SIZE)..+WATCH_UDP_SIZE-1`).
+
 | Variável | Padrão | Descrição |
 |----------|--------|-----------|
-| `WATCH_PUBLIC_IP` | *(vazio)* | IP público anunciado como ICE candidate do WebRTC (obrigatório para acesso fora da LAN) |
-| `WATCH_LISTEN_PORT` | `27018` | Porta do proxy (página do espectador + signaling WebSocket) |
-| `WATCH_UDP_PORT_RANGE` | `27019-27050` | Faixa de portas UDP fixas para o ICE (abrir no firewall/NAT) |
-| `WATCH_HLTV_PORT` | `27020` | Porta do relay HLTV (interno) |
+| `WATCH_HLTV_BASE` | `27100` | Porta base do relay HLTV (UDP): `base+i` |
+| `WATCH_LISTEN_BASE` | `27200` | Porta base do proxy (página + signaling WebSocket, TCP): `base+i` |
+| `WATCH_UDP_BASE` | `27300` | Porta base da faixa UDP fixa para o ICE (abrir no firewall/NAT) |
+| `WATCH_UDP_SIZE` | `64` | Tamanho da faixa UDP por servidor |
 | `WATCH_CONSOLE_COMMANDS` | `spec_autodirector 1` | Comandos de console executados no cliente espectador (câmera automática) |
 | `WATCH_PACKAGE_ZIP` | `/valve/valve.zip` | Caminho do `valve.zip` dentro do container do proxy |
+| `WATCH_PUBLIC_BASE` | *(vazio)* | URL pública base do espectador (swag): gera o `spectatorUrl` da API = `BASE/<context>/` |
+| `WATCH_UPSTREAM_HOST` | `127.0.0.1` | Host/porta usados pelo swag para alcançar o `watch-main` (network_mode: host) |
+
+> O IP público NÃO é mais configurado: o proxy descobre via STUN (`stun.l.google.com`) em cada conexão.
 
 #### Arquivos de configuração do CS
 
@@ -183,7 +188,7 @@ Os arquivos em `live/<id>/` são compartilhados entre o plugin do servidor CS e 
 |---------|-----------|
 | `live/<id>/live_scoreboard.json` | Placar ao vivo (escrito pelo plugin AMX Mod X) |
 | `live/<id>/live_killfeed.json` | Killfeed ao vivo (escrito pelo plugin AMX Mod X) |
-| `live/watch/` | Logs do relay HLTV e `last_hltv_crash.txt` (espectador) |
+| `live/watch/<id>/` | Logs do relay HLTV e `last_hltv_crash.txt` (espectador, por servidor) |
 
 #### Plugins AMX Mod X (`cs/plugins/`)
 
@@ -214,7 +219,7 @@ const SERVER_HOST = 'seu.host.aqui'
 const SERVER_PORT = '27015'
 ```
 
-O botão do espectador (página CSTV) usa `SPECTATOR_URL` no mesmo `web/common.js`:
+O botão do espectador (páginas CSTV, ao vivo e Conectar) resolve a URL via `/servers` (`spectatorUrl` = `WATCH_PUBLIC_BASE/<context>/`), com `SPECTATOR_URL` como fallback estático em `web/common.js`:
 
 ```javascript
 const SPECTATOR_URL = 'https://zueiracstrike.duckdns.org:4445/'
@@ -224,7 +229,7 @@ Os blocos `server_name` com domínios no `web/nginx.conf` são específicos da i
 
 #### Multi-servidor (provisionamento automático)
 
-O projeto pode rodar vários servidores CS 1.6 ao mesmo tempo, cada um com porta, mapa, nome e arquivos live próprios. O servidor **primário** (primeira linha de `config/servers.list`) é o único usado por snapshots/rankings, pelo registro de partidas (`cs_matches`) e pelo espectador web.
+O projeto pode rodar vários servidores CS 1.6 ao mesmo tempo, cada um com porta, mapa, nome, arquivos live e espectador web próprios. O servidor **primário** (primeira linha de `config/servers.list`) é o único usado por snapshots/rankings e pelo registro de partidas (`cs_matches`).
 
 **Fluxo de uso:**
 
@@ -234,7 +239,7 @@ O projeto pode rodar vários servidores CS 1.6 ao mesmo tempo, cada um com porta
 # mapas (e quais mapas), gera o servers.list, cria os arquivos de config/live e sobe a stack.
 ./scripts/setup.sh
 
-# Opção B (manual) — edite config/servers.list (formato: id nome porta_host mapa maxplayers rotate)
+# Opção B (manual) — edite config/servers.list (formato: id nome porta_host mapa maxplayers rotate context)
 ./scripts/servers.sh up
 ```
 
@@ -243,8 +248,8 @@ O projeto pode rodar vários servidores CS 1.6 ao mesmo tempo, cada um com porta
 | Comando | Descrição |
 |---------|-----------|
 | `./scripts/setup.sh` | Assistente interativo: pergunta a quantidade/nomes, rotação de mapas (e quais) e sobe a stack (flags: `--no-up`, `--yes`) |
-| `./scripts/servers.sh init` | Cria `config/servers/<id>/` e `live/<id>/` a partir de `servers.list` |
-| `./scripts/servers.sh compose` | Gera `docker-compose.servers.yml` (override) |
+| `./scripts/servers.sh init` | Cria `config/servers/<id>/`, `live/<id>/`, `config/watch/<id>/` e `live/watch/<id>/` a partir de `servers.list` |
+| `./scripts/servers.sh compose` | Gera `docker-compose.servers.yml` (override) + `docker-compose.watch.yml` (espectador) + `config/watch/swag-locations.conf.example` |
 | `./scripts/servers.sh config` | Valida o compose mergeado |
 | `./scripts/servers.sh up` | `init` + `compose` + `docker compose up -d --remove-orphans` (sem `--build`; builds são explícitos via `servers.sh build`) |
 | `./scripts/servers.sh build` | Constrói as imagens `cs16_stats:local` e `csserver_wstats-api` |
@@ -258,16 +263,17 @@ O projeto pode rodar vários servidores CS 1.6 ao mesmo tempo, cada um com porta
 **Exemplo de `config/servers.list`:**
 
 ```
-main Zueira 27015 de_dust2 32 yes
-frag Frag 27016 de_inferno 24 yes
-dm Deathmatch 27017 fy_iceworld 20 yes
-awp AWP 27018 awp_map 16 yes
+main Zueira 27015 de_dust2 32 yes zueira
+frag Frag 27016 de_inferno 24 yes frag
+dm Deathmatch 27017 fy_iceworld 20 yes dm
+awp AWP 27018 awp_map 16 yes awp
 ```
 
 Regras e detalhes:
 
 - A 1ª linha é o primário e deve manter o id `main`.
 - `porta_host` é a porta publicada no host; dentro do container todos usam a porta interna `27015`.
+- `context` (7ª coluna, opcional) é o slug do path do espectador web (`WATCH_PUBLIC_BASE/<context>/`); deve ser único e usar apenas `a-z0-9`. Default = slug do nome.
 - `maxplayers` = slots **visíveis** (pares: 8/16/24/32). O engine usa `visible + 1` (slot oculto reservado ao HLTV via plugin `slots_reserve`), exceto no teto de 32 (o plugin reserva o 32º slot). `pb_minbots 2` garante um piso de 2 bots.
 - `rotate`: `yes` (padrão) = rotação de mapas, com a lista em `config/servers/<id>/mapcycle.txt` (o assistente pergunta quais mapas da imagem entram na rotação); `no` = o `mapcycle.txt` fica apenas com o mapa escolhido (servidor sem troca de mapa).
 - Se o `mapcycle.txt` do servidor ainda não existir com `rotate=yes`, o `init` copia o `config/mapcycle.txt` compartilhado como padrão; com `rotate=no`, ele regrava o mapa único se o conteúdo mudar.
@@ -275,7 +281,7 @@ Regras e detalhes:
 - Cada servidor grava seus próprios arquivos live em `live/<id>/`, que a API lê por servidor (`/api/live/state?server=<id>`).
 - As páginas têm um seletor de servidor (Home, Live, Rankings, Mapas, Player, Avançadas, Partidas e Painel RCON); rankings, tops, mapas e partidas são filtrados pelo servidor selecionado e comandos RCON são executados no servidor alvo.
 - As métricas do Grafana são rotuladas por servidor (`cs16_players_online{server="..."}`) com uma variável de servidor no dashboard.
-- O `.env` define `COMPOSE_FILE=docker-compose.yml:docker-compose.servers.yml`: depois de gerado, `docker compose ps/logs/config/up` já usam o override sem precisar de `-f` (o override é regenerado pelo `servers.sh compose`/`up` ou pelo `setup.sh`).
+- O `.env` define `COMPOSE_FILE=docker-compose.yml:docker-compose.servers.yml`: depois de gerado, `docker compose ps/logs/config/up` já usam o override sem precisar de `-f` (o override é regenerado pelo `servers.sh compose`/`up` ou pelo `setup.sh`). O espectador (compose watch) não entra no `COMPOSE_FILE`: é opt-in via `./scripts/watch.sh`.
 
 ##### Adicionar um novo servidor (passo a passo)
 
@@ -365,15 +371,17 @@ Informe o total desejado (menor que o atual) e escolha quais servidores remover.
 
 #### Espectador Web (WebRTC)
 
-O espectador permite assistir o servidor **primário** (porta host `27015`) direto no navegador, sem instalar o CS 1.6. O fluxo é:
+O espectador permite assistir **qualquer servidor** direto no navegador, sem instalar o CS 1.6. Para cada servidor de `config/servers.list` há um par `watch-main-<id>` + `watch-hltv-<id>`; o fluxo (por servidor) é:
 
 ```
-Browser (Xash3D WASM) ──WebRTC──▶ watch-main (proxy 27018) ──UDP──▶ watch-hltv (relay HLTV) ──▶ Servidor primário (27015)
+Browser (Xash3D WASM) ──WebRTC──▶ watch-main-<id> (proxy 27200+i) ──UDP──▶ watch-hltv-<id> (relay 27100+i) ──▶ cs16<id> (127.0.0.1:<host_port>)
 ```
 
-O `watch-main` é o submodule `watch/webxash3d-proxy` (fork `LeandroSalvas/webxash3d-proxy` de `bordeux/webxash3d-proxy`), um proxy Rust WebRTC→UDP com cliente Xash3D WASM. As modificações locais (ack do HLTV, DTLS vendored para Chrome, auto-recuperação, etc.) estão documentadas no `watch/webxash3d-proxy/PATCHES.md`.
+Cada proxy atende em `BASE_PATH=/<context>/` (7ª coluna do `servers.list`), então o path público é `https://...:4445/<context>/`.
 
-**Opt-in**: ambos os serviços carregam `profiles: ["watch"]`, então a stack padrão nunca os inicia. Gerencie com:
+O `watch-main` é o submodule `watch/webxash3d-proxy` (fork `LeandroSalvas/webxash3d-proxy` de `bordeux/webxash3d-proxy`), um proxy Rust WebRTC→UDP com cliente Xash3D WASM. As modificações locais (ack do HLTV, DTLS vendored para Chrome, auto-recuperação, contexts `BASE_PATH`, etc.) estão documentadas no `watch/webxash3d-proxy/PATCHES.md`.
+
+**Opt-in**: todos os serviços carregam `profiles: ["watch"]`, então a stack padrão nunca os inicia. Gerencie com:
 
 ```bash
 ./scripts/watch.sh up|down|build|ps|status|logs|restart|backup|restore
@@ -381,24 +389,24 @@ O `watch-main` é o submodule `watch/webxash3d-proxy` (fork `LeandroSalvas/webxa
 
 | Comando | Descrição |
 |---------|-----------|
-| `up` | Sobe `watch-main` + `watch-hltv` (depende de `cs16` primário) |
+| `up` | Sobe todos os `watch-main-<id>` + `watch-hltv-<id>` (builda `cs16_stats:local` e o proxy se faltarem) |
 | `down` | Derruba a stack do espectador |
 | `build` | Reconstrói o cliente do espectador (necessário após mudanças no submodule) |
-| `status` | Saúde dos serviços + última queda do HLTV |
+| `status` | Saúde dos serviços + última queda do HLTV, por servidor |
 | `backup`/`restore` | Copia o `valve.zip` para/de `./backups/` |
 
-**Assets**: `valve/valve.zip` (assets proprietários do Half-Life) é **gitignored**; o `backup`/`restore` do watch.sh o preserva. O compose o monta read-only no `watch-main`.
+**Assets**: `valve/valve.zip` (assets proprietários do Half-Life) é **gitignored**; o `backup`/`restore` do watch.sh o preserva. O compose o monta read-only nos `watch-main`.
 
-**Portas**:
+**Portas** (por índice `i` em `config/servers.list`; 3 servidores hoje = 0..2):
 
 | Porta | Uso |
 |-------|-----|
-| `27018` TCP | Página do espectador + signaling WebSocket (`/websocket`) |
-| `27019-27050` UDP | WebRTC (ICE) |
-| `27020` | Relay HLTV (interno, host) |
+| `27100+i` UDP | Relay HLTV (`watch-hltv-<id>`) |
+| `27200+i` TCP | Página do espectador + signaling WebSocket (`/websocket`) |
+| `27300+(i*64)..+63` UDP | WebRTC (ICE) |
 | `4445` TCP | HTTPS do espectador (via swag, produção) |
 
-`watch-main` usa `network_mode: host` (anuncia o IP da LAN como ICE candidate e resolve os candidatos mDNS `.local`). Em produção, o swag serve `https://zueiracstrike.duckdns.org:4445` → `http://192.168.15.54:27018`.
+`watch-main` usa `network_mode: host` (anuncia o IP da LAN como ICE candidate e resolve os candidatos mDNS `.local`). Em produção, o swag serve `https://zueiracstrike.duckdns.org:4445/<context>/` → `http://192.168.15.54:27200+i` (blocos `location` gerados em `config/watch/swag-locations.conf.example`).
 
 **Auto-recuperação** (cliente + proxy):
 
@@ -410,7 +418,7 @@ O `watch-main` é o submodule `watch/webxash3d-proxy` (fork `LeandroSalvas/webxa
 - **Microfone**: o glue do engine pede `getUserMedia` no boot (captura de voice); stub no `index.html` rejeita a permissão — sem prompt para o espectador.
 - Loading por etapas em PT-BR com barra de progresso; erros de JS/WebGL2 aparecem na tela em vez de tela preta.
 
-**Observação operacional**: o relay HLTV pode ficar "mudo" (processo vivo e conectado ao servidor, mas sem enviar dados). A auto-recuperação acima destrava a sessão; o destravamento definitivo é reiniciar o servidor de jogo (o HLTV reconecta sozinho em ~20s). Acompanhe `live/watch/last_hltv_crash.txt` e o `watch.sh status`.
+**Observação operacional**: o relay HLTV pode ficar "mudo" (processo vivo e conectado ao servidor, mas sem enviar dados). A auto-recuperação acima destrava a sessão; o destravamento definitivo é reiniciar o servidor de jogo (o HLTV reconecta sozinho em ~20s). O cron `scripts/watch-mudo.sh` detecta e recupera o mudo automaticamente (kick via RCON). Acompanhe `live/watch/<id>/last_hltv_crash.txt` e o `watch.sh status`.
 
 #### Upgrade e smoke test da API
 
@@ -638,10 +646,10 @@ Se a tabela `csstats` está vazia, verifique se o servidor de jogo está rodando
 
 **Espectador congelado ou sem imagem:**
 ```bash
-./scripts/watch.sh status      # saúde dos serviços + última queda do HLTV
-docker compose logs watch-main watch-hltv
+./scripts/watch.sh status      # saúde dos serviços + última queda do HLTV por servidor
+./scripts/watch.sh logs -f     # logs dos proxies/relays
 ```
-O cliente se auto-recupera (rejoin + reload silencioso). Se o relay HLTV ficou "mudo", reinicie o servidor de jogo (`docker compose restart cs16`) — o HLTV reconecta sozinho em ~20s. Verifique também `live/watch/last_hltv_crash.txt`.
+O cliente se auto-recupera (rejoin + reload silencioso). Se um relay HLTV ficou "mudo", o cron `scripts/watch-mudo.sh` o recupera (kick via RCON); o definitivo é reiniciar o servidor de jogo (`docker compose restart cs16<id>`) — o HLTV reconecta sozinho em ~20s. Verifique também `live/watch/<id>/last_hltv_crash.txt`.
 
 **Login admin bloqueado (429):** o `smoke-test.sh` compartilha a janela de rate limit de login (60s) com o host. Aguarde o intervalo e tente novamente.
 
@@ -672,10 +680,10 @@ On top of these, there are **opt-in** spectator services (`profiles: ["watch"]`,
 
 | Service | Description |
 |---------|-------------|
-| `watch-main` | WebRTC→UDP proxy: serves the spectator page and bridges to the HLTV relay |
-| `watch-hltv` | HLTV relay between the game server (27015) and the browser spectator |
+| `watch-main-<id>` | WebRTC→UDP proxy per server: serves the spectator page and bridges to the HLTV relay |
+| `watch-hltv-<id>` | HLTV relay per server: between the game server (`127.0.0.1:<host_port>`) and the browser spectator |
 
-The production deployment also has external services: **swag** (TLS proxy, port 4445) + **duckdns** (dynamic DNS) to expose the spectator at `https://zueiracstrike.duckdns.org:4445`.
+The production deployment also has external services: **swag** (TLS proxy, port 4445) + **duckdns** (dynamic DNS) to expose each spectator at `https://zueiracstrike.duckdns.org:4445/<context>/`.
 
 ### Features
 
@@ -706,8 +714,8 @@ The production deployment also has external services: **swag** (TLS proxy, port 
 
 #### Web Spectator (WebRTC)
 
-- Watch the primary server **in the browser** via an HLTV relay (Xash3D WASM client), with no installation
-- CSTV page (`/cstv.html`) with the spectator embedded in an iframe
+- Watch **any server** in the browser via an HLTV relay (Xash3D WASM client), with no installation — a `watch-main`/`watch-hltv` pair per `config/servers.list` server, each at its `/context/` path
+- CSTV page (`/cstv.html`) with the spectator embedded in an iframe + server selector
 - Self-healing: client stall watchdog (rejoin + silent reload) and proxy bridge idle teardown — the session survives even game-server restarts
 - Opt-in (not part of the default stack), managed by `./scripts/watch.sh`
 
@@ -718,8 +726,7 @@ The production deployment also has external services: **swag** (TLS proxy, port 
 - Available ports:
   - **8080** (web panel)
   - **27015** (primary server UDP/TCP), **27016+** (extra servers, one port each)
-  - **27018** (spectator: page + signaling WebSocket)
-  - **27019-27050** (spectator WebRTC UDP)
+  - **27100+** (HLTV relay UDP per server), **27200+** (spectator: page + signaling WebSocket), **27300+** (WebRTC UDP, 64-port range per server)
   - **4445** (spectator HTTPS via swag, production)
   - **3001** (Grafana) and **9090** (Prometheus, local bind)
 
@@ -796,14 +803,20 @@ Open your browser at `http://<your-host>:8080`
 
 **Web spectator (opt-in):**
 
+Ports are derived per server index `i` in `config/servers.list` (relay `WATCH_HLTV_BASE+i`, listen `WATCH_LISTEN_BASE+i`, ICE `WATCH_UDP_BASE+(i*WATCH_UDP_SIZE)..+WATCH_UDP_SIZE-1`).
+
 | Variable | Default | Description |
 |----------|---------|-------------|
-| `WATCH_PUBLIC_IP` | *(empty)* | Public IP announced as a WebRTC ICE candidate (required for access outside the LAN) |
-| `WATCH_LISTEN_PORT` | `27018` | Proxy port (spectator page + signaling WebSocket) |
-| `WATCH_UDP_PORT_RANGE` | `27019-27050` | Fixed UDP port range for ICE (open in firewall/NAT) |
-| `WATCH_HLTV_PORT` | `27020` | HLTV relay port (internal) |
+| `WATCH_HLTV_BASE` | `27100` | HLTV relay UDP port base: `base+i` |
+| `WATCH_LISTEN_BASE` | `27200` | Proxy port base (page + signaling WebSocket, TCP): `base+i` |
+| `WATCH_UDP_BASE` | `27300` | Fixed UDP port range base for ICE (open in firewall/NAT) |
+| `WATCH_UDP_SIZE` | `64` | UDP range size per server |
 | `WATCH_CONSOLE_COMMANDS` | `spec_autodirector 1` | Console commands executed on the spectator client (auto camera) |
 | `WATCH_PACKAGE_ZIP` | `/valve/valve.zip` | Path to `valve.zip` inside the proxy container |
+| `WATCH_PUBLIC_BASE` | *(empty)* | Public spectator base URL (swag): the API exposes `spectatorUrl` = `BASE/<context>/` |
+| `WATCH_UPSTREAM_HOST` | `127.0.0.1` | Host used by swag to reach `watch-main` (network_mode: host) |
+
+> The public IP is no longer configured: the proxy discovers it via STUN (`stun.l.google.com`) per connection.
 
 #### CS Server config files
 
@@ -825,7 +838,7 @@ Files in `live/<id>/` are shared between the CS server plugin and the API for re
 |------|-------------|
 | `live/<id>/live_scoreboard.json` | Live scoreboard (written by AMX Mod X plugin) |
 | `live/<id>/live_killfeed.json` | Live killfeed (written by AMX Mod X plugin) |
-| `live/watch/` | HLTV relay logs and `last_hltv_crash.txt` (spectator) |
+| `live/watch/<id>/` | HLTV relay logs and `last_hltv_crash.txt` (spectator, per server) |
 
 #### AMX Mod X plugins (`cs/plugins/`)
 
@@ -900,16 +913,17 @@ The project can run multiple CS 1.6 servers at the same time, each with its own 
 **Example `config/servers.list`:**
 
 ```
-main Zueira 27015 de_dust2 32 yes
-frag Frag 27016 de_inferno 24 yes
-dm Deathmatch 27017 fy_iceworld 20 yes
-awp AWP 27018 awp_map 16 yes
+main Zueira 27015 de_dust2 32 yes zueira
+frag Frag 27016 de_inferno 24 yes frag
+dm Deathmatch 27017 fy_iceworld 20 yes dm
+awp AWP 27018 awp_map 16 yes awp
 ```
 
 Rules and details:
 
 - The 1st line is the primary and must keep the id `main`.
 - `host_port` is the host-published port; inside the container all servers use the internal port `27015`.
+- `context` (optional 7th column) is the web-spectator path slug (`WATCH_PUBLIC_BASE/<context>/`); must be unique and use only `a-z0-9`. Default = slugified name.
 - `maxplayers` = **visible** slots (even: 8/16/24/32). The engine uses `visible + 1` (hidden slot reserved for HLTV via the `slots_reserve` plugin), except at the 32 cap (the plugin reserves the 32nd slot). `pb_minbots 2` keeps a 2-bot floor.
 - `rotate`: `yes` (default) = map rotation, with the list in `config/servers/<id>/mapcycle.txt` (the wizard asks which maps from the image go into the rotation); `no` = the `mapcycle.txt` holds only the chosen map (no map changes).
 - If the server's `mapcycle.txt` does not exist yet with `rotate=yes`, `init` copies the shared `config/mapcycle.txt` as the default; with `rotate=no` it rewrites the single map when the content changes.
@@ -917,7 +931,7 @@ Rules and details:
 - Each server writes its own live files in `live/<id>/`, which the API reads per server (`/api/live/state?server=<id>`).
 - All pages have a server selector (Home, Live, Rankings, Maps, Player, Advanced, Matches, and RCON Panel); rankings, tops, maps, and matches are filtered by the selected server and RCON commands run against the target server.
 - Grafana metrics are labeled per server (`cs16_players_online{server="..."}`) with a server variable in the dashboard.
-- The `.env` sets `COMPOSE_FILE=docker-compose.yml:docker-compose.servers.yml`: after generation, plain `docker compose ps/logs/config/up` use the override without needing `-f` (the override is regenerated by `servers.sh compose`/`up` or `setup.sh`).
+- The `.env` sets `COMPOSE_FILE=docker-compose.yml:docker-compose.servers.yml`: after generation, plain `docker compose ps/logs/config/up` use the override without needing `-f` (the override is regenerated by `servers.sh compose`/`up` or `setup.sh`). The spectator compose is NOT in `COMPOSE_FILE` — it is opt-in via `./scripts/watch.sh`.
 
 ##### Adding a new server (step by step)
 
@@ -1007,15 +1021,17 @@ Enter a lower total and choose which servers to remove. The wizard asks whether 
 
 #### Web Spectator (WebRTC)
 
-The spectator lets you watch the **primary** server (host port `27015`) directly in the browser, without installing CS 1.6. The flow is:
+The spectator lets you watch **any server** directly in the browser, without installing CS 1.6. Each `config/servers.list` server gets a `watch-main-<id>` + `watch-hltv-<id>` pair; the flow (per server) is:
 
 ```
-Browser (Xash3D WASM) ──WebRTC──▶ watch-main (proxy 27018) ──UDP──▶ watch-hltv (HLTV relay) ──▶ Primary server (27015)
+Browser (Xash3D WASM) ──WebRTC──▶ watch-main-<id> (proxy 27200+i) ──UDP──▶ watch-hltv-<id> (relay 27100+i) ──▶ cs16<id> (127.0.0.1:<host_port>)
 ```
 
-`watch-main` is the `watch/webxash3d-proxy` submodule (fork `LeandroSalvas/webxash3d-proxy` of `bordeux/webxash3d-proxy`), a Rust WebRTC→UDP proxy with an Xash3D WASM client. Local modifications (HLTV connect-ack rewrite, vendored DTLS for Chrome, self-healing, etc.) are documented in `watch/webxash3d-proxy/PATCHES.md`.
+Each proxy serves its server at `BASE_PATH=/<context>/` (7th `servers.list` column), so the public path is `https://...:4445/<context>/`.
 
-**Opt-in**: both services carry `profiles: ["watch"]`, so the default stack never starts them. Manage with:
+`watch-main` is the `watch/webxash3d-proxy` submodule (fork `LeandroSalvas/webxash3d-proxy` of `bordeux/webxash3d-proxy`), a Rust WebRTC→UDP proxy with an Xash3D WASM client. Local modifications (HLTV connect-ack rewrite, vendored DTLS for Chrome, self-healing, `BASE_PATH` contexts, etc.) are documented in `watch/webxash3d-proxy/PATCHES.md`.
+
+**Opt-in**: all services carry `profiles: ["watch"]`, so the default stack never starts them. Manage with:
 
 ```bash
 ./scripts/watch.sh up|down|build|ps|status|logs|restart|backup|restore
@@ -1023,24 +1039,24 @@ Browser (Xash3D WASM) ──WebRTC──▶ watch-main (proxy 27018) ──UDP�
 
 | Command | Description |
 |---------|-------------|
-| `up` | Starts `watch-main` + `watch-hltv` (depends on primary `cs16`) |
+| `up` | Starts all `watch-main-<id>` + `watch-hltv-<id>` (builds `cs16_stats:local` and the proxy if missing) |
 | `down` | Stops the spectator stack |
 | `build` | Rebuilds the spectator client (required after submodule changes) |
-| `status` | Service health + last HLTV crash |
+| `status` | Service health + last HLTV crash, per server |
 | `backup`/`restore` | Copies `valve.zip` to/from `./backups/` |
 
-**Assets**: `valve/valve.zip` (proprietary Half-Life assets) is **gitignored**; `watch.sh backup`/`restore` preserves it. The compose mounts it read-only into `watch-main`.
+**Assets**: `valve/valve.zip` (proprietary Half-Life assets) is **gitignored**; `watch.sh backup`/`restore` preserves it. The compose mounts it read-only into the `watch-main` services.
 
-**Ports:**
+**Ports** (per index `i` in `config/servers.list`; 3 servers today = 0..2):
 
 | Port | Usage |
 |------|-------|
-| `27018` TCP | Spectator page + signaling WebSocket (`/websocket`) |
-| `27019-27050` UDP | WebRTC (ICE) |
-| `27020` | HLTV relay (internal, host) |
+| `27100+i` UDP | HLTV relay (`watch-hltv-<id>`) |
+| `27200+i` TCP | Spectator page + signaling WebSocket (`/websocket`) |
+| `27300+(i*64)..+63` UDP | WebRTC (ICE) |
 | `4445` TCP | Spectator HTTPS (via swag, production) |
 
-`watch-main` uses `network_mode: host` (announces the LAN IP as an ICE candidate and resolves the browser's mDNS `.local` candidates). In production, swag serves `https://zueiracstrike.duckdns.org:4445` → `http://192.168.15.54:27018`.
+`watch-main` uses `network_mode: host` (announces the LAN IP as an ICE candidate and resolves the browser's mDNS `.local` candidates). In production, swag serves `https://zueiracstrike.duckdns.org:4445/<context>/` → `http://192.168.15.54:27200+i` (location blocks generated in `config/watch/swag-locations.conf.example`).
 
 **Self-healing** (client + proxy):
 
@@ -1052,7 +1068,7 @@ Browser (Xash3D WASM) ──WebRTC──▶ watch-main (proxy 27018) ──UDP�
 - **Microphone**: the engine glue requests `getUserMedia` at boot (voice capture); a stub in `index.html` rejects it — no permission prompt for spectators.
 - Staged PT-BR loading screen with a progress bar; JS/WebGL2 errors surface on screen instead of a black screen.
 
-**Operational note**: the HLTV relay can go "silent" (process alive and connected to the server, but not sending data). The self-healing above unlocks the session; the definitive fix is restarting the game server (HLTV reconnects on its own in ~20s). Monitor `live/watch/last_hltv_crash.txt` and `watch.sh status`.
+**Operational note**: the HLTV relay can go "silent" (process alive and connected to the server, but not sending data). The self-healing above unlocks the session; the definitive fix is restarting the game server (HLTV reconnects on its own in ~20s). The `scripts/watch-mudo.sh` cron detects and recovers mudo automatically (RCON kick). Monitor `live/watch/<id>/last_hltv_crash.txt` and `watch.sh status`.
 
 #### API upgrade and smoke test
 
@@ -1280,9 +1296,9 @@ If the `csstats` table is empty, verify the game server is running correctly. Th
 
 **Spectator frozen or blank:**
 ```bash
-./scripts/watch.sh status      # service health + last HLTV crash
-docker compose logs watch-main watch-hltv
+./scripts/watch.sh status      # service health + last HLTV crash, per server
+./scripts/watch.sh logs -f     # proxy/relay logs
 ```
-The client self-heals (rejoin + silent reload). If the HLTV relay went silent, restart the game server (`docker compose restart cs16`) — HLTV reconnects on its own in ~20s. Also check `live/watch/last_hltv_crash.txt`.
+The client self-heals (rejoin + silent reload). If an HLTV relay went silent, the `scripts/watch-mudo.sh` cron recovers it (RCON kick); the definitive fix is restarting the game server (`docker compose restart cs16<id>`) — HLTV reconnects on its own in ~20s. Also check `live/watch/<id>/last_hltv_crash.txt`.
 
 **Admin login blocked (429):** the `smoke-test.sh` shares the login rate-limit window (60s) with the host. Wait for the interval and retry.

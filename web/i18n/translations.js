@@ -12,7 +12,6 @@ const i18n = {
       duel: '⚔️ Duelo',
       admin: '🛠️ Painel RCON',
       system: '🛡️ Sistema',
-      watch: '📹 Assistir',
       skipToContent: 'Pular para o conteúdo principal',
       search: 'Buscar jogador...',
       langToggle: 'Alterar idioma'
@@ -367,7 +366,6 @@ const i18n = {
       duel: '⚔️ Duel',
       admin: '🛠️ RCON Panel',
       system: '🛡️ System',
-      watch: '📹 Watch',
       skipToContent: 'Skip to main content',
       search: 'Search player...',
       langToggle: 'Change language'

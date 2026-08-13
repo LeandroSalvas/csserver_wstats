@@ -1,0 +1,36 @@
+# Gerado por scripts/servers.sh compose — não edite manualmente.
+# Exposição do espectador web no swag (stack separada em ~/duckdns):
+#   público: https://zueiracstrike.duckdns.org:4445/<context>/
+#   upstream: http://192.168.15.54:<listen_port> (watch-main com network_mode: host)
+# O swag NÃO deve remover o prefixo (o proxy atende em BASE_PATH);
+# cada location termina SEM barra no proxy_pass e repassa o Upgrade/WS.
+# Para ativar: copie os blocos abaixo para dentro do server { } do
+# proxy-confs/zueiracstrike-watch.subdomain.conf e reinicie o swag.
+
+    location /zueira/ {
+        proxy_pass http://192.168.15.54:27200;
+        proxy_http_version 1.1;
+        proxy_set_header Upgrade $http_upgrade;
+        proxy_set_header Connection "upgrade";
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+    }
+
+    location /fypooldayonly/ {
+        proxy_pass http://192.168.15.54:27201;
+        proxy_http_version 1.1;
+        proxy_set_header Upgrade $http_upgrade;
+        proxy_set_header Connection "upgrade";
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+    }
+
+    location /zueira2/ {
+        proxy_pass http://192.168.15.54:27202;
+        proxy_http_version 1.1;
+        proxy_set_header Upgrade $http_upgrade;
+        proxy_set_header Connection "upgrade";
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+    }
+

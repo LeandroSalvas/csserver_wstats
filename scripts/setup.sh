@@ -339,17 +339,19 @@ write_list() {
   local tmp="${SERVERS_LIST}.tmp"
   {
     echo "# Lista de servidores CS 1.6 gerenciados pelo docker-compose."
-    echo "# Formato: id hostname host_port map maxplayers rotate"
+    echo "# Formato: id hostname host_port map maxplayers rotate context"
     echo "# - A primeira linha é o servidor primário (id \"main\"), usado por snapshots/rankings e partidas."
     echo "# - maxplayers = vagas VISÍVEIS (par: 8/16/24/32); o maxplayers real é esse valor + 1 (slot reservado ao HLTV)."
     echo "#   No teto 32 o +1 não é possível (CS 1.6 aceita no máx. 32) — o slot do HLTV é garantido pelo plugin slots_reserve."
     echo "# - host_port é a porta publicada no host (mapeada para a porta interna 27015 do container)."
     echo "# - rotate: yes = rotação de mapas (lista em config/servers/<id>/mapcycle.txt); no = só o mapa escolhido."
+    echo "# - context: slug do path do espectador web (default = slug do nome; use apenas a-z0-9, único por servidor)."
     echo "# - Edite à mão e rode: scripts/servers.sh up  — ou use scripts/setup.sh (interativo)."
     local i
     for i in "${!NEW_IDS[@]}"; do
-      printf '%s %s %s %s %s %s\n' \
-        "${NEW_IDS[$i]}" "${NEW_NAMES[$i]}" "${NEW_PORTS[$i]}" "${NEW_MAPS[$i]}" "${NEW_SLOTS[$i]}" "${NEW_ROTATE[$i]:-yes}"
+      printf '%s %s %s %s %s %s %s\n' \
+        "${NEW_IDS[$i]}" "${NEW_NAMES[$i]}" "${NEW_PORTS[$i]}" "${NEW_MAPS[$i]}" "${NEW_SLOTS[$i]}" "${NEW_ROTATE[$i]:-yes}" \
+        "$(printf '%s' "${NEW_NAMES[$i]}" | tr '[:upper:]' '[:lower:]' | tr -c 'a-z0-9' '')"
     done
   } > "$tmp"
   mv "$tmp" "${SERVERS_LIST}"

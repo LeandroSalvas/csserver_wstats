@@ -18,8 +18,11 @@ const API = '/api'
 const SERVER_HOST = 'zueiracstrike.duckdns.org'
 const SERVER_PORT = '27015'
 
-// URL pública do espectador web (WebRTC) — editado aqui
-// Exposto via swag em TLS dedicado (zueiracstrike-watch.subdomain.conf)
+// URL pública base do espectador web (WebRTC) — fallback quando a API não
+// informa spectatorUrl por servidor (ex.: site estático offline).
+// Exposto via swag em TLS dedicado (zueiracstrike-watch.subdomain.conf).
+// A URL por servidor vem de /servers (campo spectatorUrl = BASE/<context>/),
+// gerada por scripts/servers.sh compose a partir do WATCH_PUBLIC_BASE do .env.
 const SPECTATOR_URL = 'https://zueiracstrike.duckdns.org:4445/'
 
 function escapeHtml(s) {
@@ -121,8 +124,25 @@ function serverParam() {
   return id ? `&server=${encodeURIComponent(id)}` : ''
 }
 
+let cachedServers = null
+
 async function loadServersList() {
-  return fetchJson('/servers')
+  if (cachedServers) return cachedServers
+  cachedServers = await fetchJson('/servers')
+  return cachedServers
+}
+
+// URL do espectador para um servidor: usa o spectatorUrl da API quando
+// disponível; senão, cai no SPECTATOR_URL base (main) ou retorna null.
+async function spectatorUrlFor(serverId) {
+  try {
+    const servers = await loadServersList()
+    const srv = servers && servers.find((s) => s.id === serverId)
+    if (srv && srv.spectatorUrl) return srv.spectatorUrl
+  } catch (err) {
+    console.error('Erro ao resolver espectador:', err)
+  }
+  return serverId && serverId !== 'main' ? null : SPECTATOR_URL
 }
 
 // Popula qualquer <select class="server-selector"> com a lista de servidores.
@@ -244,15 +264,6 @@ function renderPageNav() {
 
     const utils = document.createElement('div')
     utils.className = 'page-nav-utils'
-
-    const watch = document.createElement('a')
-    watch.className = 'nav-watch'
-    watch.setAttribute('data-watch-link', '')
-    watch.href = SPECTATOR_URL
-    watch.target = '_blank'
-    watch.rel = 'noopener'
-    watch.textContent = i18nUtils.t('nav.watch')
-    utils.appendChild(watch)
 
     const langSlot = document.createElement('div')
     langSlot.className = 'lang-toggle-slot'
@@ -396,12 +407,34 @@ function exportTableCsv(table, filename) {
 }
 
 function initWatchLink() {
-  document.querySelectorAll('[data-watch-link]').forEach((el) => {
-    el.href = SPECTATOR_URL
-  })
-  document.querySelectorAll('[data-spectator-frame]').forEach((el) => {
-    el.src = SPECTATOR_URL
-  })
+  const apply = async () => {
+    const applyOne = async (el) => {
+      // data-watch-server força um servidor (ex.: página "Conectar", fixa no main).
+      const url = await spectatorUrlFor(el.dataset.watchServer || getSelectedServer())
+      if (url) {
+        el.href = url
+        el.hidden = false
+      } else {
+        el.removeAttribute('href')
+        el.hidden = true
+      }
+    }
+    document.querySelectorAll('[data-watch-link]').forEach(applyOne)
+    const frame = document.querySelector('[data-spectator-frame]')
+    if (frame) {
+      const url = await spectatorUrlFor(frame.dataset.watchServer || getSelectedServer())
+      if (url) {
+        frame.src = url
+        frame.hidden = false
+      } else {
+        frame.removeAttribute('src')
+        frame.hidden = true
+      }
+    }
+  }
+
+  apply()
+  document.addEventListener('server-change', apply)
 }
 
 function initSkipLink() {
