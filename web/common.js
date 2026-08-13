@@ -210,17 +210,17 @@ async function initServerSelector() {
 }
 
 const pageNavItems = [
-  { path: '/', labelKey: 'nav.home' },
-  { path: '/mapas', labelKey: 'nav.maps' },
-  { path: '/ranking', labelKey: 'nav.rankings' },
-  { path: '/avancadas', labelKey: 'nav.advanced' },
-  { path: '/partidas', labelKey: 'nav.matches' },
-  { path: '/conectar', labelKey: 'nav.connect' },
-  { path: '/ao-vivo', labelKey: 'nav.live' },
-  { path: '/cstv', labelKey: 'nav.cstv' },
-  { path: '/duelo', labelKey: 'nav.duel' },
-  { path: '/admin', labelKey: 'nav.admin' },
-  { path: '/sistema', labelKey: 'nav.system' }
+  { path: '/', labelKey: 'nav.home', tooltipKey: 'navTooltip.home' },
+  { path: '/mapas', labelKey: 'nav.maps', tooltipKey: 'navTooltip.maps' },
+  { path: '/ranking', labelKey: 'nav.rankings', tooltipKey: 'navTooltip.rankings' },
+  { path: '/avancadas', labelKey: 'nav.advanced', tooltipKey: 'navTooltip.advanced' },
+  { path: '/partidas', labelKey: 'nav.matches', tooltipKey: 'navTooltip.matches' },
+  { path: '/conectar', labelKey: 'nav.connect', tooltipKey: 'navTooltip.connect' },
+  { path: '/ao-vivo', labelKey: 'nav.live', tooltipKey: 'navTooltip.live' },
+  { path: '/cstv', labelKey: 'nav.cstv', tooltipKey: 'navTooltip.cstv' },
+  { path: '/duelo', labelKey: 'nav.duel', tooltipKey: 'navTooltip.duel' },
+  { path: '/admin', labelKey: 'nav.admin', tooltipKey: 'navTooltip.admin' },
+  { path: '/sistema', labelKey: 'nav.system', tooltipKey: 'navTooltip.system' }
 ]
 
 // Diz se um item da nav deve ficar ativo dado o pathname atual.
@@ -251,6 +251,14 @@ function renderPageNav() {
       const link = document.createElement('a')
       link.href = item.path
       link.textContent = i18nUtils.t(item.labelKey)
+
+      // Tooltip: balão CSS em dispositivos com hover (data-tooltip); em touch,
+      // sem hover, usamos o title nativo (long-press) para não duplicar.
+      const tooltip = i18nUtils.t(item.tooltipKey)
+      link.dataset.tooltip = tooltip
+      if (window.matchMedia('(hover: none)').matches) {
+        link.title = tooltip
+      }
 
       if (isNavItemActive(item, currentPath)) {
         link.classList.add('active')

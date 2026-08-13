@@ -489,6 +489,199 @@ a.watch-link:hover {
   border-color: rgba(249,115,22,0.5);
 }
 
+/* SELETOR DE PERÍODO (calendário customizado + presets) */
+
+.period-picker {
+  position: relative;
+}
+
+.period-popover {
+  position: absolute;
+  top: calc(100% + 10px);
+  left: 0;
+  z-index: 40;
+  min-width: 300px;
+  padding: 12px;
+  border-radius: 12px;
+  background: var(--bg-elevated);
+  border: 1px solid var(--border);
+  box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+  font-family: Inter, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+}
+
+.period-popover[hidden] {
+  display: none;
+}
+
+.period-presets {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+
+.period-preset {
+  flex: 1;
+  padding: 6px 10px;
+  border-radius: 999px;
+  border: 1px solid var(--border);
+  background: var(--surface);
+  color: var(--text-soft);
+  cursor: pointer;
+  font-family: inherit;
+  font-size: 0.8rem;
+  transition: background 0.2s ease, color 0.2s ease, border-color 0.2s ease;
+}
+
+.period-preset:hover {
+  background: var(--accent-tint-strong);
+  color: var(--accent-text-bright);
+  border-color: var(--accent-border);
+}
+
+.period-cal-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 8px;
+}
+
+.cal-month-label {
+  color: var(--text);
+  font-weight: 600;
+  font-size: 0.9rem;
+  text-transform: capitalize;
+}
+
+.cal-nav {
+  width: 28px;
+  height: 28px;
+  border-radius: 6px;
+  border: 1px solid var(--border);
+  background: var(--surface);
+  color: var(--text-soft);
+  cursor: pointer;
+  font-family: inherit;
+}
+
+.cal-nav:hover {
+  background: var(--border);
+  color: var(--text-bright);
+}
+
+.cal-weekdays,
+.cal-grid {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 2px;
+}
+
+.cal-wd {
+  padding: 4px 0;
+  text-align: center;
+  font-size: 11px;
+  text-transform: uppercase;
+  color: var(--text-muted);
+}
+
+.cal-day {
+  padding: 6px 0;
+  text-align: center;
+  border-radius: 6px;
+  border: 1px solid transparent;
+  background: transparent;
+  color: var(--text);
+  cursor: pointer;
+  font-family: inherit;
+  font-size: 0.85rem;
+  transition: background 0.15s ease, color 0.15s ease;
+}
+
+.cal-day:hover:not(.is-disabled):not(.is-selected) {
+  background: var(--accent-tint);
+}
+
+.cal-day.is-today {
+  border-color: var(--accent-border);
+}
+
+.cal-day.is-selected {
+  background: var(--accent-strong);
+  color: #ffffff;
+  border-color: rgba(249,115,22,0.5);
+}
+
+.cal-day.is-range {
+  background: var(--accent-tint-strong);
+  color: var(--accent-text-bright);
+  border-radius: 0;
+}
+
+.cal-day.is-disabled {
+  color: var(--text-dim);
+  opacity: 0.5;
+  cursor: default;
+}
+
+.cal-empty {
+  pointer-events: none;
+}
+
+.period-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 12px;
+  justify-content: flex-end;
+}
+
+.cal-range-label {
+  margin-right: auto;
+  color: var(--text-soft);
+  font-size: 0.85rem;
+}
+
+.period-actions .period-btn {
+  padding: 6px 14px;
+  font-size: 0.85rem;
+}
+
+/* CAMPOS DE DATA (máscara DD/MM/AAAA) */
+
+.period-range-inputs {
+  display: flex;
+  gap: 8px;
+  align-items: flex-end;
+}
+
+.period-field {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.period-field span {
+  font-size: 0.7rem;
+  font-weight: 600;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+}
+
+.period-date {
+  width: 150px;
+  padding: 8px 10px;
+  border-radius: 8px;
+  font-family: inherit;
+  font-size: 0.9rem;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 0.02em;
+}
+
+.period-date.is-invalid {
+  border-color: #ef4444;
+  box-shadow: 0 0 0 4px rgba(239,68,68,0.15);
+}
+
 button.quick-cmd {
   background: var(--border);
 }
@@ -525,6 +718,10 @@ button.quick-cmd:hover {
 .toolbar .server-selector {
   max-width: 220px;
   margin-bottom: 0;
+}
+
+.toolbar #btnExportCsv {
+  margin-left: auto;
 }
 
 .advanced-note {
@@ -1146,6 +1343,61 @@ button.quick-cmd:hover {
 .page-nav button:focus-visible {
   outline: 2px solid var(--accent-focus);
   outline-offset: 2px;
+}
+
+/* Tooltip dos links do menu: balão CSS no desktop (hover/focus) + title nativo
+   no touch (sem hover). O title nativo só é setado via JS em telas touch para
+   evitar "balão duplo" no desktop. */
+.page-nav a[data-tooltip] {
+  position: relative;
+}
+
+.page-nav a[data-tooltip]::after {
+  content: attr(data-tooltip);
+  position: absolute;
+  top: calc(100% + 8px);
+  left: 50%;
+  transform: translateX(-50%);
+  padding: 5px 10px;
+  border-radius: 6px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  color: var(--text);
+  font-size: 12px;
+  font-weight: 500;
+  line-height: 1.35;
+  white-space: nowrap;
+  pointer-events: none;
+  opacity: 0;
+  visibility: hidden;
+  transition: opacity 0.15s ease, visibility 0.15s ease;
+  z-index: 40;
+}
+
+.page-nav a[data-tooltip]::before {
+  content: '';
+  position: absolute;
+  top: calc(100% + 4px);
+  left: 50%;
+  transform: translateX(-50%) rotate(45deg);
+  width: 8px;
+  height: 8px;
+  background: var(--surface);
+  border-left: 1px solid var(--border);
+  border-top: 1px solid var(--border);
+  pointer-events: none;
+  opacity: 0;
+  visibility: hidden;
+  transition: opacity 0.15s ease, visibility 0.15s ease;
+  z-index: 41;
+}
+
+.page-nav a[data-tooltip]:hover::after,
+.page-nav a[data-tooltip]:hover::before,
+.page-nav a[data-tooltip]:focus-visible::after,
+.page-nav a[data-tooltip]:focus-visible::before {
+  opacity: 1;
+  visibility: visible;
 }
 
 .player-search {

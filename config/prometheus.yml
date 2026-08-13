@@ -15,6 +15,10 @@ scrape_configs:
     static_configs:
       - targets: ['nginx-exporter:9113']
 
+  - job_name: nginxlog
+    static_configs:
+      - targets: ['nginxlog-exporter:4040']
+
   - job_name: node
     static_configs:
       - targets: ['host.docker.internal:9100']

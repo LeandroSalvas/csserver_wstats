@@ -257,6 +257,98 @@ function register(app) {
     }
   })
 
+  app.get('/ranking/period', async (req, res) => {
+    try {
+      const { limit, offset } = getPagination(req)
+      const sf = getServerFilter(req)
+      if (sf && sf.invalid) return res.status(400).json({ error: `Servidor não configurado: ${sf.invalid}` })
+
+      const { from, to } = req.query
+      const dateRe = /^\d{4}-\d{2}-\d{2}$/
+      const validFrom = typeof from === 'string' && dateRe.test(from) && !Number.isNaN(Date.parse(`${from}T00:00:00Z`))
+      const validTo = typeof to === 'string' && dateRe.test(to) && !Number.isNaN(Date.parse(`${to}T00:00:00Z`))
+      if (!validFrom || !validTo) {
+        return res.status(400).json({ error: 'from e to são obrigatórios no formato YYYY-MM-DD' })
+      }
+      if (from > to) {
+        return res.status(400).json({ error: 'Período inválido: from deve ser anterior ou igual a to' })
+      }
+      if (Date.parse(`${to}T00:00:00Z`) > Date.now()) {
+        return res.status(400).json({ error: 'Período inválido: to não pode ser no futuro' })
+      }
+
+      // Mesma técnica da weekly/monthly (baseline pré-janela + janela + LAG),
+      // mas com janela [from, to] parametrizada. `to` é inclusivo até o fim do
+      // dia (created_at < to + 1 dia). O baseline usa snapshots estritamente
+      // anteriores a `from` (00:00) para o delta do primeiro dia da janela.
+      const rows = await getCached(`ranking:period:${from}:${to}:${sf ? sf.server : '*'}:${limit}:${offset}`, CACHE_RANKING_TTL, async () => {
+        const [rows] = await db.query(`
+          WITH baseline AS (
+            SELECT s.steamid, s.server_name, s.name, s.map, s.kills, s.deaths, s.hs, s.skill, s.created_at
+            FROM csstats_snapshots s
+            JOIN (
+              SELECT steamid, server_name, MAX(created_at) AS max_created
+              FROM csstats_snapshots
+              WHERE created_at < ?
+                AND ${NOT_BOT}
+                ${sf ? sf.where : ''}
+              GROUP BY steamid, server_name
+            ) b ON b.steamid = s.steamid AND b.server_name = s.server_name AND b.max_created = s.created_at
+          ),
+          windowed AS (
+            SELECT steamid, server_name, name, map, kills, deaths, hs, skill, created_at
+            FROM csstats_snapshots
+            WHERE created_at >= ? AND created_at < DATE_ADD(?, INTERVAL 1 DAY)
+              AND ${NOT_BOT}
+              ${sf ? sf.where : ''}
+          ),
+          combined AS (
+            SELECT * FROM windowed
+            UNION ALL
+            SELECT * FROM baseline
+          ),
+          ordered AS (
+            SELECT steamid, name, map, kills, deaths, hs, skill, created_at,
+              LAG(kills) OVER (PARTITION BY steamid, server_name ORDER BY created_at) AS prev_kills,
+              LAG(deaths) OVER (PARTITION BY steamid, server_name ORDER BY created_at) AS prev_deaths,
+              LAG(hs) OVER (PARTITION BY steamid, server_name ORDER BY created_at) AS prev_hs
+            FROM combined
+          ),
+          deltas AS (
+            SELECT
+              steamid,
+              name,
+              created_at,
+              GREATEST(kills - COALESCE(prev_kills, 0), 0) AS kills_delta,
+              GREATEST(deaths - COALESCE(prev_deaths, 0), 0) AS deaths_delta,
+              GREATEST(hs - COALESCE(prev_hs, 0), 0) AS hs_delta,
+              skill
+            FROM ordered
+          )
+          SELECT
+            steamid,
+            MAX(name) AS name,
+            SUM(kills_delta) AS kills,
+            SUM(deaths_delta) AS deaths,
+            SUM(hs_delta) AS hs,
+            MAX(skill) AS skill,
+            ROUND(SUM(kills_delta) / IF(SUM(deaths_delta) = 0, 1, SUM(deaths_delta)), 2) AS kd
+          FROM deltas
+          WHERE created_at >= ?
+          GROUP BY steamid
+          HAVING kills > 0 OR deaths > 0 OR hs > 0
+          ORDER BY kills DESC, kd DESC
+          LIMIT ? OFFSET ?
+        `, [from, ...(sf ? sf.params : []), from, to, ...(sf ? sf.params : []), from, limit, offset])
+        return rows
+      })
+
+      res.json(rows)
+    } catch (err) {
+      handleError(res, err)
+    }
+  })
+
   app.get('/player-history-daily/:steamid', async (req, res) => {
     try {
       const sf = getServerFilter(req)

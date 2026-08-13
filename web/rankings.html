@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title data-i18n="nav.rankings">Rankings - CS 1.6 Stats</title>
   <link rel="icon" type="image/svg+xml" href="/favicon.svg">
-  <link rel="stylesheet" href="/style.css?v=5">
+  <link rel="stylesheet" href="/style.css?v=8">
 </head>
 <body>
 
@@ -32,6 +32,42 @@
       <div class="toolbar">
         <button type="button" id="btnWeekly" class="period-btn active" data-i18n="labels.weekly">Semanal</button>
         <button type="button" id="btnMonthly" class="period-btn" data-i18n="labels.monthly">Mensal</button>
+
+        <div class="period-picker">
+          <button type="button" id="btnPeriod" class="period-btn" data-i18n="labels.period">📅 Período</button>
+          <div class="period-popover" id="periodPopover" hidden>
+            <div class="period-presets">
+              <button type="button" class="period-preset" data-days="7" data-i18n="labels.last7">Últimos 7 dias</button>
+              <button type="button" class="period-preset" data-days="30" data-i18n="labels.last30">Últimos 30 dias</button>
+            </div>
+            <div class="period-calendar">
+              <div class="period-cal-head">
+                <button type="button" id="calPrev" class="cal-nav" aria-label="←">←</button>
+                <span id="calMonthLabel" class="cal-month-label"></span>
+                <button type="button" id="calNext" class="cal-nav" aria-label="→">→</button>
+              </div>
+              <div class="cal-weekdays" id="calWeekdays"></div>
+              <div class="cal-grid" id="calGrid"></div>
+            </div>
+            <div class="period-actions">
+              <span id="calRangeLabel" class="cal-range-label"></span>
+              <button type="button" id="btnPeriodClear" class="period-btn" data-i18n="labels.clear">Limpar</button>
+              <button type="button" id="btnPeriodApply" class="period-btn active" data-i18n="labels.apply">Aplicar</button>
+            </div>
+          </div>
+        </div>
+
+        <div class="period-range-inputs">
+          <label class="period-field">
+            <span data-i18n="labels.startDate">Data inicial</span>
+            <input type="text" id="periodFrom" inputmode="numeric" maxlength="10" placeholder="DD/MM/AAAA" autocomplete="off" class="period-date">
+          </label>
+          <label class="period-field">
+            <span data-i18n="labels.endDate">Data final</span>
+            <input type="text" id="periodTo" inputmode="numeric" maxlength="10" placeholder="DD/MM/AAAA" autocomplete="off" class="period-date">
+          </label>
+        </div>
+
         <button type="button" id="btnExportCsv" data-i18n="labels.exportCsv">⬇ Exportar CSV</button>
       </div>
 
@@ -63,8 +99,8 @@
     </div>
   </div>
 
-  <script src="/i18n/translations.js?v=4" defer></script>
+  <script src="/i18n/translations.js?v=7" defer></script>
   <script src="/common.js?v=3" defer></script>
-  <script src="/rankings.js?v=3" defer></script>
+  <script src="/rankings.js?v=5" defer></script>
 </body>
 </html>

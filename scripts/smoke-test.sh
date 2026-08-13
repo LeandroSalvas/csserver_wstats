@@ -239,6 +239,17 @@ run_block_functional() {
   code="$(http_status "${API_BASE}/map-ranking/${map}")"
   assert_status "/map-ranking/${map} responde 200" 200 "$code"
 
+  local today_s=""
+  today_s="$(date -u +%F)"
+  code="$(http_status "${API_BASE}/ranking/period?from=${today_s}&to=${today_s}")"
+  assert_status "/ranking/period (hoje) responde 200" 200 "$code"
+  code="$(http_status "${API_BASE}/ranking/period?from=2026-8-1&to=2026-08-13")"
+  assert_status "/ranking/period rejeita formato inválido" 400 "$code"
+  code="$(http_status "${API_BASE}/ranking/period?from=2026-08-13&to=2026-08-01")"
+  assert_status "/ranking/period rejeita from > to" 400 "$code"
+  code="$(http_status "${API_BASE}/ranking/period?from=${today_s}&to=2099-01-01")"
+  assert_status "/ranking/period rejeita to no futuro" 400 "$code"
+
   code="$(http_status "${API_BASE}/server/nao-existe-xyz")"
   assert_status "400 para /server/nao-existe-xyz" 400 "$code"
   code="$(http_status "${API_BASE}/top10?server=nao-existe-xyz")"

@@ -117,6 +117,8 @@ services:
     volumes:
       - ./web:/usr/share/nginx/html:ro
       - ./web/nginx.conf:/etc/nginx/conf.d/default.conf:ro
+      # Access log persistido no host para o nginxlog-exporter ler (ro).
+      - ./live/nginx-logs:/var/log/nginx
     restart: always
 
   nginx-exporter:
@@ -127,6 +129,19 @@ services:
       - web
     command:
       - -nginx.scrape-uri=http://web:80/stub_status
+
+  nginxlog-exporter:
+    image: quay.io/martinhelmich/prometheus-nginxlog-exporter:v1
+    container_name: cs16-nginxlog-exporter
+    restart: always
+    depends_on:
+      - web
+    volumes:
+      - ./live/nginx-logs:/var/log/nginx:ro
+      - ./config/nginxlog-exporter.hcl:/etc/prometheus-nginxlog-exporter.hcl:ro
+    command:
+      - -config-file
+      - /etc/prometheus-nginxlog-exporter.hcl
 
   prometheus:
     image: prom/prometheus:v2.53.0
