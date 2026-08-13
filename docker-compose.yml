@@ -137,6 +137,8 @@ services:
     environment:
       METRICS_USER: ${METRICS_USER:-}
       METRICS_PASS: ${METRICS_PASS:-}
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
     volumes:
       # O Prometheus nao expande variaveis no --config.file; o config efetivo
       # (com as credenciais reais no lugar de __METRICS_USER__/__METRICS_PASS__)
@@ -172,6 +174,45 @@ services:
       - grafana_data:/var/lib/grafana
     ports:
       - "3001:3000"
+
+  # Métricas do HOST (CPU/memória/rede da interface física). network_mode: host
+  # é obrigatório: os contadores de rede (/proc/net/dev) são por namespace — sem
+  # isso o exporter veria só as interfaces do próprio container, não o eno1.
+  # O Prometheus o alcança via host-gateway (extra_hosts no serviço prometheus).
+  node-exporter:
+    image: prom/node-exporter:v1.8.2
+    container_name: cs16-node-exporter
+    restart: always
+    network_mode: host
+    pid: host
+    volumes:
+      - /:/host:ro,rslave
+    command:
+      - --path.rootfs=/host
+
+  # Métricas POR CONTAINER (CPU/memória/rede da stack). privileged para ler
+  # cgroup; monta o rootfs do host read-only. Porta 8082 só p/ debug local.
+  # Imagem = fork com fix para o containerd snapshotter (ver cadvisor/Dockerfile).
+  cadvisor:
+    build: ./cadvisor
+    image: cs16-cadvisor:local
+    container_name: cs16-cadvisor
+    restart: always
+    privileged: true
+    devices:
+      - /dev/kmsg
+    volumes:
+      - /:/rootfs:ro
+      - /var/run:/var/run:ro
+      - /sys:/sys:ro
+      - /var/lib/docker:/var/lib/docker:ro
+      - /dev/disk/:/dev/disk:ro
+      - /sys/fs/cgroup:/sys/fs/cgroup:ro
+    ports:
+      - "127.0.0.1:8082:8080"
+    command:
+      - --docker_only=true
+      - --housekeeping_interval=10s
 
 
 volumes:
