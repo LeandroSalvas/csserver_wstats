@@ -61,6 +61,28 @@ async function ensureSchema() {
     )
   `)
 
+  // Usuários admins (local/social) e aprovações. DDL espelha api/sql/schema.sql
+  // (usado pelo MariaDB na primeira subida de uma stack nova) — manter sincronizado.
+  await db.query(`
+    CREATE TABLE IF NOT EXISTS users (
+      id INT AUTO_INCREMENT PRIMARY KEY,
+      provider VARCHAR(16) NOT NULL,
+      provider_id VARCHAR(64) NULL,
+      username VARCHAR(64) NULL,
+      password_hash VARCHAR(255) NULL,
+      display_name VARCHAR(64) NULL,
+      email VARCHAR(128) NULL,
+      avatar_url VARCHAR(255) NULL,
+      role ENUM('superadmin','admin') NOT NULL DEFAULT 'admin',
+      status ENUM('active','pending','rejected','disabled') NOT NULL DEFAULT 'pending',
+      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+      updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+      last_login_at DATETIME NULL,
+      UNIQUE KEY uq_user_provider (provider, provider_id),
+      UNIQUE KEY uq_user_username (username)
+    )
+  `)
+
   // Migrações idempotentes para bancos existentes (multi-servidor).
   const ensureColumn = async (table, column, ddl) => {
     const [[row]] = await db.query(

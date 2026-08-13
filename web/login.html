@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>🎮 CS 1.6 Server Stats</title>
+  <link rel="icon" type="image/svg+xml" href="/favicon.svg">
+  <link rel="stylesheet" href="/style.css?v=9">
+</head>
+<body class="body-font-default">
+
+<noscript>
+  <div class="noscript-warn" role="alert">
+    <strong>JavaScript desativado.</strong> Esta página precisa de JavaScript para carregar os dados.
+  </div>
+</noscript>
+  <div class="container">
+    <div class="header">
+      <h1><span aria-hidden="true">🎮</span> CS 1.6 Server Stats</h1>
+    </div>
+
+    <div class="page-nav"></div>
+
+    <div class="card login-card">
+      <h2 data-i18n="auth.title">Login de Administrador</h2>
+      <p class="login-subtitle" data-i18n="auth.subtitle">Acesse o painel com uma conta local ou seu perfil Steam/Google.</p>
+
+      <form id="loginForm" autocomplete="on" novalidate>
+        <div class="login-field">
+          <label for="loginUsername" data-i18n="auth.username">Usuário</label>
+          <input type="text" id="loginUsername" name="username" autocomplete="username" required />
+        </div>
+
+        <div class="login-field">
+          <label for="loginPassword" data-i18n="auth.password">Senha</label>
+          <div class="login-password-row">
+            <input type="password" id="loginPassword" name="password" autocomplete="current-password" required />
+            <button type="button" id="passwordToggle" class="password-toggle" data-i18n="admin.showPassword">Mostrar senha</button>
+          </div>
+        </div>
+
+        <button type="submit" id="loginSubmit" class="login-submit" data-i18n="auth.submit">Entrar</button>
+      </form>
+
+      <p id="loginStatus" role="status" aria-live="polite" class="login-status"></p>
+
+      <div class="login-divider"><span data-i18n="auth.loginWithSocial">ou entre com:</span></div>
+
+      <div class="login-social">
+        <button type="button" id="steamLoginBtn" class="steam-login-btn" hidden>🎮 <span data-i18n="auth.steam">Entrar com Steam</span></button>
+        <button type="button" id="googleLoginBtn" class="google-login-btn" hidden>🌐 <span data-i18n="auth.google">Entrar com Google</span></button>
+      </div>
+
+      <p id="guestNote" class="login-guest-note" hidden data-i18n="auth.guestNote">Você entrou com status pendente. Um Superadmin precisa aprovar seu acesso em /usuarios antes de liberar as áreas administrativas.</p>
+
+      <p class="login-back"><a href="/" data-i18n="auth.backHome">← Voltar para o início</a></p>
+    </div>
+  </div>
+
+  <script src="/i18n/translations.js?v=5" defer></script>
+  <script src="/common.js?v=5" defer></script>
+  <script src="/login.js?v=1" defer></script>
+</body>
+</html>

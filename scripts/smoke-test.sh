@@ -13,7 +13,9 @@
 # Ajustáveis por ambiente:
 #   EXPECT_NODE_MAJOR=26 EXPECT_EXPRESS='express@5.' EXPECT_RATE_LIMIT='express-rate-limit@8'
 #   EXPECT_GAMEDIG='gamedig@5' EXPECT_REDIS='redis@6' EXPECT_CONNECT_REDIS='connect-redis@10'
-#   API_BASE='http://localhost:8080/api'  RCON_PASSWORD vindo do .env automaticamente
+#   API_BASE='http://localhost:8080/api'
+#   Credenciais do superadmin local vêm do ADMIN_CREDENTIALS.txt (repo root,
+#   gerado no boot da API); override: ADMIN_USER / ADMIN_PASSWORD.
 
 set -uo pipefail
 
@@ -63,10 +65,18 @@ derive_expectations() {
 }
 derive_expectations
 
-get_rcon_password() {
-  grep -E '^RCON_PASSWORD=' "${ROOT}/.env" 2>/dev/null | head -1 | cut -d= -f2- | tr -d '"' | tr -d "'"
+get_admin_credentials() {
+  # ADMIN_CREDENTIALS.txt: "username: <user>\npassword: <senha>" (0600, gitignored).
+  local file="${ROOT}/ADMIN_CREDENTIALS.txt" u p
+  [ -f "$file" ] || return 1
+  u="$(grep -E '^username:' "$file" | head -1 | cut -d: -f2- | tr -d ' ' | tr -d '\r')"
+  p="$(grep -E '^password:' "$file" | head -1 | cut -d: -f2- | sed 's/^ //; s/\r$//')"
+  ADMIN_USER="${ADMIN_USER:-$u}"
+  ADMIN_PASSWORD="${ADMIN_PASSWORD:-$p}"
+  [ -n "$ADMIN_USER" ] && [ -n "$ADMIN_PASSWORD" ]
 }
-RCON_PASSWORD="${RCON_PASSWORD:-$(get_rcon_password)}"
+ADMIN_USER=""
+ADMIN_PASSWORD=""
 
 TOTAL=0 PASS=0 FAIL=0
 FAILED=()
@@ -102,6 +112,11 @@ section() {
   info ""
   info "=== $1 ==="
 }
+
+if ! get_admin_credentials; then
+  err "ADMIN_CREDENTIALS.txt ausente/incompleto no repo — suba a API (seed gera o arquivo no boot)."
+  exit 1
+fi
 
 run_block_composition() {
   section "Bloco 1 — Composição (Node + deps + robustez + shutdown)"
@@ -296,49 +311,65 @@ run_block_functional() {
 test_admin_flow() {
   local jar csrf code body
 
-  [ -n "$RCON_PASSWORD" ] || { fail "RCON_PASSWORD ausente no .env — fluxo admin pulado"; return; }
-
   jar="$(mktemp)"
-  body="$(curl -s -c "$jar" --max-time 10 "${API_BASE}/admin/session")"
+  code="$(curl -s -b "$jar" -c "$jar" -o /dev/null -w '%{http_code}' --max-time 10 "${API_BASE}/auth/guard")"
+  assert_status "/auth/guard sem sessão → 401" 401 "$code"
+  pass "/auth/guard sem sessão → 401 (nginx auth_request usa isso)"
+
+  body="$(curl -s -b "$jar" -c "$jar" --max-time 10 "${API_BASE}/auth/session")"
   csrf="$(printf '%s' "$body" | jq -r '.csrfToken // empty')"
   if [ -z "$csrf" ]; then
-    fail "admin/session não retornou csrfToken: ${body}"
+    fail "auth/session não retornou csrfToken: ${body}"
     rm -f "$jar"
     return
   fi
-  pass "admin/session retorna csrfToken"
+  pass "auth/session retorna csrfToken"
 
   code="$(curl -s -b "$jar" -c "$jar" -o /dev/null -w '%{http_code}' --max-time 10 \
     -X POST -H "x-csrf-token: ${csrf}" -H 'Content-Type: application/json' \
-    -d '{"password":"senha-errada-para-teste"}' "${API_BASE}/admin/login")"
+    -d '{"username":"admin","password":"senha-errada-para-teste"}' "${API_BASE}/auth/login")"
   assert_status "login com senha errada → 401" 401 "$code"
 
   body="$(curl -s -b "$jar" -c "$jar" --max-time 10 \
     -X POST -H "x-csrf-token: ${csrf}" -H 'Content-Type: application/json' \
-    -d "$(jq -nc --arg p "$RCON_PASSWORD" '{password:$p}')" "${API_BASE}/admin/login")"
+    -d "$(jq -nc --arg u "$ADMIN_USER" --arg p "$ADMIN_PASSWORD" '{username:$u,password:$p}')" "${API_BASE}/auth/login")"
   if printf '%s' "$body" | jq -e '.success == true' >/dev/null 2>&1; then
-    pass "login com RCON_PASSWORD → success true"
+    pass "login local (superadmin) → success true"
   else
-    fail "login correto falhou: ${body}"
+    fail "login local falhou: ${body}"
   fi
   csrf="$(printf '%s' "$body" | jq -r '.csrfToken // empty')"
 
-  body="$(curl -s -b "$jar" --max-time 10 "${API_BASE}/admin/session")"
-  if printf '%s' "$body" | jq -e '.authenticated == true' >/dev/null 2>&1; then
-    pass "admin/session authenticated == true"
+  body="$(curl -s -b "$jar" --max-time 10 "${API_BASE}/auth/session")"
+  if printf '%s' "$body" | jq -e '.authenticated == true and .user.role == "superadmin" and .user.status == "active"' >/dev/null 2>&1; then
+    pass "auth/session authenticated == true (superadmin ativo)"
   else
     fail "sessão não autenticada após login: ${body}"
+  fi
+
+  code="$(curl -s -b "$jar" -o /dev/null -w '%{http_code}' --max-time 10 "${API_BASE}/auth/guard")"
+  assert_status "/auth/guard com sessão admin → 200" 200 "$code"
+
+  code="$(curl -s -b "$jar" -o /dev/null -w '%{http_code}' --max-time 10 \
+    -X POST -H 'Content-Type: application/json' -d '{"command":"status"}' "${API_BASE}/admin/command")"
+  assert_status "/admin/command sem CSRF → 403" 403 "$code"
+
+  body="$(curl -s -b "$jar" --max-time 10 "${API_BASE}/admin/servers")"
+  if printf '%s' "$body" | jq -e '.servers | type == "array"' >/dev/null 2>&1; then
+    pass "GET /admin/servers com sessão → array"
+  else
+    fail "GET /admin/servers falhou: ${body}"
   fi
 
   if [ "$ROLLBACK_MODE" -eq 1 ]; then
     note "pulando logout + rate-limit (--rollback)"
   else
     code="$(curl -s -b "$jar" -c "$jar" -o /dev/null -w '%{http_code}' --max-time 10 \
-      -X POST -H "x-csrf-token: ${csrf}" "${API_BASE}/admin/logout")"
+      -X POST -H "x-csrf-token: ${csrf}" "${API_BASE}/auth/logout")"
     assert_status "logout → 200" 200 "$code"
-    body="$(curl -s -b "$jar" --max-time 10 "${API_BASE}/admin/session")"
+    body="$(curl -s -b "$jar" --max-time 10 "${API_BASE}/auth/session")"
     if printf '%s' "$body" | jq -e '.authenticated == false' >/dev/null 2>&1; then
-      pass "admin/session authenticated == false após logout"
+      pass "auth/session authenticated == false após logout"
     else
       fail "sessão ainda autenticada após logout: ${body}"
     fi
@@ -353,12 +384,12 @@ test_admin_flow() {
 # 127.0.0.1. O fluxo admin já consumiu 2 (errada + correta): a 6ª → 429.
 test_login_rate_limit() {
   local jar="$1" body csrf i code
-  body="$(curl -s -b "$jar" -c "$jar" --max-time 10 "${API_BASE}/admin/session")"
+  body="$(curl -s -b "$jar" -c "$jar" --max-time 10 "${API_BASE}/auth/session")"
   csrf="$(printf '%s' "$body" | jq -r '.csrfToken // empty')"
   for i in 3 4 5 6; do
     code="$(curl -s -b "$jar" -c "$jar" -o /dev/null -w '%{http_code}' --max-time 10 \
       -X POST -H "x-csrf-token: ${csrf}" -H 'Content-Type: application/json' \
-      -d '{"password":"senha-errada-para-teste"}' "${API_BASE}/admin/login")"
+      -d '{"username":"admin","password":"senha-errada-para-teste"}' "${API_BASE}/auth/login")"
     if [ "$i" -eq 6 ]; then
       assert_status "6ª tentativa de login → 429 (rate limit)" 429 "$code"
     fi
@@ -369,12 +400,12 @@ test_login_rate_limit() {
 # de 60s do loginLimiter — re-tenta até a janela passar (máx ~80s).
 block3_login() {
   local jar="$1" body csrf i=0
-  body="$(curl -s -c "$jar" --max-time 10 "${API_BASE}/admin/session")"
+  body="$(curl -s -c "$jar" --max-time 10 "${API_BASE}/auth/session")"
   csrf="$(printf '%s' "$body" | jq -r '.csrfToken // empty')"
   while [ "$i" -lt 16 ]; do
     body="$(curl -s -b "$jar" -c "$jar" --max-time 10 \
       -X POST -H "x-csrf-token: ${csrf}" -H 'Content-Type: application/json' \
-      -d "$(jq -nc --arg p "$RCON_PASSWORD" '{password:$p}')" "${API_BASE}/admin/login")"
+      -d "$(jq -nc --arg u "$ADMIN_USER" --arg p "$ADMIN_PASSWORD" '{username:$u,password:$p}')" "${API_BASE}/auth/login")"
     printf '%s' "$body" | jq -e '.success == true' >/dev/null 2>&1 && return 0
     i=$((i + 1))
     sleep 5
@@ -387,8 +418,6 @@ run_block_redis() {
   section "Bloco 3 — Redis/sessão"
 
   local jar
-
-  [ -n "$RCON_PASSWORD" ] || { fail "RCON_PASSWORD ausente no .env — bloco redis pulado"; return; }
 
   jar="$(mktemp)"
   local before after
@@ -422,7 +451,7 @@ run_block_redis() {
   fi
   pass "api voltou a healthy após restart"
 
-  body="$(curl -s -b "$jar" --max-time 10 "${API_BASE}/admin/session")"
+  body="$(curl -s -b "$jar" --max-time 10 "${API_BASE}/auth/session")"
   if printf '%s' "$body" | jq -e '.authenticated == true' >/dev/null 2>&1; then
     pass "sessão sobreviveu ao restart do api"
   else

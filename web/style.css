@@ -1312,6 +1312,66 @@ button.quick-cmd:hover {
   margin-left: 0;
 }
 
+.auth-badge-slot {
+  display: inline-flex;
+  align-items: center;
+}
+
+.auth-link,
+.auth-logout,
+.auth-user {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 7px 13px;
+  border-radius: 999px;
+  font-size: 0.9rem;
+  font-weight: 600;
+  font-family: inherit;
+  text-decoration: none;
+  transition: background 0.2s ease, transform 0.2s ease, color 0.2s ease, border-color 0.2s ease;
+}
+
+.auth-link {
+  background: var(--accent-tint);
+  border: 1px solid var(--accent-border);
+  color: var(--accent);
+}
+
+.auth-link:hover {
+  background: var(--accent-tint-strong);
+  transform: translateY(-1px);
+}
+
+.auth-user {
+  gap: 4px;
+  background: var(--accent-tint);
+  border: 1px solid var(--accent-border);
+  color: var(--accent);
+}
+
+.auth-user-name {
+  max-width: 180px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.auth-logout {
+  background: transparent;
+  border: none;
+  color: var(--accent);
+  padding: 2px 8px;
+  font-size: 0.8rem;
+  opacity: 0.75;
+  cursor: pointer;
+}
+
+.auth-logout:hover {
+  opacity: 1;
+  transform: translateY(-1px);
+}
+
 .page-nav a {
   display: inline-flex;
   align-items: center;
@@ -2543,4 +2603,182 @@ table td.duel-lose {
   .match-players-grid {
     grid-template-columns: 1fr;
   }
+}
+
+/* --- Login --- */
+.login-card {
+  max-width: 440px;
+  margin: 0 auto;
+}
+
+.login-subtitle {
+  color: var(--accent-text-soft);
+  font-size: 0.95rem;
+  margin-top: 4px;
+}
+
+.login-field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-bottom: 14px;
+}
+
+.login-field label {
+  font-weight: 600;
+  font-size: 0.9rem;
+}
+
+.login-field input[type="text"],
+.login-field input[type="password"],
+.login-field input:not([type]) {
+  padding: 10px 12px;
+  border-radius: 8px;
+  border: 1px solid var(--accent-border);
+  background: var(--accent-tint);
+  color: var(--accent);
+  font-size: 1rem;
+}
+
+.login-password-row {
+  display: flex;
+  gap: 8px;
+  align-items: stretch;
+}
+
+.login-password-row input {
+  flex: 1;
+}
+
+.login-submit {
+  width: 100%;
+  padding: 11px;
+  border-radius: 8px;
+  border: none;
+  background: var(--accent-strong);
+  color: #fff;
+  font-weight: 700;
+  font-size: 1rem;
+  cursor: pointer;
+}
+
+.login-submit:hover {
+  filter: brightness(1.1);
+}
+
+.login-submit:disabled {
+  opacity: 0.6;
+  cursor: wait;
+}
+
+.login-status {
+  margin-top: 12px;
+  color: #e0675b;
+  font-size: 0.9rem;
+  min-height: 1.2em;
+}
+
+.login-divider {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin: 18px 0 12px;
+  color: var(--accent-text-soft);
+  font-size: 0.85rem;
+}
+
+.login-divider::before,
+.login-divider::after {
+  content: '';
+  flex: 1;
+  height: 1px;
+  background: rgba(170,156,148,0.2);
+}
+
+.login-social {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.login-social button {
+  width: 100%;
+}
+
+.steam-login-btn,
+.google-login-btn {
+  padding: 11px;
+  border-radius: 8px;
+  border: 1px solid var(--accent-border);
+  background: var(--accent-tint);
+  color: var(--accent);
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.steam-login-btn:hover,
+.google-login-btn:hover {
+  background: var(--accent-tint-strong);
+}
+
+.login-guest-note {
+  margin-top: 14px;
+  padding: 10px 12px;
+  border-radius: 8px;
+  background: rgba(249,115,22,0.1);
+  border: 1px solid var(--accent-border);
+  color: var(--accent-text-soft);
+  font-size: 0.9rem;
+}
+
+.login-back {
+  margin-top: 16px;
+  text-align: center;
+  font-size: 0.9rem;
+}
+
+/* --- Servidores (admin) --- */
+.servers-add-form {
+  margin: 16px 0;
+  padding: 16px;
+  border: 1px solid var(--accent-border);
+  border-radius: 10px;
+  background: var(--accent-tint);
+  max-width: 520px;
+}
+
+.servers-context {
+  font-size: 0.8rem;
+  color: var(--accent-text-soft);
+}
+
+.servers-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.servers-actions .admin-live-btn {
+  font-size: 0.78rem;
+  padding: 5px 9px;
+}
+
+/* --- Usuários (admin) --- */
+.users-name {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.users-avatar {
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  border: 1px solid var(--accent-border);
+}
+
+.users-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
 }

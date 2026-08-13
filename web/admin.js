@@ -59,26 +59,18 @@ const commandCategories = {
   dangerous: 'cmd.categoryDangerous'
 }
 
-const loginCard = document.getElementById('loginCard')
 const commandCard = document.getElementById('commandCard')
-const loginBtn = document.getElementById('loginBtn')
 const logoutBtn = document.getElementById('logoutBtn')
 const sendBtn = document.getElementById('sendBtn')
-const loginStatus = document.getElementById('loginStatus')
 const rconStatus = document.getElementById('rconStatus')
-const passwordInput = document.getElementById('rconPassword')
 const commandInput = document.getElementById('rconCommand')
 const output = document.getElementById('rconOutput')
 const historyList = document.getElementById('commandHistory')
 const commandSearch = document.getElementById('commandSearch')
 const commandReferenceContainer = document.getElementById('commandReference')
 const livePlayersTbody = document.getElementById('livePlayers')
-const steamLoginWrap = document.getElementById('steamLoginWrap')
-const steamLoginBtn = document.getElementById('steamLoginBtn')
-const steamLoginStatus = document.getElementById('steamLoginStatus')
 
 let commandHistory = []
-let csrfToken = null
 
 // Neutraliza nomes de jogador dentro de comandos RCON (impede injeção via aspas/ponto-e-vírgula).
 function rconSafeName(name) {
@@ -89,60 +81,16 @@ function rconSafeName(name) {
 }
 
 async function checkSession() {
-  try {
-    const res = await fetch(`${API}/admin/session`, {
-      credentials: 'include'
-    })
-    const data = await res.json()
-
-    csrfToken = data.csrfToken || null
-
-    if (data.authenticated) {
-      showConsole()
-      startLivePlayers()
-    } else {
-      showLogin()
-    }
-
-    checkSteamLoginStatus()
-  } catch (err) {
-    console.error(err)
-    showLogin()
+  // A sessão já foi carregada pelo common.js (getCurrentUser/getCsrfToken).
+  // Se não houver admin ativo, o guardPage() redirecionou para /login.
+  if (!isActiveAdmin(getCurrentUser())) {
+    if (output) output.textContent = ''
+    if (rconStatus) rconStatus.textContent = i18nUtils.t('admin.disconnected')
+    return
   }
-}
 
-async function checkSteamLoginStatus() {
-  if (!steamLoginWrap || !steamLoginBtn) return
-
-  try {
-    const res = await fetch(`${API}/auth/steam/status`, { credentials: 'include' })
-    const data = await res.json()
-
-    if (!data.enabled) {
-      steamLoginWrap.hidden = true
-      return
-    }
-
-    steamLoginWrap.hidden = false
-    if (data.steamId && steamLoginStatus) {
-      steamLoginStatus.innerText = `SteamID: ${data.steamId}`
-    }
-  } catch (err) {
-    console.error('Erro ao verificar login Steam:', err)
-  }
-}
-
-function showLogin() {
-  loginCard.hidden = false
-  commandCard.hidden = true
-  stopLivePlayers()
-  if (rconStatus) rconStatus.textContent = i18nUtils.t('admin.disconnected')
-}
-
-function showConsole() {
-  loginCard.hidden = true
-  commandCard.hidden = false
   if (rconStatus) rconStatus.textContent = i18nUtils.t('admin.connected')
+  startLivePlayers()
 }
 
 function addToHistory(command) {
@@ -233,47 +181,6 @@ function renderCommandReference(filter = '') {
   })
 }
 
-async function login() {
-  const password = passwordInput.value.trim()
-
-  if (!password) {
-    loginStatus.innerText = i18nUtils.t('errors.passwordRequired')
-    return
-  }
-
-  loginStatus.innerText = i18nUtils.t('admin.connecting')
-
-  try {
-    const res = await fetch(`${API}/admin/login`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'x-csrf-token': csrfToken || ''
-      },
-      credentials: 'include',
-      body: JSON.stringify({ password })
-    })
-
-    const data = await res.json()
-
-    if (!res.ok || !data.success) {
-      loginStatus.innerText = data.error || i18nUtils.t('admin.errorAuth')
-      return
-    }
-
-    csrfToken = data.csrfToken || csrfToken
-    loginStatus.innerText = i18nUtils.t('admin.authSuccess')
-    showConsole()
-    renderCommandReference()
-    output.textContent = data.response || i18nUtils.t('errors.noReturnText')
-    passwordInput.value = ''
-    startLivePlayers()
-  } catch (err) {
-    console.error(err)
-    loginStatus.innerText = i18nUtils.t('admin.errorAuth')
-  }
-}
-
 async function sendCommand(customCommand) {
   const command = (customCommand || commandInput.value).trim()
 
@@ -290,7 +197,7 @@ async function sendCommand(customCommand) {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'x-csrf-token': csrfToken || ''
+        'x-csrf-token': getCsrfToken() || ''
       },
       credentials: 'include',
       body: JSON.stringify(body)
@@ -318,11 +225,9 @@ async function sendCommand(customCommand) {
 }
 
 function handleSessionExpired() {
-  csrfToken = null
   stopLivePlayers()
   output.textContent = ''
-  loginStatus.innerText = i18nUtils.t('admin.sessionExpired')
-  showLogin()
+  window.location.replace('/login?next=' + encodeURIComponent(window.location.pathname))
 }
 
 async function logout() {
@@ -330,7 +235,7 @@ async function logout() {
     await fetch(`${API}/admin/logout`, {
       method: 'POST',
       headers: {
-        'x-csrf-token': csrfToken || ''
+        'x-csrf-token': getCsrfToken() || ''
       },
       credentials: 'include'
     })
@@ -338,13 +243,10 @@ async function logout() {
     console.error(err)
   }
 
-  csrfToken = null
   stopLivePlayers()
-  output.textContent = ''
-  loginStatus.innerText = ''
   commandHistory = []
   renderHistory()
-  showLogin()
+  window.location.href = '/login'
 }
 
 let livePlayersTimer = null
@@ -424,38 +326,12 @@ function renderLivePlayers(players) {
   livePlayersTbody.appendChild(fragment)
 }
 
-loginBtn.addEventListener('click', login)
 logoutBtn.addEventListener('click', logout)
 sendBtn.addEventListener('click', () => sendCommand())
 
 document.addEventListener('server-change', () => {
   if (livePlayersTbody) loadLivePlayers()
 })
-
-if (steamLoginBtn) {
-  steamLoginBtn.addEventListener('click', () => {
-    window.location.href = `${API}/auth/steam`
-  })
-}
-
-passwordInput.addEventListener('keydown', (e) => {
-  if (e.key === 'Enter') login()
-})
-
-const passwordToggle = document.getElementById('passwordToggle')
-if (passwordToggle && passwordInput) {
-  passwordToggle.addEventListener('click', () => {
-    const isPassword = passwordInput.type === 'password'
-    passwordInput.type = isPassword ? 'text' : 'password'
-    passwordToggle.textContent = i18nUtils.t(isPassword ? 'admin.hidePassword' : 'admin.showPassword')
-    passwordInput.focus()
-  })
-
-  document.addEventListener('i18n applied', () => {
-    const isPassword = passwordInput.type === 'password'
-    passwordToggle.textContent = i18nUtils.t(isPassword ? 'admin.showPassword' : 'admin.hidePassword')
-  })
-}
 
 commandInput.addEventListener('keydown', (e) => {
   if (e.key === 'Enter') sendCommand()

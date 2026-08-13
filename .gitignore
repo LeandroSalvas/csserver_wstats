@@ -1,5 +1,8 @@
 .env
 
+# Credenciais do Superadmin local geradas pelo seed (nunca versionar)
+ADMIN_CREDENTIALS.txt
+
 # Diretório local do opencode (planos/plugins) — não versionar
 .opencode/
 

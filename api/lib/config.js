@@ -36,14 +36,19 @@ const MAX_SSE_CLIENTS = 100
 const alertWebhookUrl = process.env.ALERT_WEBHOOK_URL || ''
 
 const steamReturnUrl = process.env.STEAM_RETURN_URL || ''
-const steamAdminIds = new Set(
-  (process.env.STEAM_ADMIN_IDS || '')
-    .split(',')
-    .map((s) => s.trim())
-    .filter(Boolean)
-)
 const STEAM_OPENID_ENDPOINT = 'https://steamcommunity.com/openid/login'
 const steamRealm = steamReturnUrl ? new URL(steamReturnUrl).origin + '/' : ''
+
+const googleClientId = process.env.GOOGLE_CLIENT_ID || ''
+const googleClientSecret = process.env.GOOGLE_CLIENT_SECRET || ''
+const googleReturnUrl = process.env.GOOGLE_RETURN_URL || ''
+
+// Controle dos containers de servidores (adapter em serverManager.js).
+const serverManagerProvider = process.env.SERVER_MANAGER_PROVIDER || 'docker'
+const serverRepoDir = process.env.SERVER_REPO_DIR || '/repo'
+
+// Seed do Superadmin local no boot (gera ADMIN_CREDENTIALS.txt no repo).
+const seedAdminEnabled = process.env.SEED_ADMIN !== '0'
 
 const metricsUser = process.env.METRICS_USER || ''
 const metricsPass = process.env.METRICS_PASS || ''
@@ -64,9 +69,14 @@ module.exports = {
   MAX_SSE_CLIENTS,
   alertWebhookUrl,
   steamReturnUrl,
-  steamAdminIds,
   STEAM_OPENID_ENDPOINT,
   steamRealm,
+  googleClientId,
+  googleClientSecret,
+  googleReturnUrl,
+  serverManagerProvider,
+  serverRepoDir,
+  seedAdminEnabled,
   metricsUser,
   metricsPass
 }

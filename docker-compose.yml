@@ -45,6 +45,10 @@ services:
       MYSQL_PASSWORD: ${MYSQL_PASSWORD}
     volumes:
       - db_data:/var/lib/mysql
+      # Schema p/ stack nova (só roda na primeira inicialização do volume):
+      # cria a tabela users antes da API subir. Para bancos existentes o
+      # ensureSchema() da API aplica a mesma DDL de forma idempotente.
+      - ./api/sql:/docker-entrypoint-initdb.d:ro
     healthcheck:
       test: ["CMD-SHELL", "mysqladmin ping -h 127.0.0.1 -p$$MYSQL_ROOT_PASSWORD --silent"]
       interval: 5s
@@ -91,10 +95,15 @@ services:
       CS_SERVERS: ${CS_SERVERS:-}
       ALERT_WEBHOOK_URL: ${ALERT_WEBHOOK_URL:-}
       STEAM_RETURN_URL: ${STEAM_RETURN_URL:-}
-      STEAM_ADMIN_IDS: ${STEAM_ADMIN_IDS:-}
       CORS_ALLOWED_ORIGINS: ${CORS_ALLOWED_ORIGINS:-}
       METRICS_USER: ${METRICS_USER:-}
       METRICS_PASS: ${METRICS_PASS:-}
+      GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID:-}
+      GOOGLE_CLIENT_SECRET: ${GOOGLE_CLIENT_SECRET:-}
+      GOOGLE_RETURN_URL: ${GOOGLE_RETURN_URL:-}
+      SEED_ADMIN: ${SEED_ADMIN:-1}
+      SERVER_MANAGER_PROVIDER: ${SERVER_MANAGER_PROVIDER:-docker}
+      SERVER_REPO_DIR: ${SERVER_REPO_DIR:-/repo}
     healthcheck:
       test: ["CMD-SHELL", "wget --no-verbose --tries=1 --spider http://localhost:3000/health || exit 1"]
       interval: 10s
@@ -106,6 +115,11 @@ services:
     volumes: 
       - ./live/main/live_scoreboard.json:/live_data/main/live_scoreboard.json:ro
       - ./live/main/live_killfeed.json:/live_data/main/live_killfeed.json:ro
+      # Controle dos servidores (serverManager): socket docker + repo do host.
+      # O container api vira o "control plane" da stack — acesso restrito às
+      # rotas admin (requireAdmin/auth_request).
+      - /var/run/docker.sock:/var/run/docker.sock
+      - ./:/repo
       
   web:
     image: nginx:alpine

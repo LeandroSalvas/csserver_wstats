@@ -14,6 +14,7 @@ const {
   serverCtx,
   live,
   ensureSchema,
+  seedSuperadmin,
   setupSession,
   getSessionMiddleware,
   withTimeout,
@@ -64,7 +65,10 @@ app.use((req, res, next) => {
 require('./lib/routes/top').register(app)
 require('./lib/routes/rankings').register(app)
 require('./lib/routes/system').register(app)
+require('./lib/routes/auth').register(app)
 require('./lib/routes/admin').register(app)
+require('./lib/routes/adminServers').register(app)
+require('./lib/routes/adminUsers').register(app)
 require('./lib/routes/matches').register(app)
 require('./lib/routes/live').register(app)
 
@@ -96,6 +100,7 @@ async function start() {
     }
   }
   await setupSession()
+  await seedSuperadmin()
 
   const server = app.listen(3000, '0.0.0.0', () => {
     console.log('API rodando na porta 3000')

@@ -1,0 +1,87 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>🎮 CS 1.6 Server Stats</title>
+  <link rel="icon" type="image/svg+xml" href="/favicon.svg">
+  <link rel="stylesheet" href="/style.css?v=9">
+</head>
+<body class="body-font-default" data-requires-admin>
+
+<noscript>
+  <div class="noscript-warn" role="alert">
+    <strong>JavaScript desativado.</strong> Esta página precisa de JavaScript para carregar os dados.
+  </div>
+</noscript>
+  <div class="container">
+    <div class="header">
+      <h1><span aria-hidden="true">🎮</span> CS 1.6 Server Stats</h1>
+    </div>
+
+    <div class="page-nav"></div>
+
+    <div class="card">
+      <div class="toolbar">
+        <h2 class="admin-title-inline" data-i18n="serverManager.title">Gerenciamento de Servidores</h2>
+        <p id="serversStatus" class="rcon-status" role="status" aria-live="polite"></p>
+        <button type="button" id="refreshBtn" data-i18n="serverManager.refresh">Atualizar</button>
+        <button type="button" id="addToggleBtn" data-i18n="serverManager.addServer">Adicionar servidor</button>
+      </div>
+
+      <div id="addForm" class="servers-add-form" hidden>
+        <div class="login-field">
+          <label for="addName" data-i18n="serverManager.addName">Nome (ex.: Zueira 3)</label>
+          <input type="text" id="addName" class="admin-input" maxlength="30" />
+        </div>
+
+        <div class="login-field">
+          <label for="addSlots" data-i18n="serverManager.addSlots">Slots visíveis (par, 2..30)</label>
+          <input type="number" id="addSlots" class="admin-input" min="2" max="30" step="2" value="16" />
+        </div>
+
+        <div class="login-field">
+          <label for="addMap" data-i18n="serverManager.addMap">Mapa inicial (ex.: de_dust2)</label>
+          <input type="text" id="addMap" class="admin-input" list="mapsList" placeholder="de_dust2" />
+          <datalist id="mapsList"></datalist>
+        </div>
+
+        <div class="login-field">
+          <label>
+            <input type="checkbox" id="addRotate" checked />
+            <span data-i18n="serverManager.addRotate">Rotacionar mapas</span>
+          </label>
+        </div>
+
+        <div class="toolbar">
+          <button type="button" id="addServerBtn" data-i18n="serverManager.addConfirm">Adicionar servidor</button>
+          <button type="button" id="cancelAddBtn">✕</button>
+        </div>
+        <p id="addStatus" class="login-status" role="status" aria-live="polite"></p>
+      </div>
+
+      <div class="table-responsive">
+        <table class="servers-table">
+          <caption class="sr-only" data-i18n="serverManager.title">Gerenciamento de Servidores</caption>
+          <thead>
+            <tr>
+              <th data-i18n="serverManager.name">Nome</th>
+              <th data-i18n="serverManager.map">Mapa</th>
+              <th data-i18n="serverManager.players">Jogadores</th>
+              <th data-i18n="serverManager.slots">Slots</th>
+              <th data-i18n="serverManager.port">Porta</th>
+              <th data-i18n="serverManager.status">Status</th>
+              <th data-i18n="serverManager.actions">Ações</th>
+            </tr>
+          </thead>
+          <tbody id="serversBody"></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <script src="/i18n/translations.js?v=5" defer></script>
+  <script src="/common.js?v=5" defer></script>
+  <script src="/servers.js?v=1" defer></script>
+</body>
+</html>

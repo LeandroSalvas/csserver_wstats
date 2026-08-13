@@ -140,9 +140,37 @@ function getSessionMiddleware() {
   return sessionMiddleware
 }
 
-function requireAdmin(req, res, next) {
-  if (!req.session?.adminToken) {
+// requireAdmin original (RCON via adminToken) foi substituído por autenticação
+// de usuários (sessão com `user`). Mantemos os dois nomes para compatibilidade:
+// requireAuth exige qualquer sessão; requireAdmin exige um usuário ativo com
+// role admin/superadmin; requireSuperadmin exige o role superadmin.
+function requireAuth(req, res, next) {
+  if (!req.session?.user) {
     return res.status(401).json({ error: 'Não autenticado' })
+  }
+  next()
+}
+
+function isActiveAdmin(user) {
+  return !!(user && user.status === 'active' && (user.role === 'admin' || user.role === 'superadmin'))
+}
+
+function requireAdmin(req, res, next) {
+  if (!req.session?.user) {
+    return res.status(401).json({ error: 'Não autenticado' })
+  }
+  if (!isActiveAdmin(req.session.user)) {
+    return res.status(403).json({ error: 'Acesso negado' })
+  }
+  next()
+}
+
+function requireSuperadmin(req, res, next) {
+  if (!req.session?.user) {
+    return res.status(401).json({ error: 'Não autenticado' })
+  }
+  if (req.session.user.role !== 'superadmin' || req.session.user.status !== 'active') {
+    return res.status(403).json({ error: 'Acesso negado' })
   }
   next()
 }
@@ -170,7 +198,9 @@ module.exports = {
   requireMetricsAuth,
   setupSession,
   getSessionMiddleware,
+  requireAuth,
   requireAdmin,
+  requireSuperadmin,
   getCsrfToken,
   requireCsrf,
   timingSafeEqualStr

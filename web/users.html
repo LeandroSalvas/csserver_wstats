@@ -1,0 +1,56 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>🎮 CS 1.6 Server Stats</title>
+  <link rel="icon" type="image/svg+xml" href="/favicon.svg">
+  <link rel="stylesheet" href="/style.css?v=9">
+</head>
+<body class="body-font-default" data-requires-admin>
+
+<noscript>
+  <div class="noscript-warn" role="alert">
+    <strong>JavaScript desativado.</strong> Esta página precisa de JavaScript para carregar os dados.
+  </div>
+</noscript>
+  <div class="container">
+    <div class="header">
+      <h1><span aria-hidden="true">🎮</span> CS 1.6 Server Stats</h1>
+    </div>
+
+    <div class="page-nav"></div>
+
+    <div class="card">
+      <div class="toolbar">
+        <h2 class="admin-title-inline" data-i18n="adminUsers.title">Administradores</h2>
+        <p id="usersStatus" class="rcon-status" role="status" aria-live="polite"></p>
+        <button type="button" id="refreshBtn" data-i18n="serverManager.refresh">Atualizar</button>
+      </div>
+      <p class="login-subtitle" data-i18n="adminUsers.subtitle">Superadmin aprova os primeiros logins (Steam/Google) e gerencia papéis.</p>
+
+      <div class="table-responsive">
+        <table>
+          <caption class="sr-only" data-i18n="adminUsers.title">Administradores</caption>
+          <thead>
+            <tr>
+              <th data-i18n="adminUsers.username">Usuário</th>
+              <th data-i18n="adminUsers.provider">Provedor</th>
+              <th data-i18n="adminUsers.email">E-mail</th>
+              <th data-i18n="adminUsers.role">Papel</th>
+              <th data-i18n="adminUsers.status">Status</th>
+              <th data-i18n="adminUsers.lastLogin">Último login</th>
+              <th data-i18n="adminUsers.actions">Ações</th>
+            </tr>
+          </thead>
+          <tbody id="usersBody"></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <script src="/i18n/translations.js?v=5" defer></script>
+  <script src="/common.js?v=5" defer></script>
+  <script src="/users.js?v=1" defer></script>
+</body>
+</html>

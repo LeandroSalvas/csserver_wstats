@@ -5,9 +5,9 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>🎮 CS 1.6 Server Stats</title>
   <link rel="icon" type="image/svg+xml" href="/favicon.svg">
-  <link rel="stylesheet" href="/style.css?v=5">
+  <link rel="stylesheet" href="/style.css?v=9">
 </head>
-<body class="body-font-default">
+<body class="body-font-default" data-requires-admin>
 
 <noscript>
   <div class="noscript-warn" role="alert">
@@ -21,106 +21,82 @@
 
     <div class="page-nav"></div>
 
-    <div class="card" id="loginCard">
-      <h2 data-i18n="admin.authTitle">Autenticação RCON</h2>
-      <div class="toolbar">
-        <input
-          type="password"
-          id="rconPassword"
-          data-i18n-placeholder="admin.passwordPlaceholder"
-          placeholder="Digite a senha RCON"
-          class="admin-input"
-          data-i18n-aria-label="admin.passwordPlaceholder"
-        />
-        <button type="button" id="passwordToggle" class="password-toggle" data-i18n="admin.showPassword">Mostrar senha</button>
-        <button type="button" id="loginBtn" data-i18n="admin.connect">Conectar</button>
-      </div>
-      <p id="loginStatus" role="status" aria-live="polite" class="admin-login-status"></p>
-
-      <div id="steamLoginWrap" class="admin-divider" hidden>
-        <button type="button" id="steamLoginBtn" class="steam-login-btn">🎮 <span data-i18n="admin.steamLogin">Entrar com Steam</span></button>
-        <p id="steamLoginStatus" class="admin-steam-status"></p>
-      </div>
-    </div>
-
-    <div id="commandCard" hidden>
-      <div class="admin-grid">
-        <div class="card">
-          <div class="toolbar">
-            <h2 class="admin-title-inline" data-i18n="admin.console">Console RCON</h2>
-            <p id="rconStatus" class="rcon-status" role="status" aria-live="polite"></p>
-            <button type="button" id="logoutBtn" data-i18n="admin.disconnect">Desconectar</button>
-          </div>
-
-          <div class="toolbar">
-            <label for="rconServer" class="admin-label-nowrap" data-i18n="admin.targetServer">Servidor alvo</label>
-            <select id="rconServer" class="server-selector"></select>
-          </div>
-
-          <div class="toolbar">
-            <input
-              type="text"
-              id="rconCommand"
-              data-i18n-placeholder="admin.commandPlaceholder"
-              placeholder="Ex.: status, users, changelevel de_dust2, amx_map de_inferno"
-              class="admin-input"
-              data-i18n-aria-label="admin.commandPlaceholder"
-            />
-            <button type="button" id="sendBtn" data-i18n="admin.execute">Executar</button>
-          </div>
-
-          <div class="toolbar">
-            <button type="button" class="quick-cmd" data-cmd="status">status</button>
-            <button type="button" class="quick-cmd" data-cmd="users">users</button>
-            <button type="button" class="quick-cmd" data-cmd="stats">stats</button>
-          </div>
-
-          <h3 class="admin-section-gap" data-i18n="admin.response">Resposta</h3>
-          <pre id="rconOutput" class="console-output"></pre>
+    <div id="commandCard" class="admin-grid">
+      <div class="card">
+        <div class="toolbar">
+          <h2 class="admin-title-inline" data-i18n="admin.console">Console RCON</h2>
+          <p id="rconStatus" class="rcon-status" role="status" aria-live="polite"></p>
+          <button type="button" id="logoutBtn" data-i18n="admin.disconnect">Desconectar</button>
         </div>
 
-        <div class="card">
-          <h2 class="admin-title-inline" data-i18n="admin.historyTitle">Histórico de comandos</h2>
-          <div id="commandHistory" class="history-list"></div>
+        <div class="toolbar">
+          <label for="rconServer" class="admin-label-nowrap" data-i18n="admin.targetServer">Servidor alvo</label>
+          <select id="rconServer" class="server-selector"></select>
+        </div>
 
-          <h2 class="admin-history-title" data-i18n="admin.referenceTitle">Referência de comandos</h2>
-
+        <div class="toolbar">
           <input
             type="text"
-            id="commandSearch"
+            id="rconCommand"
+            data-i18n-placeholder="admin.commandPlaceholder"
+            placeholder="Ex.: status, users, changelevel de_dust2, amx_map de_inferno"
             class="admin-input"
-            data-i18n-placeholder="admin.searchPlaceholder"
-            placeholder="Buscar comando..."
-            data-i18n-aria-label="admin.searchPlaceholder"
+            data-i18n-aria-label="admin.commandPlaceholder"
           />
-
-          <div id="commandReference" class="cmd-reference"></div>
+          <button type="button" id="sendBtn" data-i18n="admin.execute">Executar</button>
         </div>
 
-        <div class="card admin-live-card">
-          <h2 class="admin-title-inline" data-i18n="admin.liveTitle">Jogadores online</h2>
-          <div class="table-responsive admin-live-scroll">
-            <table>
-          <caption class="sr-only" data-i18n="admin.liveTitle">Jogadores online</caption>
-              <thead>
-                <tr>
-                  <th data-i18n="labels.player">Player</th>
-                  <th data-i18n="player.steamid">SteamID</th>
-                  <th data-i18n="labels.team">Time</th>
-                  <th data-i18n="labels.score">Score</th>
-                  <th data-i18n="labels.actions">Ações</th>
-                </tr>
-              </thead>
-              <tbody id="livePlayers"></tbody>
-            </table>
-          </div>
+        <div class="toolbar">
+          <button type="button" class="quick-cmd" data-cmd="status">status</button>
+          <button type="button" class="quick-cmd" data-cmd="users">users</button>
+          <button type="button" class="quick-cmd" data-cmd="stats">stats</button>
+        </div>
+
+        <h3 class="admin-section-gap" data-i18n="admin.response">Resposta</h3>
+        <pre id="rconOutput" class="console-output"></pre>
+      </div>
+
+      <div class="card">
+        <h2 class="admin-title-inline" data-i18n="admin.historyTitle">Histórico de comandos</h2>
+        <div id="commandHistory" class="history-list"></div>
+
+        <h2 class="admin-history-title" data-i18n="admin.referenceTitle">Referência de comandos</h2>
+
+        <input
+          type="text"
+          id="commandSearch"
+          class="admin-input"
+          data-i18n-placeholder="admin.searchPlaceholder"
+          placeholder="Buscar comando..."
+          data-i18n-aria-label="admin.searchPlaceholder"
+        />
+
+        <div id="commandReference" class="cmd-reference"></div>
+      </div>
+
+      <div class="card admin-live-card">
+        <h2 class="admin-title-inline" data-i18n="admin.liveTitle">Jogadores online</h2>
+        <div class="table-responsive admin-live-scroll">
+          <table>
+        <caption class="sr-only" data-i18n="admin.liveTitle">Jogadores online</caption>
+            <thead>
+              <tr>
+                <th data-i18n="labels.player">Player</th>
+                <th data-i18n="player.steamid">SteamID</th>
+                <th data-i18n="labels.team">Time</th>
+                <th data-i18n="labels.score">Score</th>
+                <th data-i18n="labels.actions">Ações</th>
+              </tr>
+            </thead>
+            <tbody id="livePlayers"></tbody>
+          </table>
         </div>
       </div>
     </div>
   </div>
 
-  <script src="/i18n/translations.js?v=4" defer></script>
-  <script src="/common.js?v=4" defer></script>
-  <script src="/admin.js?v=3" defer></script>
+  <script src="/i18n/translations.js?v=5" defer></script>
+  <script src="/common.js?v=5" defer></script>
+  <script src="/admin.js?v=5" defer></script>
 </body>
 </html>

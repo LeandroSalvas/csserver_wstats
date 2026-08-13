@@ -14,6 +14,107 @@
 
 const API = '/api'
 
+// --- Sessão de autenticação (admin) ---
+let currentUser = null
+let csrfToken = null
+// Inicia o fetch da sessão imediatamente (paralelo ao restante do carregamento);
+// initCommon() o aguarda antes de renderizar nav/guardar páginas.
+const authSessionPromise = loadAuthSession()
+
+async function loadAuthSession() {
+  try {
+    const res = await fetch(`${API}/auth/session`, { credentials: 'include', cache: 'no-store' })
+    if (res.ok) {
+      const data = await res.json()
+      csrfToken = data.csrfToken || null
+      currentUser = data.user || null
+    }
+  } catch (err) {
+    console.error('Erro ao verificar sessão:', err)
+  }
+  return { user: currentUser, csrfToken }
+}
+
+function isActiveAdmin(user) {
+  return !!(user && user.status === 'active' && (user.role === 'admin' || user.role === 'superadmin'))
+}
+
+function getCurrentUser() {
+  return currentUser
+}
+
+function getCsrfToken() {
+  return csrfToken
+}
+
+// Guard de página no cliente: redireciona para /login quando o body declara
+// data-requires-admin e a sessão não é de um admin ativo. (Complemento da
+// proteção no servidor via nginx auth_request — evita flash de conteúdo.)
+function guardPage() {
+  const requires = document.body && document.body.dataset.requiresAdmin
+  if (!requires) return
+  if (isActiveAdmin(currentUser)) return
+  const next = encodeURIComponent(window.location.pathname + window.location.search)
+  window.location.replace(`/login?next=${next}`)
+}
+
+function renderAuthBadge() {
+  document.querySelectorAll('.page-nav-utils').forEach((utils) => {
+    let slot = utils.querySelector('.auth-badge-slot')
+    if (!slot) {
+      slot = document.createElement('div')
+      slot.className = 'auth-badge-slot'
+      utils.appendChild(slot)
+    }
+    slot.innerHTML = ''
+    slot.classList.toggle('is-auth', !!currentUser)
+
+    if (!currentUser) {
+      const link = document.createElement('a')
+      link.href = '/login'
+      link.className = 'auth-link'
+      link.dataset.tooltip = i18nUtils.t('nav.login')
+      link.textContent = '🔑 ' + i18nUtils.t('nav.login')
+      slot.appendChild(link)
+      return
+    }
+
+    const wrap = document.createElement('span')
+    wrap.className = 'auth-user'
+    const name = document.createElement('span')
+    name.className = 'auth-user-name'
+    name.textContent = currentUser.displayName || currentUser.username || currentUser.provider
+    name.dataset.tooltip = currentUser.role === 'superadmin' ? 'Superadmin' : 'Admin'
+    wrap.appendChild(name)
+
+    const logout = document.createElement('button')
+    logout.type = 'button'
+    logout.className = 'auth-logout'
+    logout.textContent = i18nUtils.t('auth.logout')
+    logout.onclick = async () => {
+      try {
+        await fetch(`${API}/auth/logout`, {
+          method: 'POST',
+          headers: { 'x-csrf-token': csrfToken || '' },
+          credentials: 'include'
+        })
+      } catch (err) {
+        console.error('Erro ao sair:', err)
+      }
+      currentUser = null
+      csrfToken = null
+      renderPageNav()
+      renderLanguageToggle()
+      applyActiveNav()
+      if (document.body && document.body.dataset.requiresAdmin) {
+        window.location.href = '/'
+      }
+    }
+    wrap.appendChild(logout)
+    slot.appendChild(wrap)
+  })
+}
+
 // Endereço público do servidor de jogo — edite aqui (usado na página "Conectar")
 const SERVER_HOST = 'zueiracstrike.duckdns.org'
 const SERVER_PORT = '27015'
@@ -219,8 +320,10 @@ const pageNavItems = [
   { path: '/ao-vivo', labelKey: 'nav.live', tooltipKey: 'navTooltip.live' },
   { path: '/cstv', labelKey: 'nav.cstv', tooltipKey: 'navTooltip.cstv' },
   { path: '/duelo', labelKey: 'nav.duel', tooltipKey: 'navTooltip.duel' },
-  { path: '/admin', labelKey: 'nav.admin', tooltipKey: 'navTooltip.admin' },
-  { path: '/sistema', labelKey: 'nav.system', tooltipKey: 'navTooltip.system' }
+  { path: '/admin', labelKey: 'nav.admin', tooltipKey: 'navTooltip.admin', adminOnly: true },
+  { path: '/servidores', labelKey: 'nav.servers', tooltipKey: 'navTooltip.servers', adminOnly: true },
+  { path: '/usuarios', labelKey: 'nav.users', tooltipKey: 'navTooltip.users', adminOnly: true },
+  { path: '/sistema', labelKey: 'nav.system', tooltipKey: 'navTooltip.system', adminOnly: true }
 ]
 
 // Diz se um item da nav deve ficar ativo dado o pathname atual.
@@ -247,26 +350,28 @@ function renderPageNav() {
     const row = document.createElement('div')
     row.className = 'page-nav-row'
 
-    pageNavItems.forEach((item) => {
-      const link = document.createElement('a')
-      link.href = item.path
-      link.textContent = i18nUtils.t(item.labelKey)
+    pageNavItems
+      .filter((item) => !item.adminOnly || isActiveAdmin(currentUser))
+      .forEach((item) => {
+        const link = document.createElement('a')
+        link.href = item.path
+        link.textContent = i18nUtils.t(item.labelKey)
 
-      // Tooltip: balão CSS em dispositivos com hover (data-tooltip); em touch,
-      // sem hover, usamos o title nativo (long-press) para não duplicar.
-      const tooltip = i18nUtils.t(item.tooltipKey)
-      link.dataset.tooltip = tooltip
-      if (window.matchMedia('(hover: none)').matches) {
-        link.title = tooltip
-      }
+        // Tooltip: balão CSS em dispositivos com hover (data-tooltip); em touch,
+        // sem hover, usamos o title nativo (long-press) para não duplicar.
+        const tooltip = i18nUtils.t(item.tooltipKey)
+        link.dataset.tooltip = tooltip
+        if (window.matchMedia('(hover: none)').matches) {
+          link.title = tooltip
+        }
 
-      if (isNavItemActive(item, currentPath)) {
-        link.classList.add('active')
-        link.setAttribute('aria-current', 'page')
-      }
+        if (isNavItemActive(item, currentPath)) {
+          link.classList.add('active')
+          link.setAttribute('aria-current', 'page')
+        }
 
-      row.appendChild(link)
-    })
+        row.appendChild(link)
+      })
 
     container.appendChild(row)
 
@@ -278,6 +383,8 @@ function renderPageNav() {
     utils.appendChild(langSlot)
 
     container.appendChild(utils)
+
+    renderAuthBadge()
   })
 }
 
@@ -295,6 +402,7 @@ function renderLanguageToggle() {
       i18nUtils.setLang(i18nUtils.currentLang === 'pt' ? 'en' : 'pt')
       renderPageNav()
       renderLanguageToggle()
+      renderAuthBadge()
       applyActiveNav()
       initPlayerSearch()
       initServerSelector()
@@ -462,15 +570,17 @@ function initSkipLink() {
   }
 }
 
-function initCommon() {
+async function initCommon() {
   document.title = '🎮 CS 1.6 Server Stats'
   i18nUtils.init()
+  await authSessionPromise
   initSkipLink()
   document.querySelectorAll('.status-message').forEach((el) => el.setAttribute('aria-live', 'polite'))
   document.querySelectorAll('table th').forEach((th) => th.setAttribute('scope', 'col'))
   renderPageNav()
   renderLanguageToggle()
   applyActiveNav()
+  guardPage()
   initConnectPage()
   initWatchLink()
   initPlayerSearch()

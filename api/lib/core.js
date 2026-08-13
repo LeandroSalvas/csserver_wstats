@@ -9,6 +9,8 @@ const helpers = require('./helpers')
 const security = require('./security')
 const serverCtx = require('./serverCtx')
 const live = require('./live')
+const auth = require('./auth')
+const serverManager = require('./serverManager')
 
 module.exports = {
   config,
@@ -19,6 +21,8 @@ module.exports = {
   security,
   serverCtx,
   live,
+  auth,
+  serverManager,
   ...helpers,
   ...db,
   ...cache,
@@ -26,5 +30,7 @@ module.exports = {
   ...serverCtx,
   ...metrics,
   ...live,
+  ...auth,
+  ...serverManager,
   ...config
 }
