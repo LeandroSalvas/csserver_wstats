@@ -74,10 +74,14 @@ check_server() {
     return 0
   fi
 
-  # Alguém assistiu recentemente? Sem bridge WebRTC aberta não há o que recuperar.
-  local bridges
-  bridges="$(docker logs --since "${BRIDGE_LOOKBACK_S}s" "$proxy" 2>&1 | grep -c "Both channels open, starting bridge" || true)"
-  [ "$bridges" -eq 0 ] && return 0
+  # Alguém está assistindo AGORA? Só faz sentido recuperar mudo se há um
+  # espectador conectado. "Abriu nos últimos 10 min" gera falso positivo quando
+  # o viewer fecha a aba (bridge aberta+fechada na janela → sem espectador). Net
+  # de bridges abertas − fechadas na janela > 0 ⇒ sessão ativa.
+  local opened closed
+  opened="$(docker logs --since "${BRIDGE_LOOKBACK_S}s" "$proxy" 2>&1 | grep -c "Both channels open, starting bridge" || true)"
+  closed="$(docker logs --since "${BRIDGE_LOOKBACK_S}s" "$proxy" 2>&1 | grep -cE "Bridge shut down|WebSocket connection closed" || true)"
+  [ "$(( opened - closed ))" -le 0 ] && return 0
 
   # Pacotes de jogo (≠48B) na janela? Se suficientes, o stream está saudável.
   local game_pkts total count
