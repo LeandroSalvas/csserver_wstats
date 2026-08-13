@@ -463,6 +463,7 @@ function initSkipLink() {
 }
 
 function initCommon() {
+  document.title = '🎮 CS 1.6 Server Stats'
   i18nUtils.init()
   initSkipLink()
   document.querySelectorAll('.status-message').forEach((el) => el.setAttribute('aria-live', 'polite'))
