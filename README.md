@@ -9,7 +9,7 @@
 
 ### Visão geral
 
-CS Server Stats é um projeto completo de Counter-Strike 1.6 com painel de estatísticas integrado e **suporte multi-servidor**. Cada servidor roda com AMX Mod X configurado, coleta e armazena estatísticas de partidas em tempo real, e o painel web expõe rankings, perfis de jogadores, placar ao vivo, killfeed e **espectador web (WebRTC)**. Toda a stack é orquestrada com Docker Compose: servidores de jogo, MariaDB, Redis, API Node.js, frontend Nginx, Prometheus e Grafana.
+CS Server Stats é um projeto completo de Counter-Strike 1.6 com painel de estatísticas integrado e **suporte multi-servidor**. Cada servidor roda com AMX Mod X configurado, coleta e armazena estatísticas de partidas em tempo real, e o painel web expõe rankings, perfis de jogadores, placar ao vivo, killfeed e **espectador web (WebRTC)**. Toda a stack é orquestrada com Docker Compose: servidores de jogo, MariaDB, Redis, API Node.js, frontend Nginx, monitoramento (Prometheus/Grafana), proxy TLS **swag** e DNS dinâmico **duckdns** — todos integrados num único projeto.
 
 ### Arquitetura
 
@@ -25,6 +25,11 @@ O projeto é orquestrado com Docker Compose. Os serviços base são:
 | `prometheus` | Coleta de métricas da API (`/api/metrics`) e do Nginx |
 | `grafana` | Dashboards de monitoramento (porta 3001) |
 | `nginx-exporter` | Expositor de métricas do Nginx (consumido pelo Prometheus) |
+| `nginxlog-exporter` | Métricas do access log do front (tempo médio de resposta) |
+| `node-exporter` | Métricas do **host** (CPU/memória/rede, `network_mode: host`) |
+| `cadvisor` | Métricas **por container** (CPU/memória/rede da stack) |
+| `swag` | Proxy TLS reverso (TLS/DDNS): site em `:4443`, espectadores em `:4445`, redirect HTTP em `:8000` |
+| `duckdns` | DNS dinâmico (atualiza `zueiracstrike.duckdns.org`) |
 
 Além destes, há os serviços **opt-in** do espectador web (`profiles: ["watch"]`, nunca sobem com `docker compose up` simples — veja a seção [Espectador web](#espectador-web-webrtc)):
 
@@ -33,7 +38,7 @@ Além destes, há os serviços **opt-in** do espectador web (`profiles: ["watch"
 | `watch-main-<id>` | Proxy WebRTC→UDP por servidor: serve a página do espectador e faz a ponte para o relay HLTV |
 | `watch-hltv-<id>` | Relay HLTV por servidor: entre o servidor de jogo (`127.0.0.1:<host_port>`) e o espectador no browser |
 
-Na implantação de produção há ainda serviços externos: **swag** (proxy TLS, porta 4445) + **duckdns** (DNS dinâmico) para expor cada espectador em `https://zueiracstrike.duckdns.org:4445/<context>/`.
+O **swag** (proxy TLS) e o **duckdns** (DNS dinâmico) são **parte da stack** (`docker-compose.duckdns.yml`, incluído no `COMPOSE_FILE`): expõem o site principal em `https://zueiracstrike.duckdns.org:4443` e cada espectador em `https://zueiracstrike.duckdns.org:4445/<context>/`.
 
 ### Funcionalidades
 
@@ -52,8 +57,8 @@ Na implantação de produção há ainda serviços externos: **swag** (proxy TLS
 - Perfis individuais com gráfico de evolução de kills e histórico diário
 - Estatísticas avançadas: top headshots, precisão, killstreaks, assistências, dano, TK, bomb e tempo conectado
 - Placar ao vivo e killfeed em tempo real (SSE)
-- Painel admin com comandos RCON e autenticação por sessão (CSRF + rate limit)
-- Login Steam (OpenID) opcional para administração
+- **Autenticação & RBAC**: login local (superadmin) + Google OAuth2 e Steam OpenID com papéis `superadmin`/`admin`/`pending` (1º login social entra como `pending` e é aprovado em `/usuarios`), CSRF de cookie duplo e rate limit de login (5/60s)
+- **Gerenciamento de servidores pelo painel** (`/servidores`): add/remove/start/stop/restart via UI (docker CLI no socket), RCON automático para admins
 - Monitoramento multi-servidor (status de vários servidores na página Sistema)
 - Alertas de online/offline via webhook (Slack/Discord/Teams)
 - Rastreamento de partidas (placar, vencedor e duração por mapa)
@@ -62,11 +67,20 @@ Na implantação de produção há ainda serviços externos: **swag** (proxy TLS
 - Sistema de snapshots para rastrear progresso histórico
 - Guia de conexão com suporte ao protocolo Steam
 
+#### Monitoramento (Prometheus & Grafana)
+
+- 5 jobs de scrape: `cs16-api` (com Basic Auth), `nginx`, `nginxlog`, `node` (host) e `cadvisor` (por container)
+- `node-exporter` com `network_mode: host` + `pid: host` para métricas reais do host (CPU/memória/rede do eno1)
+- `cadvisor` por container — a imagem é um **build local** do fork `dillon-giacoppo/cadvisor` (suporte ao containerd snapshotter do Docker; a imagem oficial não enxerga containers nesse storage)
+- Grafana em `:3001` com datasource e dashboards provisionados por arquivo (`config/grafana/provisioning/`, `cs16-infra.json`)
+- Admin API do Prometheus (`127.0.0.1:9090`) usada pelo `servers.sh prune --metrics`
+
 #### Espectador Web (WebRTC)
 
 - Assistir **qualquer servidor** no navegador via relay HLTV (cliente Xash3D WASM), sem instalar nada — um par `watch-main`/`watch-hltv` por servidor de `config/servers.list`, cada um em seu path `/contexto/`
 - Página CSTV (`/cstv.html`) com o espectador embutido em iframe + seletor de servidor
 - Auto-recuperação: watchdog de stall no cliente (rejoin + reload silencioso) e teardown de idle na bridge do proxy — a sessão sobrevive até reinícios do servidor de jogo
+- Exposição TLS via **swag** (parte da stack, `docker-compose.duckdns.yml`): `https://...:4445/<context>/`, com os blocos `location` sincronizados automaticamente por `servers.sh compose`/`swag-sync`
 - Opt-in (não sobe na stack padrão), gerenciado por `./scripts/watch.sh`
 
 ### Pré-requisitos
@@ -77,8 +91,9 @@ Na implantação de produção há ainda serviços externos: **swag** (proxy TLS
   - **8080** (painel web)
   - **27015** (servidor primário UDP/TCP), **27016+** (demais servidores, uma porta cada)
   - **27100+** (relay HLTV UDP por servidor), **27200+** (espectador: página + signaling WebSocket), **27300+** (UDP WebRTC, faixa de 64 portas por servidor)
-  - **4445** (HTTPS do espectador via swag, produção)
-  - **3001** (Grafana) e **9090** (Prometheus, bind local)
+  - **8000** (HTTP → redirect HTTPS via swag), **4443** (HTTPS do site principal), **4445** (HTTPS do espectador) — tudo via swag
+  - **3001** (Grafana) e **9090** (Prometheus, bind local); **8082** (cAdvisor, bind local, debug)
+  - Internos (sem bind no host): `9113` (nginx-exporter) e `4040` (nginxlog-exporter)
 
 ### Início Rápido
 
@@ -130,6 +145,7 @@ Abra o navegador em `http://<seu-host>:8080`
 | `MYSQL_PASSWORD` | Senha do usuário | `minha_senha` |
 | `SESSION_SECRET` | Segredo para sessões Express | `uma-string-muito-longa-e-aleatoria` |
 | `RCON_PASSWORD` | Senha RCON dos servidores (gerada em `config/servers/<id>/server.cfg`) | `rcon123` |
+| `DUCKDNS_TOKEN` | Token do DuckDNS (swag valida o cert e o duckdns atualiza o IP) | `xxxx-xxxx-xxxx` |
 
 **Opcionais:**
 
@@ -146,10 +162,17 @@ Abra o navegador em `http://<seu-host>:8080`
 | `GAMEDIG_PORT` | `27015` | Porta do servidor de jogo |
 | `CS_SERVERS` | *(vazio)* | JSON array de servidores monitorados (multi-servidor); a primeira entrada é a principal |
 | `ALERT_WEBHOOK_URL` | *(vazio)* | URL de webhook (Slack/Discord/Teams) notificada em mudanças online/offline |
-| `STEAM_RETURN_URL` | *(vazio)* | URL pública de retorno do login Steam |
-| `STEAM_ADMIN_IDS` | *(vazio)* | SteamID64s (separados por vírgula) autorizados a logar como admin |
+| `SEED_ADMIN` | `1` | Se `1`, cria o superadmin local no boot e grava `ADMIN_CREDENTIALS.txt` (gitignored) |
+| `ADMIN_USERNAME` | *(vazio)* | Username do superadmin local (padrão: gerado aleatório) |
+| `STEAM_RETURN_URL` | *(vazio)* | URL pública de retorno do login Steam (OpenID). **Obs.:** todo 1º login social entra como `pending` e precisa de aprovação do superadmin |
+| `GOOGLE_CLIENT_ID` | *(vazio)* | Client ID do OAuth2 do Google |
+| `GOOGLE_CLIENT_SECRET` | *(vazio)* | Client secret do OAuth2 do Google |
+| `GOOGLE_RETURN_URL` | *(vazio)* | URL de callback autorizada do Google (`https://...:4443/api/auth/google/callback`) |
+| `METRICS_USER` | *(vazio)* | Usuário do Basic Auth do `/api/metrics` (apenas alfanumérico) |
+| `METRICS_PASS` | *(vazio)* | Senha do Basic Auth do `/api/metrics` |
 | `GRAFANA_ADMIN_USER` | `admin` | Usuário admin do Grafana |
-| `GRAFANA_ADMIN_PASSWORD` | `admin` | Senha admin do Grafana |
+| `GRAFANA_ADMIN_PASSWORD` | `admin` | Senha admin do Grafana (vale só no 1º boot; o volume `grafana_data` guarda a senha posterior) |
+| `DOCKER_USER` | *(vazio)* | Usuário do Docker Hub (`scripts/push-images.sh`) |
 
 **Espectador web (opt-in):**
 
@@ -167,6 +190,21 @@ As portas são derivadas por índice `i` em `config/servers.list` (relay `WATCH_
 | `WATCH_UPSTREAM_HOST` | `127.0.0.1` | Host/porta usados pelo swag para alcançar o `watch-main` (network_mode: host) |
 
 > O IP público NÃO é mais configurado: o proxy descobre via STUN (`stun.l.google.com`) em cada conexão.
+
+#### TLS/DDNS (swag & duckdns)
+
+O **swag** (proxy TLS reverso) e o **duckdns** (DNS dinâmico) fazem parte da stack via `docker-compose.duckdns.yml` (incluído no `COMPOSE_FILE`):
+
+| Porta host | Uso |
+|------------|-----|
+| `8000` | HTTP: redireciona para `https://...:4443` |
+| `4443` | HTTPS do site principal (`zueiracstrike.duckdns.org:4443` → `web:8080` via IP do host) |
+| `4445` | HTTPS dos espectadores (`:4445/<context>/` → `watch-main` `27200+i` via IP do host) |
+
+- Dados do swag (nginx, certs, fail2ban) vivem em `duckdns/swag/config/` (**gitignored**); o token fica em `DUCKDNS_TOKEN` no `.env`.
+- **Blocos `location` dos espectadores**: o `scripts/servers.sh compose` (e `swag-sync`) reescreve apenas a região `# BEGIN/END servers.sh swag locations` do proxy-conf vivo, derivada de `config/servers.list`, e reinicia o swag só quando o arquivo muda (e `nginx -t` passa). No remove, o bloco do servidor removido some automaticamente.
+- **Backup dos certs**: `duckdns/backup.sh` gera `duckdns/backups/config-*.tar.gz` (config + patch do certcheck + compose). Restaurar `etc/letsencrypt/{live,archive,renewal}` resolve problemas de cert sem queimar a cota do Let's Encrypt.
+- **Atenção swag/cert**: a imagem swag tem um check "old LE root" quebrado (espera o emissor "ISRG Root X", mas a cadeia atual é YE2→Root YE), que revogava o cert em todo boot e queimava a cota do LE. O fix é **durável**: `docker-compose.duckdns.yml` monta `duckdns/init-certbot-config.run` (cópia patcheada do script da imagem) por cima do arquivo do s6, então o swag **não reemite** o cert ao reiniciar/recriar.
 
 #### Arquivos de configuração do CS
 
@@ -225,7 +263,7 @@ O botão do espectador (páginas CSTV, ao vivo e Conectar) resolve a URL via `/s
 const SPECTATOR_URL = 'https://zueiracstrike.duckdns.org:4445/'
 ```
 
-Os blocos `server_name` com domínios no `web/nginx.conf` são específicos da implantação de produção (redirecionam HTTP → HTTPS) e podem ser removidos para uso genérico/local.
+Os blocos `server_name` com domínios no `web/nginx.conf` são específicos da implantação de produção (redirecionam HTTP → `https://...:4443`, já exposto pelo swag) e podem ser removidos para uso genérico/local.
 
 #### Multi-servidor (provisionamento automático)
 
@@ -249,7 +287,8 @@ O projeto pode rodar vários servidores CS 1.6 ao mesmo tempo, cada um com porta
 |---------|-----------|
 | `./scripts/setup.sh` | Assistente interativo: pergunta a quantidade/nomes, rotação de mapas (e quais) e sobe a stack (flags: `--no-up`, `--yes`) |
 | `./scripts/servers.sh init` | Cria `config/servers/<id>/`, `live/<id>/`, `config/watch/<id>/` e `live/watch/<id>/` a partir de `servers.list` |
-| `./scripts/servers.sh compose` | Gera `docker-compose.servers.yml` (override) + `docker-compose.watch.yml` (espectador) + `config/watch/swag-locations.conf.example` |
+| `./scripts/servers.sh compose` | Gera `docker-compose.servers.yml` (override) + `docker-compose.watch.yml` (espectador) + `config/watch/swag-locations.conf.example` **e sincroniza os blocos `location` no swag vivo** |
+| `./scripts/servers.sh swag-sync` | Re-sincroniza os blocos `location` no proxy-conf vivo do swag e reinicia o swag se mudou (idempotente) |
 | `./scripts/servers.sh config` | Valida o compose mergeado |
 | `./scripts/servers.sh up` | `init` + `compose` + `docker compose up -d --remove-orphans` (sem `--build`; builds são explícitos via `servers.sh build`) |
 | `./scripts/servers.sh build` | Constrói as imagens `cs16_stats:local` e `csserver_wstats-api` |
@@ -281,7 +320,7 @@ Regras e detalhes:
 - Cada servidor grava seus próprios arquivos live em `live/<id>/`, que a API lê por servidor (`/api/live/state?server=<id>`).
 - As páginas têm um seletor de servidor (Home, Live, Rankings, Mapas, Player, Avançadas, Partidas e Painel RCON); rankings, tops, mapas e partidas são filtrados pelo servidor selecionado e comandos RCON são executados no servidor alvo.
 - As métricas do Grafana são rotuladas por servidor (`cs16_players_online{server="..."}`) com uma variável de servidor no dashboard.
-- O `.env` define `COMPOSE_FILE=docker-compose.yml:docker-compose.servers.yml`: depois de gerado, `docker compose ps/logs/config/up` já usam o override sem precisar de `-f` (o override é regenerado pelo `servers.sh compose`/`up` ou pelo `setup.sh`). O espectador (compose watch) não entra no `COMPOSE_FILE`: é opt-in via `./scripts/watch.sh`.
+- O `.env` define `COMPOSE_FILE=docker-compose.yml:docker-compose.servers.yml:docker-compose.duckdns.yml`: depois de gerado, `docker compose ps/logs/config/up` já usam o override e o swag/duckdns sem precisar de `-f` (o override é regenerado pelo `servers.sh compose`/`up` ou pelo `setup.sh`). O espectador (compose watch) não entra no `COMPOSE_FILE`: é opt-in via `./scripts/watch.sh`.
 
 ##### Adicionar um novo servidor (passo a passo)
 
@@ -397,7 +436,7 @@ O `watch-main` é o submodule `watch/webxash3d-proxy` (fork `LeandroSalvas/webxa
 
 **Assets**: `valve/valve.zip` (assets proprietários do Half-Life) é **gitignored**; o `backup`/`restore` do watch.sh o preserva. O compose o monta read-only nos `watch-main`.
 
-**Portas** (por índice `i` em `config/servers.list`; 3 servidores hoje = 0..2):
+**Portas** (por índice `i` em `config/servers.list`; 4 servidores hoje = 0..3):
 
 | Porta | Uso |
 |-------|-----|
@@ -406,7 +445,7 @@ O `watch-main` é o submodule `watch/webxash3d-proxy` (fork `LeandroSalvas/webxa
 | `27300+(i*64)..+63` UDP | WebRTC (ICE) |
 | `4445` TCP | HTTPS do espectador (via swag, produção) |
 
-`watch-main` usa `network_mode: host` (anuncia o IP da LAN como ICE candidate e resolve os candidatos mDNS `.local`). Em produção, o swag serve `https://zueiracstrike.duckdns.org:4445/<context>/` → `http://192.168.15.54:27200+i` (blocos `location` gerados em `config/watch/swag-locations.conf.example`).
+`watch-main` usa `network_mode: host` (anuncia o IP da LAN como ICE candidate e resolve os candidatos mDNS `.local`). Em produção, o swag (parte da stack) serve `https://zueiracstrike.duckdns.org:4445/<context>/` → `http://192.168.15.54:27200+i`. Os blocos `location` são gerados em `config/watch/swag-locations.conf.example` **e sincronizados automaticamente** no proxy-conf vivo do swag por `servers.sh compose`/`swag-sync` (região de marcadores; reescrita idempotente; reinício do swag só com `nginx -t` OK).
 
 **Auto-recuperação** (cliente + proxy):
 
@@ -449,9 +488,15 @@ Detalhes: o upgrade tira snapshot (`csserver_wstats-api:rollback-<ts>` + HEAD em
 | Perfil do Jogador | `/player.html?steamid=<id>` | Estatísticas individuais e histórico |
 | Conectar | `/connect.html` | Guia de conexão ao servidor |
 | Live Match | `/live.html` | Placar ao vivo e killfeed |
-| CSTV | `/cstv.html` | Espectador web (WebRTC) do servidor primário |
-| Painel RCON | `/admin.html` | Autenticação e execução de comandos RCON |
-| Sistema | `/system.html` | Status de todos os subsistemas |
+| Duelo | `/duelo.html` | Confronto entre jogadores |
+| CSTV | `/cstv.html` | Espectador web (WebRTC) com seletor de servidor |
+| Painel RCON | `/admin.html` | Autenticação e execução de comandos RCON *(admin)* |
+| Sistema | `/system.html` | Status de todos os subsistemas *(admin)* |
+| Servidores | `/servidores` | Gestão de servidores: add/remove/start/stop/restart *(admin)* |
+| Usuários | `/usuarios` | Aprovação de 1º login social e papéis *(superadmin)* |
+| Login | `/login` | Login local (superadmin) + Google/Steam |
+
+> Páginas marcadas *(admin)* / *(superadmin)* são protegidas de verdade: o nginx usa `auth_request` no `/api/auth/guard` e redireciona para `/login?next=...` quando não há sessão de admin ativa. 
 
 ### Referência da API
 
@@ -553,24 +598,54 @@ Todas as rotas devem ser acessadas via prefixo `/api` (proxy Nginx). Exemplo: `h
 |--------|------|-----------|
 | `GET` | `/api/metrics` | Métricas no formato Prometheus (default metrics + HTTP requests, jogadores online por servidor, DB up, partidas) |
 
-> O Grafana roda em `http://<host>:3001` com datasource Prometheus e dashboard CS16 provisionados automaticamente. O Prometheus coleta também o `nginx-exporter` (`:9113`) e aceita a Admin API (`127.0.0.1:9090`) usada pelo `servers.sh prune --metrics`.
+> O Grafana roda em `http://<host>:3001` com datasource Prometheus e dashboards provisionados por arquivo (`config/grafana/provisioning/` + `cs16-infra.json`). O Prometheus coleta 5 jobs: `cs16-api` (Basic Auth `METRICS_USER`/`METRICS_PASS`), `nginx` (`:9113`), `nginxlog` (`:4040`), `node` (host via `host.docker.internal:9100`) e `cadvisor` (`:8080`). A Admin API do Prometheus (`127.0.0.1:9090`) é usada pelo `servers.sh prune --metrics`. Painéis de média de resposta (API e Front) usam janelas de 30m (tráfego esparso).
 
-#### Login Steam
+#### Autenticação
+
+Sessão em cookie `httpOnly` (`cs16.sid`, `sameSite=lax`, rolling renewal), senha local com scrypt, **CSRF de cookie duplo** (`csrf_token` + header `x-csrf-token`) exigido em toda mutação e rate limit de login (5/60s por IP → 429). Tabela `users` no MariaDB (migrada idempotentemente pelo `ensureSchema`).
 
 | Método | Rota | Descrição |
 |--------|------|-----------|
-| `GET` | `/api/auth/steam` | Inicia o fluxo OpenID (redireciona para o Steam) |
-| `GET` | `/api/auth/steam/callback` | Callback do Steam; valida e autentica a sessão se o SteamID estiver em `STEAM_ADMIN_IDS` |
-| `GET` | `/api/auth/steam/status` | Verifica se o login Steam está configurado e o SteamID da sessão |
+| `POST` | `/api/auth/login` | Login local com usuário/senha (superadmin) |
+| `GET` | `/api/auth/session` | Sessão atual (user, papel, CSRF token) |
+| `GET` | `/api/auth/status` | Estado do login social configurado (Google/Steam) |
+| `POST` | `/api/auth/logout` | Encerra a sessão |
+| `GET` | `/api/auth/guard` | Público: 200 se admin ativo, senão 401 (usado pelo `auth_request` do nginx) |
+| `GET` | `/api/auth/google` + `/api/auth/google/callback` | Login Google OAuth2 |
+| `GET` | `/api/auth/steam` + `/api/auth/steam/callback` | Login Steam (OpenID 2.0, sem Web API key) |
+| `GET` | `/api/auth/steam/status` | Status do login Steam configurado |
 
-> O login Steam usa OpenID 2.0 e **não exige Steam Web API key**. Configuração: `STEAM_RETURN_URL` (URL pública de retorno) e `STEAM_ADMIN_IDS` (lista de SteamID64 autorizados). Sem essas variáveis o botão não aparece no painel RCON.
+> **Todo 1º login social (Google/Steam) nasce `pending`** e precisa ser aprovado pelo superadmin em `/usuarios`. O superadmin local é criado no boot (`SEED_ADMIN=1`) com credenciais em `ADMIN_CREDENTIALS.txt` (gitignored, regenerável com `docker compose exec api node scripts/seed-admin.js --reset`). Papéis: `superadmin` (total), `admin` (operações de servidor + RCON), `pending`. O nginx protege `/admin.html`, `/system.html`, `/servers.html` e `/users.html` com `auth_request /api/auth/guard` → `/login?next=...`.
+
+#### Usuários (admin)
+
+| Método | Rota | Descrição |
+|--------|------|-----------|
+| `GET` | `/api/admin/users` | Lista usuários e papéis |
+| `POST` | `/api/admin/users/:id/approve` | Aprova usuário `pending` (define papel) |
+| `POST` | `/api/admin/users/:id/reject` | Rejeita usuário `pending` |
+| `POST` | `/api/admin/users/:id/role` | Altera o papel de um usuário |
+| `DELETE` | `/api/admin/users/:id` | Remove um usuário |
+
+#### Servidores (admin)
+
+| Método | Rota | Descrição |
+|--------|------|-----------|
+| `GET` | `/api/admin/servers` | Lista servidores (enriquecida com `servers.list`) |
+| `GET` | `/api/admin/servers/maps` | Mapas disponíveis na imagem |
+| `POST` | `/api/admin/servers` | Adiciona servidor (provisiona via `servers.sh up` num container descartável) |
+| `DELETE` | `/api/admin/servers/:id` | Remove servidor (unprovision) |
+| `POST` | `/api/admin/servers/:id/start` | Inicia o servidor |
+| `POST` | `/api/admin/servers/:id/stop` | Para o servidor |
+| `POST` | `/api/admin/servers/:id/restart` | Reinicia o servidor |
+
+> Todas as rotas de admin exigem sessão + CSRF + `commandLimiter`. O add/remove regenera o override e o compose **recria o container da api** no meio da operação — o frontend recebe 502/conexão cortada, mas a operação **conclui** (o `web/servers.js` trata erro de rede como "provisionando, recarregando..."). O RCON automático (`/api/admin/command`) usa a credencial do servidor (não existe mais senha RCON no card do admin). `writeServersList` faz `.bak` e `add()`/`remove()` revertem a lista se o provision falhar.
 
 #### Admin (RCON)
 
 | Método | Rota | Descrição |
 |--------|------|-----------|
-| `POST` | `/api/admin/login` | Autenticar com senha RCON (com rate limit e proteção CSRF) |
-| `POST` | `/api/admin/command` | Executar comando RCON (requer sessão e token CSRF, com rate limit) |
+| `POST` | `/api/admin/command` | Executar comando RCON (requer sessão `admin`, token CSRF e rate limit) |
 | `POST` | `/api/admin/logout` | Encerrar sessão admin (requer token CSRF) |
 | `GET` | `/api/admin/session` | Verificar status da sessão e obter token CSRF |
 
@@ -621,6 +696,15 @@ docker compose logs -f db
 
 # Validar a API em execução
 ./scripts/smoke-test.sh
+
+# Publicar imagens no Docker Hub (cs16, api, watch-main)
+./scripts/push-images.sh          # docker login antes; tags latest + v<AAAAMMDD>-<HHMM>
+
+# Backup dos certs do swag (config + patch do certcheck + compose)
+./duckdns/backup.sh               # gera duckdns/backups/config-<data>.tar.gz
+
+# Recuperar relay HLTV "mudo" (kick via RCON)
+./scripts/watch-mudo.sh           # cron a cada minuto; ou watch-mudo.sh <id>...
 ```
 
 ### Solução de problemas
@@ -653,13 +737,24 @@ O cliente se auto-recupera (rejoin + reload silencioso). Se um relay HLTV ficou 
 
 **Login admin bloqueado (429):** o `smoke-test.sh` compartilha a janela de rate limit de login (60s) com o host. Aguarde o intervalo e tente novamente.
 
+**swag sem certificado / cota do Let's Encrypt queimada (imagem ~2026):**
+```bash
+docker compose ps swag          # unhealthy
+docker compose logs swag | grep -i cert
+```
+O check "old LE root" da imagem é contornado **duravelmente** pela montagem `ro` de `duckdns/init-certbot-config.run` no compose (o swag **não** reemite o cert no boot). Se mesmo assim o cert sumiu ou o swag ficou sem cert por horas (cota 5 certs/168h), restaure do backup: `duckdns/backups/config-*.tar.gz` → restaurar `etc/letsencrypt/{live,archive,renewal}`. **Não rode múltiplos `docker compose up -d` seguidos com o swag sem cert** — cada boot tenta reemitir e queima a cota.
+
+**Certs do swag expirando / renovação:** o swag renova automaticamente pelo certbot. O backup em `duckdns/backups/` guarda o último estado bom (restaurar resolve sem queimar cota).
+
+**cAdvisor sem dados (fs) no Grafana:** a imagem é um build local do fork `dillon-giacoppo/cadvisor` (containerd snapshotter); CPU/memória/rede funcionam, filesystem não — comportamento esperado.
+
 ---
 
 ## 🇺🇸 English (US)
 
 ### Overview
 
-CS Server Stats is a complete Counter-Strike 1.6 project with an integrated statistics dashboard and **multi-server support**. Each server runs with AMX Mod X configured, collects and stores real-time match statistics, and the web panel exposes rankings, player profiles, live scoreboard, killfeed, and a **web spectator (WebRTC)**. The entire stack is orchestrated with Docker Compose: game servers, MariaDB, Redis, Node.js API, Nginx frontend, Prometheus, and Grafana.
+CS Server Stats is a complete Counter-Strike 1.6 project with an integrated statistics dashboard and **multi-server support**. Each server runs with AMX Mod X configured, collects and stores real-time match statistics, and the web panel exposes rankings, player profiles, live scoreboard, killfeed, and a **web spectator (WebRTC)**. The entire stack is orchestrated with Docker Compose: game servers, MariaDB, Redis, Node.js API, Nginx frontend, monitoring (Prometheus/Grafana), **swag** TLS proxy and **duckdns** dynamic DNS — all integrated in a single project.
 
 ### Architecture
 
@@ -675,6 +770,11 @@ The project is orchestrated with Docker Compose. The base services are:
 | `prometheus` | API metrics collection (`/api/metrics`) and Nginx metrics |
 | `grafana` | Monitoring dashboards (port 3001) |
 | `nginx-exporter` | Nginx metrics exporter (scraped by Prometheus) |
+| `nginxlog-exporter` | Access-log metrics for the front (average response time) |
+| `node-exporter` | **Host** metrics (CPU/memory/network, `network_mode: host`) |
+| `cadvisor` | **Per-container** metrics (CPU/memory/network of the stack) |
+| `swag` | Reverse TLS proxy (TLS/DDNS): main site on `:4443`, spectators on `:4445`, HTTP redirect on `:8000` |
+| `duckdns` | Dynamic DNS (updates `zueiracstrike.duckdns.org`) |
 
 On top of these, there are **opt-in** spectator services (`profiles: ["watch"]`, never started by plain `docker compose up` — see the [Web Spectator](#web-spectator-webrtc) section):
 
@@ -683,7 +783,7 @@ On top of these, there are **opt-in** spectator services (`profiles: ["watch"]`,
 | `watch-main-<id>` | WebRTC→UDP proxy per server: serves the spectator page and bridges to the HLTV relay |
 | `watch-hltv-<id>` | HLTV relay per server: between the game server (`127.0.0.1:<host_port>`) and the browser spectator |
 
-The production deployment also has external services: **swag** (TLS proxy, port 4445) + **duckdns** (dynamic DNS) to expose each spectator at `https://zueiracstrike.duckdns.org:4445/<context>/`.
+The **swag** (TLS proxy) and **duckdns** (dynamic DNS) are **part of the stack** (`docker-compose.duckdns.yml`, included in `COMPOSE_FILE`): they expose the main site at `https://zueiracstrike.duckdns.org:4443` and each spectator at `https://zueiracstrike.duckdns.org:4445/<context>/`.
 
 ### Features
 
@@ -702,8 +802,8 @@ The production deployment also has external services: **swag** (TLS proxy, port 
 - Individual player profiles with kill evolution chart and daily history
 - Advanced stats: top headshots, accuracy, killstreaks, assists, damage, team kills, bomb, and connected time
 - Live scoreboard and killfeed (SSE)
-- Admin panel with RCON commands and session-based authentication (CSRF + rate limit)
-- Optional Steam login (OpenID) for administration
+- **Authentication & RBAC**: local login (superadmin) + Google OAuth2 and Steam OpenID with `superadmin`/`admin`/`pending` roles (first social login is born `pending` and is approved in `/usuarios`), double-cookie CSRF, login rate limit (5/60s)
+- **Server management from the panel** (`/servidores`): add/remove/start/stop/restart via UI (docker CLI on the socket), automatic RCON for admins
 - Multi-server monitoring (status of several servers on the System page)
 - Online/offline alerts via webhook (Slack/Discord/Teams)
 - Match tracking (score, winner, and duration per map)
@@ -712,11 +812,20 @@ The production deployment also has external services: **swag** (TLS proxy, port 
 - Snapshot system for tracking historical progression
 - Connection guide with Steam protocol support
 
+#### Monitoring (Prometheus & Grafana)
+
+- 5 scrape jobs: `cs16-api` (Basic Auth), `nginx`, `nginxlog`, `node` (host) and `cadvisor` (per container)
+- `node-exporter` with `network_mode: host` + `pid: host` for real host metrics (CPU/memory/network of the LAN interface)
+- `cadvisor` per container — the image is a **local build** of the `dillon-giacoppo/cadvisor` fork (Docker containerd snapshotter support; the upstream image cannot see containers on that storage)
+- Grafana on `:3001` with datasource and dashboards provisioned by file (`config/grafana/provisioning/`, `cs16-infra.json`)
+- Prometheus Admin API (`127.0.0.1:9090`) used by `servers.sh prune --metrics`
+
 #### Web Spectator (WebRTC)
 
 - Watch **any server** in the browser via an HLTV relay (Xash3D WASM client), with no installation — a `watch-main`/`watch-hltv` pair per `config/servers.list` server, each at its `/context/` path
 - CSTV page (`/cstv.html`) with the spectator embedded in an iframe + server selector
 - Self-healing: client stall watchdog (rejoin + silent reload) and proxy bridge idle teardown — the session survives even game-server restarts
+- TLS exposure via **swag** (part of the stack, `docker-compose.duckdns.yml`): `https://...:4445/<context>/`, with the `location` blocks auto-synced by `servers.sh compose`/`swag-sync`
 - Opt-in (not part of the default stack), managed by `./scripts/watch.sh`
 
 ### Prerequisites
@@ -727,8 +836,9 @@ The production deployment also has external services: **swag** (TLS proxy, port 
   - **8080** (web panel)
   - **27015** (primary server UDP/TCP), **27016+** (extra servers, one port each)
   - **27100+** (HLTV relay UDP per server), **27200+** (spectator: page + signaling WebSocket), **27300+** (WebRTC UDP, 64-port range per server)
-  - **4445** (spectator HTTPS via swag, production)
-  - **3001** (Grafana) and **9090** (Prometheus, local bind)
+  - **8000** (HTTP → HTTPS redirect via swag), **4443** (main site HTTPS), **4445** (spectator HTTPS)
+  - **3001** (Grafana) and **9090** (Prometheus, local bind); **8082** (cAdvisor, local bind, debug)
+  - Internal (no host bind): `9113` (nginx-exporter) and `4040` (nginxlog-exporter)
 
 ### Quick Start
 
@@ -780,6 +890,7 @@ Open your browser at `http://<your-host>:8080`
 | `MYSQL_PASSWORD` | Database user password | `my_password` |
 | `SESSION_SECRET` | Express session secret | `a-very-long-random-string` |
 | `RCON_PASSWORD` | Server RCON password (generated into `config/servers/<id>/server.cfg`) | `rcon123` |
+| `DUCKDNS_TOKEN` | DuckDNS token (swag validates the cert and duckdns updates the IP) | `xxxx-xxxx-xxxx` |
 
 **Optional:**
 
@@ -796,10 +907,17 @@ Open your browser at `http://<your-host>:8080`
 | `GAMEDIG_PORT` | `27015` | Game server port |
 | `CS_SERVERS` | *(empty)* | JSON array of monitored servers (multi-server); first entry is the primary |
 | `ALERT_WEBHOOK_URL` | *(empty)* | Webhook URL (Slack/Discord/Teams) notified on online/offline changes |
-| `STEAM_RETURN_URL` | *(empty)* | Public Steam login return URL |
-| `STEAM_ADMIN_IDS` | *(empty)* | Authorized SteamID64s (comma-separated) for admin login |
+| `SEED_ADMIN` | `1` | If `1`, creates the local superadmin on boot and writes `ADMIN_CREDENTIALS.txt` (gitignored) |
+| `ADMIN_USERNAME` | *(empty)* | Local superadmin username (default: random) |
+| `STEAM_RETURN_URL` | *(empty)* | Public Steam login return URL. **Note:** every first social login is born `pending` and needs superadmin approval |
+| `GOOGLE_CLIENT_ID` | *(empty)* | Google OAuth2 client ID |
+| `GOOGLE_CLIENT_SECRET` | *(empty)* | Google OAuth2 client secret |
+| `GOOGLE_RETURN_URL` | *(empty)* | Authorized Google callback URL (`https://...:4443/api/auth/google/callback`) |
+| `METRICS_USER` | *(empty)* | Basic Auth user for `/api/metrics` (alphanumeric only) |
+| `METRICS_PASS` | *(empty)* | Basic Auth password for `/api/metrics` |
 | `GRAFANA_ADMIN_USER` | `admin` | Grafana admin user |
-| `GRAFANA_ADMIN_PASSWORD` | `admin` | Grafana admin password |
+| `GRAFANA_ADMIN_PASSWORD` | `admin` | Grafana admin password (only on first boot; the `grafana_data` volume keeps the later password) |
+| `DOCKER_USER` | *(empty)* | Docker Hub user (`scripts/push-images.sh`) |
 
 **Web spectator (opt-in):**
 
@@ -817,6 +935,21 @@ Ports are derived per server index `i` in `config/servers.list` (relay `WATCH_HL
 | `WATCH_UPSTREAM_HOST` | `127.0.0.1` | Host used by swag to reach `watch-main` (network_mode: host) |
 
 > The public IP is no longer configured: the proxy discovers it via STUN (`stun.l.google.com`) per connection.
+
+#### TLS/DDNS (swag & duckdns)
+
+The **swag** (reverse TLS proxy) and **duckdns** (dynamic DNS) are part of the stack via `docker-compose.duckdns.yml` (included in `COMPOSE_FILE`):
+
+| Host port | Use |
+|-----------|-----|
+| `8000` | HTTP: redirects to `https://...:4443` |
+| `4443` | Main site HTTPS (`zueiracstrike.duckdns.org:4443` → `web:8080` via the host IP) |
+| `4445` | Spectator HTTPS (`:4445/<context>/` → `watch-main` `27200+i` via the host IP) |
+
+- swag data (nginx, certs, fail2ban) lives in `duckdns/swag/config/` (**gitignored**); the token is in `DUCKDNS_TOKEN` in `.env`.
+- **Spectator `location` blocks**: `scripts/servers.sh compose` (and `swag-sync`) rewrites only the `# BEGIN/END servers.sh swag locations` region of the live proxy-conf, derived from `config/servers.list`, and restarts swag only when the file changed (and `nginx -t` passes). Removing a server also drops its block.
+- **Cert backup**: `duckdns/backup.sh` produces `duckdns/backups/config-*.tar.gz` (config + certcheck patch + compose). Restoring `etc/letsencrypt/{live,archive,renewal}` fixes cert issues without burning the Let's Encrypt quota.
+- **swag/cert caveat**: the swag image has a broken "old LE root" check (expects issuer "ISRG Root X", but the current chain is YE2→Root YE), which revoked the cert on every boot and burned the LE quota. The fix is **durable**: `docker-compose.duckdns.yml` mounts `duckdns/init-certbot-config.run` (a patched copy of the image's script) over the s6 file, so swag **does not reissue** the cert on restart/recreate.
 
 #### CS Server config files
 
@@ -875,7 +1008,7 @@ The spectator button (CSTV page) uses `SPECTATOR_URL` in the same `web/common.js
 const SPECTATOR_URL = 'https://zueiracstrike.duckdns.org:4445/'
 ```
 
-The `server_name` blocks with domains in `web/nginx.conf` are specific to the production deployment (HTTP → HTTPS redirect) and can be removed for generic/local use.
+The `server_name` blocks with domains in `web/nginx.conf` are specific to the production deployment (HTTP → `https://...:4443` redirect, already exposed by swag) and can be removed for generic/local use.
 
 #### Multi-server (automated provisioning)
 
@@ -899,9 +1032,10 @@ The project can run multiple CS 1.6 servers at the same time, each with its own 
 |---------|-------------|
 | `./scripts/setup.sh` | Interactive wizard: asks count/names, map rotation (and which maps) and starts the stack (flags: `--no-up`, `--yes`) |
 | `./scripts/servers.sh init` | Creates `config/servers/<id>/` and `live/<id>/` from `servers.list` |
-| `./scripts/servers.sh compose` | Generates `docker-compose.servers.yml` (override) |
+| `./scripts/servers.sh compose` | Generates `docker-compose.servers.yml` (override) + `docker-compose.watch.yml` (spectator) + `config/watch/swag-locations.conf.example` **and syncs the `location` blocks in the live swag conf** |
+| `./scripts/servers.sh swag-sync` | Re-syncs the `location` blocks in the live swag proxy-conf and restarts swag if changed (idempotent) |
 | `./scripts/servers.sh config` | Validates the merged compose |
-| `./scripts/servers.sh up` | `init` + `compose` + `docker compose up -d --remove-orphans` (no `--build`; builds are explicit via `servers.sh build`) |
+| `./scripts/servers.sh up` | `init` + `compose` + `docker compose up -d --no-recreate` (no `--build`; builds are explicit via `servers.sh build`) |
 | `./scripts/servers.sh build` | Builds the `cs16_stats:local` and `csserver_wstats-api` images |
 | `./scripts/servers.sh down` | Stops the stack |
 | `./scripts/servers.sh ps` | Container state |
@@ -931,7 +1065,7 @@ Rules and details:
 - Each server writes its own live files in `live/<id>/`, which the API reads per server (`/api/live/state?server=<id>`).
 - All pages have a server selector (Home, Live, Rankings, Maps, Player, Advanced, Matches, and RCON Panel); rankings, tops, maps, and matches are filtered by the selected server and RCON commands run against the target server.
 - Grafana metrics are labeled per server (`cs16_players_online{server="..."}`) with a server variable in the dashboard.
-- The `.env` sets `COMPOSE_FILE=docker-compose.yml:docker-compose.servers.yml`: after generation, plain `docker compose ps/logs/config/up` use the override without needing `-f` (the override is regenerated by `servers.sh compose`/`up` or `setup.sh`). The spectator compose is NOT in `COMPOSE_FILE` — it is opt-in via `./scripts/watch.sh`.
+- The `.env` sets `COMPOSE_FILE=docker-compose.yml:docker-compose.servers.yml:docker-compose.duckdns.yml`: after generation, plain `docker compose ps/logs/config/up` use the override and the swag/duckdns services without needing `-f` (the override is regenerated by `servers.sh compose`/`up` or `setup.sh`). The spectator compose is NOT in `COMPOSE_FILE` — it is opt-in via `./scripts/watch.sh`.
 
 ##### Adding a new server (step by step)
 
@@ -1047,16 +1181,16 @@ Each proxy serves its server at `BASE_PATH=/<context>/` (7th `servers.list` colu
 
 **Assets**: `valve/valve.zip` (proprietary Half-Life assets) is **gitignored**; `watch.sh backup`/`restore` preserves it. The compose mounts it read-only into the `watch-main` services.
 
-**Ports** (per index `i` in `config/servers.list`; 3 servers today = 0..2):
+**Ports** (per index `i` in `config/servers.list`; 4 servers today = 0..3):
 
 | Port | Usage |
 |------|-------|
 | `27100+i` UDP | HLTV relay (`watch-hltv-<id>`) |
 | `27200+i` TCP | Spectator page + signaling WebSocket (`/websocket`) |
 | `27300+(i*64)..+63` UDP | WebRTC (ICE) |
-| `4445` TCP | Spectator HTTPS (via swag, production) |
+| `4445` TCP | Spectator HTTPS (via swag, part of the stack) |
 
-`watch-main` uses `network_mode: host` (announces the LAN IP as an ICE candidate and resolves the browser's mDNS `.local` candidates). In production, swag serves `https://zueiracstrike.duckdns.org:4445/<context>/` → `http://192.168.15.54:27200+i` (location blocks generated in `config/watch/swag-locations.conf.example`).
+`watch-main` uses `network_mode: host` (announces the LAN IP as an ICE candidate and resolves the browser's mDNS `.local` candidates). In production, swag serves `https://zueiracstrike.duckdns.org:4445/<context>/` → `http://192.168.15.54:27200+i`. The location blocks are generated in `config/watch/swag-locations.conf.example` **and synced automatically** into the live swag proxy-conf by `servers.sh compose`/`swag-sync` (marker region; idempotent rewrite; swag restarted only when `nginx -t` passes).
 
 **Self-healing** (client + proxy):
 
@@ -1099,9 +1233,15 @@ Details: the upgrade snapshots (`csserver_wstats-api:rollback-<ts>` + HEAD in `.
 | Player Profile | `/player.html?steamid=<id>` | Individual stats and history |
 | Connect | `/connect.html` | Server connection guide |
 | Live Match | `/live.html` | Live scoreboard and killfeed |
-| CSTV | `/cstv.html` | Web spectator (WebRTC) of the primary server |
-| RCON Panel | `/admin.html` | RCON authentication and command execution |
-| System | `/system.html` | Status of all subsystems |
+| Duel | `/duelo.html` | Head-to-head player comparison |
+| CSTV | `/cstv.html` | Web spectator (WebRTC) with server selector |
+| RCON Panel | `/admin.html` | RCON command execution *(admin)* |
+| System | `/system.html` | Status of all subsystems *(admin)* |
+| Servers | `/servidores` | Server management: add/remove/start/stop/restart *(admin)* |
+| Users | `/usuarios` | Social login approval and roles *(superadmin)* |
+| Login | `/login` | Local (superadmin) + Google/Steam login |
+
+> Pages marked *(admin)* / *(superadmin)* are actually protected: nginx uses `auth_request` on `/api/auth/guard` and redirects to `/login?next=...` when there is no active admin session.
 
 ### API Reference
 
@@ -1203,24 +1343,54 @@ All routes must be accessed via the `/api` prefix (Nginx proxy). Example: `http:
 |--------|-------|-------------|
 | `GET` | `/api/metrics` | Prometheus-format metrics (default metrics + HTTP requests, players online per server, DB up, matches) |
 
-> Grafana runs at `http://<host>:3001` with a provisioned Prometheus datasource and CS16 dashboard. Prometheus also scrapes `nginx-exporter` (`:9113`) and exposes the Admin API (`127.0.0.1:9090`) used by `servers.sh prune --metrics`.
+> Grafana runs at `http://<host>:3001` with datasource and dashboards provisioned by file (`config/grafana/provisioning/` + `cs16-infra.json`). Prometheus scrapes 5 jobs: `cs16-api` (Basic Auth `METRICS_USER`/`METRICS_PASS`), `nginx` (`:9113`), `nginxlog` (`:4040`), `node` (host via `host.docker.internal:9100`) and `cadvisor` (`:8080`). The Admin API (`127.0.0.1:9090`) is used by `servers.sh prune --metrics`. Average-response-time panels (API and Front) use 30m windows (sparse traffic).
 
-#### Steam Login
+#### Authentication
+
+`httpOnly` session cookie (`cs16.sid`, `sameSite=lax`, rolling renewal), scrypt local password, **double-cookie CSRF** (`csrf_token` + `x-csrf-token` header) required on every mutation, and login rate limit (5/60s per IP → 429). The `users` table lives in MariaDB (idempotently migrated by `ensureSchema`).
 
 | Method | Route | Description |
 |--------|-------|-------------|
-| `GET` | `/api/auth/steam` | Starts the OpenID flow (redirects to Steam) |
-| `GET` | `/api/auth/steam/callback` | Steam callback; validates and authenticates the session if the SteamID is in `STEAM_ADMIN_IDS` |
-| `GET` | `/api/auth/steam/status` | Checks whether Steam login is configured and the session SteamID |
+| `POST` | `/api/auth/login` | Local user/password login (superadmin) |
+| `GET` | `/api/auth/session` | Current session (user, role, CSRF token) |
+| `GET` | `/api/auth/status` | Configured social login state (Google/Steam) |
+| `POST` | `/api/auth/logout` | Ends the session |
+| `GET` | `/api/auth/guard` | Public: 200 if active admin, else 401 (used by nginx `auth_request`) |
+| `GET` | `/api/auth/google` + `/api/auth/google/callback` | Google OAuth2 login |
+| `GET` | `/api/auth/steam` + `/api/auth/steam/callback` | Steam login (OpenID 2.0, no Web API key) |
+| `GET` | `/api/auth/steam/status` | Steam login configuration status |
 
-> Steam login uses OpenID 2.0 and does **not require a Steam Web API key**. Setup: `STEAM_RETURN_URL` (public return URL) and `STEAM_ADMIN_IDS` (authorized SteamID64 list). Without these variables the button does not appear in the RCON panel.
+> **Every first social login (Google/Steam) is born `pending`** and must be approved by the superadmin in `/usuarios`. The local superadmin is created on boot (`SEED_ADMIN=1`) with credentials in `ADMIN_CREDENTIALS.txt` (gitignored; regenerate with `docker compose exec api node scripts/seed-admin.js --reset`). Roles: `superadmin` (full), `admin` (server operations + RCON), `pending`. nginx protects `/admin.html`, `/system.html`, `/servers.html`, and `/users.html` with `auth_request /api/auth/guard` → `/login?next=...`.
+
+#### Users (admin)
+
+| Method | Route | Description |
+|--------|-------|-------------|
+| `GET` | `/api/admin/users` | Lists users and roles |
+| `POST` | `/api/admin/users/:id/approve` | Approves a `pending` user (sets role) |
+| `POST` | `/api/admin/users/:id/reject` | Rejects a `pending` user |
+| `POST` | `/api/admin/users/:id/role` | Changes a user's role |
+| `DELETE` | `/api/admin/users/:id` | Removes a user |
+
+#### Servers (admin)
+
+| Method | Route | Description |
+|--------|-------|-------------|
+| `GET` | `/api/admin/servers` | Lists servers (enriched with `servers.list`) |
+| `GET` | `/api/admin/servers/maps` | Maps available in the image |
+| `POST` | `/api/admin/servers` | Adds a server (provisions via `servers.sh up` in a disposable container) |
+| `DELETE` | `/api/admin/servers/:id` | Removes a server (unprovision) |
+| `POST` | `/api/admin/servers/:id/start` | Starts the server |
+| `POST` | `/api/admin/servers/:id/stop` | Stops the server |
+| `POST` | `/api/admin/servers/:id/restart` | Restarts the server |
+
+> All admin routes require session + CSRF + `commandLimiter`. Add/remove regenerate the override, so compose **recreates the api container** mid-request — the caller gets 502/cut connection but the operation **completes** (`web/servers.js` treats network errors as "provisioning, reloading..."). Automatic RCON (`/api/admin/command`) uses the server's credential (no more RCON password card on the admin page). `writeServersList` keeps a `.bak` and `add()`/`remove()` revert the list if provisioning fails.
 
 #### Admin (RCON)
 
 | Method | Route | Description |
 |--------|-------|-------------|
-| `POST` | `/api/admin/login` | Authenticate with RCON password (rate limited, CSRF protected) |
-| `POST` | `/api/admin/command` | Execute RCON command (requires session + CSRF token, rate limited) |
+| `POST` | `/api/admin/command` | Execute RCON command (requires `admin` session, CSRF token, rate limited) |
 | `POST` | `/api/admin/logout` | End admin session (requires CSRF token) |
 | `GET` | `/api/admin/session` | Check session status and get CSRF token |
 
@@ -1271,6 +1441,15 @@ docker compose logs -f db
 
 # Validate the running API
 ./scripts/smoke-test.sh
+
+# Publish images to Docker Hub (cs16, api, watch-main)
+./scripts/push-images.sh          # docker login first; tags latest + v<AAAAMMDD>-<HHMM>
+
+# Backup swag certs (config + certcheck patch + compose)
+./duckdns/backup.sh               # produces duckdns/backups/config-<date>.tar.gz
+
+# Recover a "silent" HLTV relay (RCON kick)
+./scripts/watch-mudo.sh           # cron every minute; or watch-mudo.sh <id>...
 ```
 
 ### Troubleshooting
@@ -1302,3 +1481,14 @@ If the `csstats` table is empty, verify the game server is running correctly. Th
 The client self-heals (rejoin + silent reload). If an HLTV relay went silent, the `scripts/watch-mudo.sh` cron recovers it (RCON kick); the definitive fix is restarting the game server (`docker compose restart cs16<id>`) — HLTV reconnects on its own in ~20s. Also check `live/watch/<id>/last_hltv_crash.txt`.
 
 **Admin login blocked (429):** the `smoke-test.sh` shares the login rate-limit window (60s) with the host. Wait for the interval and retry.
+
+**swag without certificate / burned Let's Encrypt quota (image ~2026):**
+```bash
+docker compose ps swag          # unhealthy
+docker compose logs swag | grep -i cert
+```
+The "old LE root" check of the image is worked around **durably** by the `ro` mount of `duckdns/init-certbot-config.run` in the compose file (swag **does not** reissue the cert on boot). If the cert still vanished or swag is cert-less for hours (quota 5 certs/168h), restore from a backup: `duckdns/backups/config-*.tar.gz` → restore `etc/letsencrypt/{live,archive,renewal}`. **Do not run repeated `docker compose up -d` while swag has no cert** — each boot tries to reissue and burns the quota.
+
+**swag cert expiring / renewal:** swag renews automatically via certbot. The backup in `duckdns/backups/` holds the last known-good state (restoring resolves without burning quota).
+
+**cAdvisor without fs data in Grafana:** the image is a local build of the `dillon-giacoppo/cadvisor` fork (containerd snapshotter); CPU/memory/network work, filesystem does not — expected behavior.
