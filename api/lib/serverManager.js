@@ -157,12 +157,11 @@ function runProvision(args, postScript) {
 
   // Sync automático do proxy-conf do swag: servers.sh (cmd_compose, rodado no
   // add/remove) escreve a região de marcadores no arquivo vivo e reinicia o
-  // swag. O dir do swag fica fora do repo (~/duckdns, stack separada) — servers.sh
-  // o deriva de ROOT (`dirname $ROOT/duckdns/...`), então o PAI do repo é
-  // montado no MESMO path do host (sempre existe: contém o repo; sem risco de o
-  // docker criar dirs vazios no host). Sem ~/duckdns, servers.sh avisa e segue.
-  const hostParent = path.dirname(hostRepo)
-  const mounts = ['-v', `${hostRepo}:${hostRepo}`, '-v', `${hostParent}:${hostParent}`, '-v', `${hostPathFor('/var/run/docker.sock')}:/var/run/docker.sock`]
+  // swag. O config do swag fica DENTRO do repo (`duckdns/swag/config`,
+  // docker-compose.duckdns.yml integrado à stack) — o repo já é montado em
+  // hostRepo, então servers.sh alcança o conf via `${ROOT}/duckdns/...`. Sem o
+  // config presente, servers.sh avisa e segue.
+  const mounts = ['-v', `${hostRepo}:${hostRepo}`, '-v', `${hostPathFor('/var/run/docker.sock')}:/var/run/docker.sock`]
   const envs = ['-e', `COMPOSE_PROJECT_NAME=${path.basename(hostRepo) || 'csserver_wstats'}`]
   if (postScript) envs.push('-e', `PROM_POST_SCRIPT=${postScript}`)
 

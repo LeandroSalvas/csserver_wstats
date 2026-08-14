@@ -32,9 +32,16 @@ OVERRIDE="docker-compose.servers.yml"
 # conheça as services do espectador (provision/unprovision as operam por id);
 # sem --profile, nunca são iniciadas por aqui.
 WATCH_OVERRIDE="docker-compose.watch.yml"
+# Stack TLS/DDNS (swag + duckdns), integrada ao projeto. Incluída para que o
+# compose conheça essas services (up/down/ps/provision/unprovision) e nunca as
+# trate como órfãs/derrube por engano.
+DUCKDNS_OVERRIDE="docker-compose.duckdns.yml"
 COMPOSE_FILES=(-f "${COMPOSE_BASE}" -f "${OVERRIDE}")
 if [ -f "${ROOT}/${WATCH_OVERRIDE}" ]; then
   COMPOSE_FILES+=(-f "${WATCH_OVERRIDE}")
+fi
+if [ -f "${ROOT}/${DUCKDNS_OVERRIDE}" ]; then
+  COMPOSE_FILES+=(-f "${DUCKDNS_OVERRIDE}")
 fi
 
 ok()   { printf '\033[32m✔\033[0m %s\n' "$*"; }
@@ -434,8 +441,9 @@ write_watch_compose() {
   cat "$out"
 }
 
-# Gera um snippet de blocos location para o proxy-conf do swag (stack ~/duckdns,
-# fora deste repo) que serve o espectador em WATCH_PUBLIC_BASE/<context>/.
+# Gera um snippet de blocos location para o proxy-conf do swag (stack TLS/DDNS
+# integrada, docker-compose.duckdns.yml) que serve o espectador em
+# WATCH_PUBLIC_BASE/<context>/.
 write_swag_snippet() {
   local watch_public_base watch_upstream
   watch_public_base="$(env_val WATCH_PUBLIC_BASE '')"
@@ -445,7 +453,7 @@ write_swag_snippet() {
   local out="${ROOT}/config/watch/swag-locations.conf.example"
   {
     echo "# Gerado por scripts/servers.sh compose — não edite manualmente."
-    echo "# Exposição do espectador web no swag (stack separada em ~/duckdns):"
+    echo "# Exposição do espectador web no swag (stack integrada: docker-compose.duckdns.yml):"
     echo "#   público: ${watch_public_base}/<context>/"
     echo "#   upstream: http://${watch_upstream}:<listen_port> (watch-main com network_mode: host)"
     echo "# O swag NÃO deve remover o prefixo (o proxy atende em BASE_PATH);"
@@ -473,16 +481,19 @@ swag_location_blocks() {
   done
 }
 
-# Sincroniza os blocos location no proxy-conf VIVO do swag (stack em ~/duckdns)
-# a partir de servers.list. Chamada no fim do cmd_compose (cobre up, compose,
-# provision e unprovision) e via subcomando `swag-sync`. Idempotente: reescreve
-# apenas a região entre os marcadores `# BEGIN/END servers.sh swag locations`
-# (na 1ª execução, migra os blocos legados). Só reinicia o swag se o arquivo
-# mudou E se `nginx -t` validar. No remove, os blocos derivam de servers.list,
+# Sincroniza os blocos location no proxy-conf VIVO do swag a partir de
+# servers.list. Chamada no fim do cmd_compose (cobre up, compose, provision e
+# unprovision) e via subcomando `swag-sync`. Idempotente: reescreve apenas a
+# região entre os marcadores `# BEGIN/END servers.sh swag locations` (na 1ª
+# execução, migra os blocos legados). Só reinicia o swag se o arquivo mudou
+# E se `nginx -t` validar. No remove, os blocos derivam de servers.list,
 # então o location do servidor removido some daqui automaticamente.
 apply_swag_locations() {
   local conf
   conf="${SWAG_PROXY_CONF:-}"
+  if [ -z "$conf" ] && [ -f "${ROOT}/duckdns/swag/config/nginx/proxy-confs/zueiracstrike-watch.subdomain.conf" ]; then
+    conf="${ROOT}/duckdns/swag/config/nginx/proxy-confs/zueiracstrike-watch.subdomain.conf"
+  fi
   if [ -z "$conf" ] && [ -f "${HOME}/duckdns/swag/config/nginx/proxy-confs/zueiracstrike-watch.subdomain.conf" ]; then
     conf="${HOME}/duckdns/swag/config/nginx/proxy-confs/zueiracstrike-watch.subdomain.conf"
   fi
@@ -490,7 +501,7 @@ apply_swag_locations() {
     conf="$(dirname "${ROOT}")/duckdns/swag/config/nginx/proxy-confs/zueiracstrike-watch.subdomain.conf"
   fi
   if [ -z "$conf" ] || [ ! -f "$conf" ]; then
-    info "swag: proxy-conf vivo não encontrado (SWAG_PROXY_CONF unset e ~/duckdns ausente) —"
+    info "swag: proxy-conf vivo não encontrado (SWAG_PROXY_CONF unset e duckdns/swag/config ausente no repo) —"
     info "      sincronização automática ignorada. Rode: SWAG_PROXY_CONF=/caminho/zueiracstrike-watch.subdomain.conf scripts/servers.sh swag-sync"
     return 0
   fi
