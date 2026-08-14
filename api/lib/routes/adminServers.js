@@ -5,7 +5,10 @@ const {
   commandLimiter,
   requireAdmin,
   requireCsrf,
-  getProvider
+  getProvider,
+  findServer,
+  queryServer,
+  withTimeout
 } = require('../core')
 
 function register(app) {
@@ -13,7 +16,25 @@ function register(app) {
     try {
       const provider = getProvider()
       const servers = await provider.list()
-      res.json({ servers })
+      // Enriquece com jogadores ao vivo (GameDig) para servidores em execução,
+      // em paralelo e com timeout — se falhar, mantém os dados estáticos (a
+      // coluna Jogadores fica "-").
+      const enriched = await Promise.all(servers.map(async (s) => {
+        if (s.containerState !== 'running') return s
+        const cfg = findServer(s.id)
+        if (!cfg) return s
+        try {
+          const state = await withTimeout(queryServer(cfg), 4000)
+          return {
+            ...s,
+            online: true,
+            players: Array.isArray(state.players) ? state.players.length : 0
+          }
+        } catch (err) {
+          return s
+        }
+      }))
+      res.json({ servers: enriched })
     } catch (err) {
       console.error('Erro ao listar servidores (admin):', err)
       res.status(500).json({ error: 'Falha ao listar servidores', detail: err.message })

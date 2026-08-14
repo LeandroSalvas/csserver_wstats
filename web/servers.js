@@ -104,7 +104,7 @@ function renderServers(servers) {
     mapCell.textContent = s.map || '-'
 
     const playersCell = document.createElement('td')
-    playersCell.textContent = s.online ? (s.players != null ? `${s.players}/${s.maxplayers}` : '-') : '-'
+    playersCell.textContent = s.online ? (s.players != null ? s.players : '-') : '-'
 
     const slotsCell = document.createElement('td')
     slotsCell.textContent = s.maxplayers || '-'
