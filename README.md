@@ -445,6 +445,8 @@ O `watch-main` é o submodule `watch/webxash3d-proxy` (fork `LeandroSalvas/webxa
 | `27300+(i*64)..+63` UDP | WebRTC (ICE) |
 | `4445` TCP | HTTPS do espectador (via swag, produção) |
 
+> **Sem redirecionamento de portas no roteador** (sem port-forward, sem DMZ): o acesso externo passa todo pelo swag (`:4445`, TLS/WSS) e o media WebRTC atravessa o NAT via STUN (IP público descoberto por `stun.l.google.com`) na faixa UDP fixa `27300+`. As portas `27100+/27200+/27300+` são apenas binds do host (caminho interno swag→watch-main→relay→jogo).
+
 `watch-main` usa `network_mode: host` (anuncia o IP da LAN como ICE candidate e resolve os candidatos mDNS `.local`). Em produção, o swag (parte da stack) serve `https://zueiracstrike.duckdns.org:4445/<context>/` → `http://192.168.15.54:27200+i`. Os blocos `location` são gerados em `config/watch/swag-locations.conf.example` **e sincronizados automaticamente** no proxy-conf vivo do swag por `servers.sh compose`/`swag-sync` (região de marcadores; reescrita idempotente; reinício do swag só com `nginx -t` OK).
 
 **Auto-recuperação** (cliente + proxy):
@@ -1189,6 +1191,8 @@ Each proxy serves its server at `BASE_PATH=/<context>/` (7th `servers.list` colu
 | `27200+i` TCP | Spectator page + signaling WebSocket (`/websocket`) |
 | `27300+(i*64)..+63` UDP | WebRTC (ICE) |
 | `4445` TCP | Spectator HTTPS (via swag, part of the stack) |
+
+> **No router port forwarding needed** (no port-forward, no DMZ): all external access goes through swag (`:4445`, TLS/WSS) and the WebRTC media crosses the NAT via STUN (public IP discovered through `stun.l.google.com`) on the fixed UDP range `27300+`. The `27100+/27200+/27300+` ports are host bindings only (internal path swag→watch-main→relay→game).
 
 `watch-main` uses `network_mode: host` (announces the LAN IP as an ICE candidate and resolves the browser's mDNS `.local` candidates). In production, swag serves `https://zueiracstrike.duckdns.org:4445/<context>/` → `http://192.168.15.54:27200+i`. The location blocks are generated in `config/watch/swag-locations.conf.example` **and synced automatically** into the live swag proxy-conf by `servers.sh compose`/`swag-sync` (marker region; idempotent rewrite; swag restarted only when `nginx -t` passes).
 
