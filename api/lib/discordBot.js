@@ -5,6 +5,10 @@
 // é desabilitado sem crash (mesmo padrão do webhook).
 
 const { Client, GatewayIntentBits } = require('discord.js')
+const { execFile } = require('child_process')
+const { promisify } = require('util')
+const fs = require('fs')
+const path = require('path')
 
 const {
   getProvider,
@@ -13,8 +17,14 @@ const {
   findServer,
   queryServer,
   withTimeout,
-  sendAlert
+  sendAlert,
+  db,
+  serverRepoDir
 } = require('./core')
+
+const execFileAsync = promisify(execFile)
+const STACK_PROJECT = process.env.STACK_PROJECT || 'csserver_wstats'
+const NOT_BOT = "steamid NOT LIKE 'BOT%'"
 
 const PREFIX = '!'
 const MAX_REPLY = 1900
@@ -105,8 +115,8 @@ async function listServers() {
 async function stackStatus() {
   const keys = Object.keys(stackHealthState)
   if (!keys.length) return '**Stack**\nNenhum serviço rastreado ainda.'
-  const up = keys.filter((k) => stackHealthState[k] === 'up').sort()
-  const down = keys.filter((k) => stackHealthState[k] !== 'up').sort()
+  const up = keys.filter((k) => stackHealthState[k] === true).sort()
+  const down = keys.filter((k) => stackHealthState[k] !== true).sort()
   const lines = []
   if (down.length) lines.push(`🔴 ${down.map((k) => stackLabel(k)).join(', ')}`)
   lines.push(`🟢 ${up.map((k) => stackLabel(k)).join(', ')}`)
@@ -144,12 +154,228 @@ async function rconCommand(id, command, msg) {
   }
 }
 
+// --- Helpers ---
+
+function truncate(text, max = MAX_REPLY) {
+  const s = String(text)
+  if (s.length <= max) return s
+  return s.slice(0, max) + '\n… (truncado)'
+}
+
+function formatUptime(sec) {
+  const d = Math.floor(sec / 86400)
+  const h = Math.floor((sec % 86400) / 3600)
+  const m = Math.floor((sec % 3600) / 60)
+  if (d > 0) return `${d}d ${h}h ${m}m`
+  if (h > 0) return `${h}h ${m}m`
+  return `${m}m ${Math.floor(sec % 60)}s`
+}
+
+async function dockerExec(args, timeout = 30000) {
+  const { stdout } = await execFileAsync('docker', args, { timeout, maxBuffer: 10 * 1024 * 1024 })
+  return stdout
+}
+
+// Resolve id de servidor / serviço da stack / nome de container → nome do container.
+async function resolveContainer(target) {
+  if (!target) return null
+  const out = await dockerExec([
+    'ps', '-a',
+    '--filter', `label=com.docker.compose.project=${STACK_PROJECT}`,
+    '--format', '{{.Label "com.docker.compose.service"}}|{{.Names}}'
+  ])
+  const byService = {}
+  const names = new Set()
+  for (const line of out.split('\n')) {
+    if (!line.trim()) continue
+    const [service, name] = line.split('|')
+    if (!name) continue
+    byService[service] = name
+    names.add(name)
+    if (service) names.add(service)
+  }
+  if (names.has(target)) return target
+  const servers = await getProvider().list()
+  const srv = servers.find((s) => s.id === target)
+  if (srv) {
+    const svc = srv.id === 'main' ? 'cs16' : `cs16${srv.id}`
+    if (byService[svc]) return byService[svc]
+  }
+  if (byService[`watch-main-${target}`]) return byService[`watch-main-${target}`]
+  if (byService[`watch-hltv-${target}`]) return byService[`watch-hltv-${target}`]
+  return null
+}
+
+// --- Comandos ---
+
+async function listMaps() {
+  try {
+    const maps = await getProvider().availableMaps()
+    if (!maps.length) return 'Nenhum mapa disponível.'
+    return `**Mapas disponíveis (${maps.length})**\n${truncate(maps.join(' '), MAX_REPLY)}`
+  } catch (err) {
+    return `❌ Falha ao listar mapas: ${err.message || err}`
+  }
+}
+
+async function changeLevel(id, map, msg) {
+  const rconPassword = process.env.RCON_PASSWORD
+  if (!rconPassword) return 'RCON não configurado (RCON_PASSWORD).'
+  const servers = await getProvider().list()
+  const known = servers.find((s) => s.id === id)
+  if (!known) return `Servidor \`${id}\` não encontrado.`
+  if (!/^[a-z0-9_]+$/.test(map)) return `Mapa inválido: \`${map}\`.`
+  try {
+    const output = await runRconCommand(rconPassword, `changelevel ${map}`, id)
+    await sendAlert(`🤖 Discord: changelevel \`${map}\` em **${known.name || id}** (por ${msg.author.username})`)
+    return `✅ Changelevel para **${map}** em **${known.name || id}**.${output ? `\n${output}` : ''}`
+  } catch (err) {
+    return `❌ Falha no changelevel: ${err.message || err}`
+  }
+}
+
+function formatPlayer(p) {
+  const kills = Number(p.kills || 0)
+  const deaths = Number(p.deaths || 0)
+  const hs = Number(p.hs || 0)
+  const kd = deaths > 0 ? (kills / deaths).toFixed(2) : kills > 0 ? '∞' : '0.00'
+  const hsPct = kills > 0 ? ((hs / kills) * 100).toFixed(1) : '0.0'
+  const hours = (Number(p.connection_time || 0) / 3600).toFixed(1)
+  return [
+    `**${p.name || p.steamid}**`,
+    `SteamID: ${p.steamid}`,
+    `Skill: ${Number(p.skill || 0).toFixed(1)} | K: ${kills} | D: ${deaths} | KD: ${kd}`,
+    `HS: ${hs} (${hsPct}%) | Assists: ${Number(p.assists || 0)} | TKs: ${Number(p.tks || 0)}`,
+    `Tempo: ${hours}h | Connects: ${Number(p.connects || 0)}`,
+    `Última vez: ${p.last_join ? new Date(p.last_join).toLocaleDateString('pt-BR') : '-'} | Servidores: ${p.server_name || '-'}`
+  ].join('\n')
+}
+
+async function playerStats(query) {
+  const q = String(query || '').trim()
+  if (!q) return 'Informe um nome ou steamid.'
+  if (q.length > 64) return 'Busca muito longa (máx 64).'
+
+  if (/^STEAM_[0-9]:[0-9]:[0-9]+$/i.test(q) || /^\[U:1:[0-9]+\]$/.test(q)) {
+    const [rows] = await db.query(
+      `SELECT steamid, MAX(name) AS name, MAX(skill) AS skill, SUM(kills) AS kills,
+              SUM(deaths) AS deaths, SUM(hs) AS hs, SUM(tks) AS tks, SUM(assists) AS assists,
+              SUM(connection_time) AS connection_time, SUM(connects) AS connects,
+              MIN(first_join) AS first_join, MAX(last_join) AS last_join,
+              GROUP_CONCAT(DISTINCT server_name ORDER BY server_name) AS server_name
+       FROM csstats WHERE steamid = ? AND ${NOT_BOT} GROUP BY steamid`,
+      [q]
+    )
+    const p = rows[0]
+    if (!p) return `Jogador \`${q}\` não encontrado.`
+    return formatPlayer(p)
+  }
+
+  const [rows] = await db.query(
+    `SELECT steamid, MAX(name) AS name, SUM(kills) AS kills, SUM(deaths) AS deaths,
+            SUM(hs) AS hs, MAX(skill) AS skill
+     FROM csstats WHERE (name LIKE ? OR steamid LIKE ?) AND ${NOT_BOT}
+     GROUP BY steamid ORDER BY kills DESC LIMIT 10`,
+    [`%${q}%`, `%${q}%`]
+  )
+  if (!rows.length) return `Nenhum jogador encontrado para \`${q}\`.`
+  if (rows.length === 1) return formatPlayer(rows[0])
+  const lines = rows.map((r, i) => `${i + 1}. **${r.name || r.steamid}** — ${r.kills} kills | skill ${r.skill ?? '-'}`)
+  return `**Candidatos para "${q}"**\n${lines.join('\n')}\nUse \`!player <steamid>\` para stats completos.`
+}
+
+async function containerLogs(target, n) {
+  const name = await resolveContainer(target)
+  if (!name) {
+    return `Container \`${target}\` não encontrado. Tente um id de servidor (ex.: zueira2), serviço (api, web, db) ou nome do container.`
+  }
+  const lines = Number.isFinite(n) && n > 0 ? Math.min(200, Math.floor(n)) : 30
+  try {
+    const out = await dockerExec(['logs', '--tail', String(lines), '--timestamps', name], 15000)
+    return `**Logs ${name} (últimas ${lines} linhas):**\n${truncate(out, MAX_REPLY)}`
+  } catch (err) {
+    return `❌ Falha ao ler logs de ${name}: ${err.stderr || err.message}`
+  }
+}
+
+async function dockerStats() {
+  try {
+    const names = await dockerExec([
+      'ps',
+      '--filter', `label=com.docker.compose.project=${STACK_PROJECT}`,
+      '--format', '{{.Names}}'
+    ])
+    const list = names.split('\n').filter(Boolean)
+    if (!list.length) return 'Nenhum container do projeto em execução.'
+    const out = await dockerExec([
+      'stats', '--no-stream',
+      '--format', '{{.Name}}|{{.CPUPerc}}|{{.MemUsage}}|{{.MemPerc}}',
+      ...list
+    ], 30000)
+    const lines = out.split('\n').filter(Boolean).map((line) => {
+      const [name, cpu, mem, memPct] = line.split('|')
+      return `${name.replace(/^\//, '')} — CPU ${cpu} | Mem ${mem} (${memPct})`
+    })
+    return `**docker stats**\n${truncate(lines.join('\n'), MAX_REPLY)}`
+  } catch (err) {
+    return `❌ Falha no docker stats: ${err.stderr || err.message}`
+  }
+}
+
+async function watchStatus(id) {
+  const servers = await getProvider().list()
+  const targets = id ? servers.filter((s) => s.id === id) : servers
+  if (!targets.length) return `Servidor \`${id}\` não encontrado.`
+  const out = []
+  for (const s of targets) {
+    const lines = [`**${s.id}** (${s.name})`]
+    for (const kind of ['hltv', 'main']) {
+      const name = `cs16-watch-${kind}-${s.id}`
+      try {
+        const info = await dockerExec([
+          'inspect', '--format',
+          '{{if .State.Health}}{{.State.Health.Status}}{{else}}sem healthcheck{{end}}',
+          name
+        ])
+        lines.push(`  ${kind}: ${info.trim() || '?'}`)
+      } catch (err) {
+        lines.push(`  ${kind}: ausente`)
+      }
+    }
+    const dir = path.join(serverRepoDir, 'live', 'watch', s.id)
+    try {
+      const crash = fs.readFileSync(path.join(dir, 'last_hltv_crash.txt'), 'utf8').trim()
+      if (crash) lines.push(`  último crash: ${crash}`)
+    } catch (err) {}
+    try {
+      const mudoCount = fs.readFileSync(path.join(dir, '.mudo_count'), 'utf8').trim()
+      if (mudoCount && mudoCount !== '0') lines.push(`  episódios de mudo: ${mudoCount}`)
+    } catch (err) {}
+    out.push(lines.join('\n'))
+  }
+  return `**Espectadores**\n${out.join('\n\n')}`
+}
+
+function uptimeInfo() {
+  const keys = Object.keys(stackHealthState)
+  const up = keys.filter((k) => stackHealthState[k] === true).length
+  const version = require('../package.json').version
+  return `**Uptime da API:** ${formatUptime(process.uptime())}\n**Versão:** ${version}\n**Stack:** ${up}/${keys.length} serviços no ar`
+}
+
 const HELP = '**Comandos**\n' +
   '`!status` — servidores + stack\n' +
   '`!servidores` — lista os servidores de jogo\n' +
   '`!stack` — estado dos serviços da stack\n' +
   '`!start <id>` / `!stop <id>` / `!restart <id>` — controle de servidor\n' +
   '`!rcon <id> <comando>` — RCON no servidor\n' +
+  '`!changelevel <id> <mapa>` — troca o mapa do servidor\n' +
+  '`!mapas` — mapas disponíveis\n' +
+  '`!player <nome ou steamid>` — stats do jogador\n' +
+  '`!logs <id|serviço> [n]` — últimas linhas de log de um container\n' +
+  '`!ps` — CPU/memória dos containers\n' +
+  '`!watch [id]` — saúde dos espectadores\n' +
+  '`!uptime` — uptime/versão da API\n' +
   '`!ajuda` — esta mensagem'
 
 async function handleMessage(msg) {
@@ -184,6 +410,27 @@ async function handleMessage(msg) {
       if (!id || !command) return msg.reply('Uso: `!rcon <id> <comando>`')
       return msg.reply(await rconCommand(id, command, msg))
     }
+    if (cmd === 'mapas') return sendReplies(msg, await listMaps())
+    if (cmd === 'changelevel') {
+      const id = parts[1]
+      const map = parts[2]
+      if (!id || !map) return msg.reply('Uso: `!changelevel <id> <mapa>`')
+      return msg.reply(await changeLevel(id, map, msg))
+    }
+    if (cmd === 'player') {
+      const q = content.slice(PREFIX.length + cmd.length).trim()
+      if (!q) return msg.reply('Uso: `!player <nome ou steamid>`')
+      return sendReplies(msg, await playerStats(q))
+    }
+    if (cmd === 'logs') {
+      const target = parts[1]
+      const n = parseInt(parts[2], 10)
+      if (!target) return msg.reply('Uso: `!logs <id|serviço> [n]`')
+      return sendReplies(msg, await containerLogs(target, n))
+    }
+    if (cmd === 'ps') return sendReplies(msg, await dockerStats())
+    if (cmd === 'watch') return sendReplies(msg, await watchStatus(parts[1]))
+    if (cmd === 'uptime') return msg.reply(uptimeInfo())
     return msg.reply(`Comando desconhecido.\n${HELP}`)
   } catch (err) {
     console.error('discordBot: erro no comando:', err.message)

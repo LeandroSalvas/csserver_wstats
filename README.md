@@ -61,6 +61,7 @@ O **swag** (proxy TLS) e o **duckdns** (DNS dinâmico) são **parte da stack** (
 - **Gerenciamento de servidores pelo painel** (`/servidores`): add/remove/start/stop/restart via UI (docker CLI no socket), RCON automático para admins
 - Monitoramento multi-servidor (status de vários servidores na página Sistema)
 - Alertas de online/offline via webhook (Slack/Discord/Teams)
+- **Bot Discord**: gerencia servidores, stack e espectadores por comandos no chat (prefixo `!`) — veja [Bot Discord](#bot-discord-gerencia-a-stack-pelo-chat)
 - Rastreamento de partidas (placar, vencedor e duração por mapa)
 - Métricas Prometheus + dashboards Grafana
 - Suporte a dois idiomas (Português/Inglês)
@@ -81,6 +82,7 @@ O **swag** (proxy TLS) e o **duckdns** (DNS dinâmico) são **parte da stack** (
 - Página CSTV (`/cstv.html`) com o espectador embutido em iframe + seletor de servidor
 - Auto-recuperação: watchdog de stall no cliente (rejoin + reload silencioso) e teardown de idle na bridge do proxy — a sessão sobrevive até reinícios do servidor de jogo
 - Exposição TLS via **swag** (parte da stack, `docker-compose.duckdns.yml`): `https://...:4445/<context>/`, com os blocos `location` sincronizados automaticamente por `servers.sh compose`/`swag-sync`
+- Controle de **volume do espectador** por aba (Web Audio, slider persistente)
 - Opt-in (não sobe na stack padrão), gerenciado por `./scripts/watch.sh`
 
 ### Pré-requisitos
@@ -173,6 +175,9 @@ Abra o navegador em `http://<seu-host>:8080`
 | `GRAFANA_ADMIN_USER` | `admin` | Usuário admin do Grafana |
 | `GRAFANA_ADMIN_PASSWORD` | `admin` | Senha admin do Grafana (vale só no 1º boot; o volume `grafana_data` guarda a senha posterior) |
 | `DOCKER_USER` | *(vazio)* | Usuário do Docker Hub (`scripts/push-images.sh`) |
+| `DISCORD_BOT_TOKEN` | *(vazio)* | Token do bot Discord que gerencia a stack por comandos `!` no chat (requer o intent privilegiado **MESSAGE CONTENT** habilitado) |
+| `DISCORD_ALLOWED_ROLE_IDS` | *(vazio)* | IDs de roles Discord autorizados a usar o bot (separados por vírgula) |
+| `DISCORD_ALLOWED_USER_IDS` | *(vazio)* | IDs de usuários Discord autorizados (separados por vírgula; sem role e sem ID o bot é desabilitado) |
 
 **Espectador web (opt-in):**
 
@@ -458,6 +463,41 @@ O `watch-main` é o submodule `watch/webxash3d-proxy` (fork `LeandroSalvas/webxa
 - **Congelamento com a aba ativa (overflow do buffer)**: o relay produz mais rápido que o engine consome (1 pacote/frame), o buffer enchia em ~3-7 min e o descarte do pacote mais antigo quebrava a cadeia delta do HLTV (freeze permanente, watchdog quieto pois pacotes continuam chegando). Fix: watchdog de backlog que faz `rejoin()` a 80% do buffer (reseta a cadeia antes de qualquer drop) + `rejoin()` agora limpa o backlog da sessão anterior; o relay roda com `sys_ticrate 30` para a produção acompanhar o consumo.
 - **Microfone**: o glue do engine pede `getUserMedia` no boot (captura de voice); stub no `index.html` rejeita a permissão — sem prompt para o espectador.
 - Loading por etapas em PT-BR com barra de progresso; erros de JS/WebGL2 aparecem na tela em vez de tela preta.
+- **Volume do espectador**: controle de volume global por aba via Web Audio — o `index.html` envolve o `ctx.destination` do `AudioContext` num `GainNode` (`window.setSpectatorVolume(v)`) e há um slider **Vol** persistente (guarda em `localStorage` a chave `spectatorVolume`). O áudio é local do navegador (Web Audio), então nada no servidor controla o volume de cada espectador.
+
+#### Bot Discord (gerencia a stack pelo chat)
+
+A API roda um bot Discord que controla servidores de jogo, stack e espectadores por comandos de texto no canal. Ele roda **no processo da API** (`api/lib/discordBot.js`) e chama os módulos internos diretamente (sem HTTP/CSRF): `serverManager` para start/stop/restart, `runRconCommand` para RCON, `stackHealthState` para o estado da stack, `queryServer`/`findServer` para o estado dos jogos e o CLI do docker (mesmo socket do `serverManager`) para logs/stats/health.
+
+**Configuração** (`.env`):
+
+| Variável | Descrição |
+|----------|-----------|
+| `DISCORD_BOT_TOKEN` | Token do bot (crie um application em `discord.com/developers` → Bot). **Ative o intent privilegiado MESSAGE CONTENT** e convide o bot ao servidor com permissões de ler/enviar mensagens (OAuth2 URL Generator, escopo `bot`). |
+| `DISCORD_ALLOWED_ROLE_IDS` | IDs de roles autorizados (separados por vírgula) |
+| `DISCORD_ALLOWED_USER_IDS` | IDs de usuários autorizados (separados por vírgula) |
+
+Sem token ou sem permissões, o bot é desabilitado sem crash. As variáveis são repassadas ao container no `docker-compose.yml`.
+
+**Comandos** (prefixo `!`, só quem tem role/ID autorizado):
+
+| Comando | Descrição |
+|---------|-----------|
+| `!status` | Servidores + stack |
+| `!servidores` | Lista os servidores de jogo |
+| `!stack` | Estado dos serviços da stack |
+| `!start <id>` / `!stop <id>` / `!restart <id>` | Controle de servidor |
+| `!rcon <id> <comando>` | RCON no servidor |
+| `!changelevel <id> <mapa>` | Troca o mapa do servidor (RCON `changelevel`) |
+| `!mapas` | Mapas disponíveis na imagem |
+| `!player <nome ou steamid>` | Stats do jogador (SQL de `top.js`, filtrando bots) |
+| `!logs <id ou serviço> [n]` | Últimas `n` linhas de log do container (ex.: `!logs zueira2 20`, `!logs api 50`) |
+| `!ps` | CPU/memória dos containers do projeto (`docker stats`) |
+| `!watch [id]` | Saúde dos espectadores (todos, ou só um servidor): health do `watch-main`/`watch-hltv`, último crash e episódios de mudo |
+| `!uptime` | Uptime/versão da API e serviços no ar |
+| `!ajuda` | Lista os comandos |
+
+Respostas truncadas em ~1900 chars (limite do Discord). Mutações (`start/stop/restart`, `rcon`, `changelevel`) também disparam `sendAlert` no mesmo webhook dos alertas. O **volume do espectador é impossível pelo bot**: o áudio é local do navegador (Web Audio), nada no servidor o controla.
 
 **Observação operacional**: o relay HLTV pode ficar "mudo" (processo vivo e conectado ao servidor, mas sem enviar dados). A auto-recuperação acima destrava a sessão; o destravamento definitivo é reiniciar o servidor de jogo (o HLTV reconecta sozinho em ~20s). O cron `scripts/watch-mudo.sh` detecta e recupera o mudo automaticamente (kick via RCON). Acompanhe `live/watch/<id>/last_hltv_crash.txt` e o `watch.sh status`.
 
@@ -808,6 +848,7 @@ The **swag** (TLS proxy) and **duckdns** (dynamic DNS) are **part of the stack**
 - **Server management from the panel** (`/servidores`): add/remove/start/stop/restart via UI (docker CLI on the socket), automatic RCON for admins
 - Multi-server monitoring (status of several servers on the System page)
 - Online/offline alerts via webhook (Slack/Discord/Teams)
+- **Discord bot**: manages game servers, the stack, and the spectators via chat commands (`!` prefix) — see [Discord Bot](#discord-bot-manages-the-stack-via-chat)
 - Match tracking (score, winner, and duration per map)
 - Prometheus metrics + Grafana dashboards
 - Bilingual support (Portuguese/English)
@@ -828,6 +869,7 @@ The **swag** (TLS proxy) and **duckdns** (dynamic DNS) are **part of the stack**
 - CSTV page (`/cstv.html`) with the spectator embedded in an iframe + server selector
 - Self-healing: client stall watchdog (rejoin + silent reload) and proxy bridge idle teardown — the session survives even game-server restarts
 - TLS exposure via **swag** (part of the stack, `docker-compose.duckdns.yml`): `https://...:4445/<context>/`, with the `location` blocks auto-synced by `servers.sh compose`/`swag-sync`
+- Per-tab **spectator volume** (Web Audio, persistent slider)
 - Opt-in (not part of the default stack), managed by `./scripts/watch.sh`
 
 ### Prerequisites
@@ -920,6 +962,9 @@ Open your browser at `http://<your-host>:8080`
 | `GRAFANA_ADMIN_USER` | `admin` | Grafana admin user |
 | `GRAFANA_ADMIN_PASSWORD` | `admin` | Grafana admin password (only on first boot; the `grafana_data` volume keeps the later password) |
 | `DOCKER_USER` | *(empty)* | Docker Hub user (`scripts/push-images.sh`) |
+| `DISCORD_BOT_TOKEN` | *(empty)* | Token of the Discord bot that manages the stack via `!` chat commands (requires the privileged **MESSAGE CONTENT** intent enabled) |
+| `DISCORD_ALLOWED_ROLE_IDS` | *(empty)* | Discord role IDs allowed to use the bot (comma-separated) |
+| `DISCORD_ALLOWED_USER_IDS` | *(empty)* | Discord user IDs allowed (comma-separated; with neither role nor ID the bot is disabled) |
 
 **Web spectator (opt-in):**
 
@@ -1205,6 +1250,41 @@ Each proxy serves its server at `BASE_PATH=/<context>/` (7th `servers.list` colu
 - **Active-tab freeze (buffer overflow)**: the relay produces faster than the engine consumes (1 packet/frame via `recvfrom`); the buffer filled in ~3-7min and dropping the oldest packet broke the HLTV delta chain again (permanent freeze, stall watchdog quiet because packets kept arriving). Fixed with a backlog high-watermark watchdog (`rejoin()` at 80% full) + `rejoin()` flushing the old session's backlog (`netClear()`); the relay runs `sys_ticrate 30` so production matches consumption.
 - **Microphone**: the engine glue requests `getUserMedia` at boot (voice capture); a stub in `index.html` rejects it — no permission prompt for spectators.
 - Staged PT-BR loading screen with a progress bar; JS/WebGL2 errors surface on screen instead of a black screen.
+- **Spectator volume**: global per-tab volume via Web Audio — `index.html` wraps the `AudioContext`'s `ctx.destination` in a `GainNode` (`window.setSpectatorVolume(v)`) and there is a persistent **Vol** slider (saved under the `localStorage` key `spectatorVolume`). Audio is browser-local (Web Audio), so nothing on the server controls a spectator's volume.
+
+#### Discord Bot (manages the stack via chat)
+
+The API runs a Discord bot that controls game servers, the stack, and the spectators via text commands in the channel. It runs **inside the API process** (`api/lib/discordBot.js`) and calls the internal modules directly (no HTTP/CSRF): `serverManager` for start/stop/restart, `runRconCommand` for RCON, `stackHealthState` for stack state, `queryServer`/`findServer` for game state, and the docker CLI (the same socket as `serverManager`) for logs/stats/health.
+
+**Configuration** (`.env`):
+
+| Variable | Description |
+|----------|-------------|
+| `DISCORD_BOT_TOKEN` | Bot token (create an application in `discord.com/developers` → Bot). **Enable the privileged MESSAGE CONTENT intent** and invite the bot with read/send-message permissions (OAuth2 URL Generator, `bot` scope). |
+| `DISCORD_ALLOWED_ROLE_IDS` | Authorized role IDs (comma-separated) |
+| `DISCORD_ALLOWED_USER_IDS` | Authorized user IDs (comma-separated) |
+
+Without a token or permissions the bot is disabled without crashing. The variables are passed to the container in `docker-compose.yml`.
+
+**Commands** (`!` prefix, only members with an authorized role/ID):
+
+| Command | Description |
+|---------|-------------|
+| `!status` | Servers + stack |
+| `!servidores` | Lists the game servers |
+| `!stack` | Stack service states |
+| `!start <id>` / `!stop <id>` / `!restart <id>` | Server control |
+| `!rcon <id> <command>` | RCON on the server |
+| `!changelevel <id> <map>` | Changes the server map (RCON `changelevel`) |
+| `!mapas` | Maps available in the image |
+| `!player <name or steamid>` | Player stats (same SQL as `top.js`, bots filtered out) |
+| `!logs <id or service> [n]` | Last `n` log lines of a container (e.g. `!logs zueira2 20`, `!logs api 50`) |
+| `!ps` | CPU/memory of the project containers (`docker stats`) |
+| `!watch [id]` | Spectator health (all, or a single server): `watch-main`/`watch-hltv` health, last crash, and mudo episodes |
+| `!uptime` | API uptime/version and services up |
+| `!ajuda` | Lists the commands |
+
+Replies are truncated at ~1900 chars (Discord's limit). Mutations (`start/stop/restart`, `rcon`, `changelevel`) also trigger `sendAlert` on the same alerts webhook. **Spectator volume cannot be changed via the bot**: audio is browser-local (Web Audio), nothing on the server controls it.
 
 **Operational note**: the HLTV relay can go "silent" (process alive and connected to the server, but not sending data). The self-healing above unlocks the session; the definitive fix is restarting the game server (HLTV reconnects on its own in ~20s). The `scripts/watch-mudo.sh` cron detects and recovers mudo automatically (RCON kick). Monitor `live/watch/<id>/last_hltv_crash.txt` and `watch.sh status`.
 
