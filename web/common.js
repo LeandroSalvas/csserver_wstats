@@ -98,9 +98,29 @@ function renderAuthBadge() {
 
     const wrap = document.createElement('span')
     wrap.className = 'auth-user'
+    const fullName = currentUser.displayName || currentUser.username || currentUser.provider
+    const firstName = String(fullName).trim().split(/\s+/)[0] || currentUser.provider
+
+    const avatar = document.createElement(currentUser.avatarUrl ? 'img' : 'span')
+    avatar.className = 'auth-user-avatar'
+    if (currentUser.avatarUrl) {
+      avatar.src = currentUser.avatarUrl
+      avatar.alt = ''
+      avatar.addEventListener('error', () => {
+        const fallback = document.createElement('span')
+        fallback.className = 'auth-user-avatar auth-user-avatar-fallback'
+        fallback.textContent = firstName.charAt(0).toUpperCase()
+        avatar.replaceWith(fallback)
+      })
+    } else {
+      avatar.classList.add('auth-user-avatar-fallback')
+      avatar.textContent = firstName.charAt(0).toUpperCase()
+    }
+    wrap.appendChild(avatar)
+
     const name = document.createElement('span')
     name.className = 'auth-user-name'
-    name.textContent = currentUser.displayName || currentUser.username || currentUser.provider
+    name.textContent = firstName
     name.dataset.tooltip = currentUser.role === 'superadmin' ? 'Superadmin' : 'Admin'
     wrap.appendChild(name)
 

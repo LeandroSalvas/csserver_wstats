@@ -691,18 +691,105 @@ cmd_ps() {
 
 cmd_status() {
   info "=== Servidores configurados (${SERVERS_LIST}) ==="
-  printf '%-12s %-22s %-10s %-14s %-6s %-6s %s\n' "ID" "NOME" "HOST_PORT" "MAPA" "ROT" "MAX" "CONTEXT"
+  # Larguras dinâmicas por coluna (max entre cabeçalho e valores) para nunca desalinhar.
+  local -a s_rows=()
+  local -i w_id=2 w_name=4 w_port=9 w_map=4 w_rot=3 w_max=3
   local line
   while read -r line; do
     local id name host_port map maxplayers rotate context
     IFS='|' read -r id name host_port map maxplayers rotate context <<< "$line"
     : "${rotate:=yes}"
     : "${context:=$(slugify "$name")}"
-    printf '%-12s %-22s %-10s %-14s %-6s %-6s %s\n' "${id}" "${name}" "${host_port}" "${map}" "${rotate}" "${maxplayers}" "${context}"
+    s_rows+=("${id}|${name}|${host_port}|${map}|${rotate}|${maxplayers}|${context}")
+    ((${#id} > w_id)) && w_id=${#id}
+    ((${#name} > w_name)) && w_name=${#name}
+    ((${#host_port} > w_port)) && w_port=${#host_port}
+    ((${#map} > w_map)) && w_map=${#map}
+    ((${#rotate} > w_rot)) && w_rot=${#rotate}
+    ((${#maxplayers} > w_max)) && w_max=${#maxplayers}
   done < <(parse_servers)
+  printf '%-*s %-*s %-*s %-*s %-*s %-*s %s\n' \
+    "$w_id" "ID" "$w_name" "NOME" "$w_port" "HOST_PORT" "$w_map" "MAPA" \
+    "$w_rot" "ROT" "$w_max" "MAX" "CONTEXT"
+  for line in "${s_rows[@]}"; do
+    local id name host_port map rotate maxplayers context
+    IFS='|' read -r id name host_port map rotate maxplayers context <<< "$line"
+    printf '%-*s %-*s %-*s %-*s %-*s %-*s %s\n' \
+      "$w_id" "$id" "$w_name" "$name" "$w_port" "$host_port" "$w_map" "$map" \
+      "$w_rot" "$rotate" "$w_max" "$maxplayers" "$context"
+  done
   info ""
-  info "=== Containers ==="
-  docker compose "${COMPOSE_FILES[@]}" ps
+  info "=== Containers (por tipo de serviço) ==="
+
+  # Agrupa os containers por tipo usando a SERVICE (não o nome do container,
+  # que teria falso match, ex.: cs16-api). Grupos em ordem; "Outros" captura
+  # qualquer service nova que ainda não tenha grupo próprio.
+  local -a g_labels=(
+    'Servidores de jogo (CS 1.6)'
+    'Aplicação (API & Frontend)'
+    'Dados & Cache'
+    'Monitoramento'
+    'TLS & DDNS'
+    'Espectador (WebRTC)'
+    'Outros'
+  )
+  local -a g_re=(
+    '^cs16'
+    '^(api|web)$'
+    '^(db|redis)$'
+    '^(prometheus|grafana|nginx-exporter|nginxlog-exporter|node-exporter|cadvisor)$'
+    '^(swag|duckdns)$'
+    '^watch-'
+    '.*'
+  )
+  local -a g_rows=()
+
+  local svc name st ports rest g
+  while IFS='|' read -r svc name st ports; do
+    rest="${name}|${st}|${ports}"
+    g=0
+    while [ "$g" -lt "${#g_labels[@]}" ]; do
+      if [[ "$svc" =~ ${g_re[$g]} ]]; then
+        g_rows[$g]+="${rest}"$'\n'
+        break
+      fi
+      g=$((g + 1))
+    done
+  done < <(docker compose "${COMPOSE_FILES[@]}" ps --format '{{.Service}}|{{.Name}}|{{.Status}}|{{.Ports}}' 2>/dev/null)
+
+  # Larguras máximas de NAME/STATUS sobre todos os grupos (um par só, para o
+  # alinhamento bater entre os grupos). PORTS é a última coluna, sem largura fixa.
+  local max_name=0 max_status=0
+  local row name st ports
+  g=0
+  while [ "$g" -lt "${#g_labels[@]}" ]; do
+    [ -n "${g_rows[$g]:-}" ] || { g=$((g + 1)); continue; }
+    while IFS='|' read -r name st ports; do
+      ((${#name} > max_name)) && max_name=${#name}
+      ((${#st} > max_status)) && max_status=${#st}
+    done <<< "${g_rows[$g]%$'\n'}"
+    g=$((g + 1))
+  done
+
+  local any=0
+  g=0
+  while [ "$g" -lt "${#g_labels[@]}" ]; do
+    if [ -n "${g_rows[$g]:-}" ]; then
+      [ "$any" -eq 0 ] || info ""
+      info "--- ${g_labels[$g]} ---"
+      while IFS='|' read -r name st ports; do
+        if [ -n "$ports" ]; then
+          printf '  %-*s %-*s %s\n' "$max_name" "$name" "$max_status" "$st" "$ports"
+        else
+          printf '  %-*s %s\n' "$max_name" "$name" "$st"
+        fi
+      done <<< "${g_rows[$g]%$'\n'}"
+      any=1
+    fi
+    g=$((g + 1))
+  done
+  [ "$any" -eq 0 ] && info "  (nenhum container no projeto)"
+
   info ""
   info "Dica: scripts/servers.sh rcon <id> <comando> para RCON direto; a página Sistema mostra o status online."
 }

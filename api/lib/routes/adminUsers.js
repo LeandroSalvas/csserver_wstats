@@ -8,7 +8,9 @@ const {
   commandLimiter,
   requireAdmin,
   requireSuperadmin,
-  requireCsrf
+  requireCsrf,
+  sendAlert,
+  pushAlertEvent
 } = require('../core')
 
 const { db } = require('../core')
@@ -41,11 +43,14 @@ function register(app) {
       if (!Number.isInteger(id) || id <= 0) {
         return res.status(400).json({ error: 'ID inválido' })
       }
+      const [rows] = await db.query(
+        'SELECT id, provider, username, display_name, email, role FROM users WHERE id = ?',
+        [id]
+      )
+      if (!rows.length) {
+        return res.status(404).json({ error: 'Usuário não encontrado' })
+      }
       if (status === 'rejected') {
-        const [rows] = await db.query('SELECT provider, role FROM users WHERE id = ?', [id])
-        if (!rows.length) {
-          return res.status(404).json({ error: 'Usuário não encontrado' })
-        }
         if (isLocalAdmin(rows[0])) {
           return res.status(400).json({ error: 'O admin local não pode ser desativado' })
         }
@@ -54,6 +59,18 @@ function register(app) {
       if (!result.affectedRows) {
         return res.status(404).json({ error: 'Usuário não encontrado' })
       }
+
+      const u = rows[0]
+      const who = req.session?.user?.displayName || req.session?.user?.username || req.session?.user?.id
+      const detail = `${u.display_name || u.username || u.email || u.id} (${u.provider})`
+      if (status === 'active') {
+        pushAlertEvent(id, 'user-approved', detail)
+        await sendAlert(`🟢 Usuário aprovado: ${detail} — por ${who}`)
+      } else if (status === 'rejected') {
+        pushAlertEvent(id, 'user-rejected', detail)
+        await sendAlert(`⛔ Usuário rejeitado: ${detail} — por ${who}`)
+      }
+
       res.json({ success: true, id, status })
     } catch (err) {
       console.error(`Erro ao alterar status (${status}) do usuário ${req.params.id}:`, err)

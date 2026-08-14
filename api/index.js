@@ -20,7 +20,8 @@ const {
   withTimeout,
   httpRequestsTotal,
   httpRequestDuration,
-  checkServerAlerts
+  checkServerAlerts,
+  checkStackAlerts
 } = require('./lib/core')
 
 const app = express()
@@ -106,8 +107,11 @@ async function start() {
   const server = app.listen(3000, '0.0.0.0', () => {
     console.log('API rodando na porta 3000')
     live.startSsePolling()
-    setInterval(checkServerAlerts, 30000)
-    checkServerAlerts()
+    async function checkAlerts() {
+      await Promise.allSettled([checkServerAlerts(), checkStackAlerts()])
+    }
+    setInterval(checkAlerts, 30000)
+    checkAlerts()
   })
   return server
 }

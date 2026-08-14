@@ -12,6 +12,7 @@ const {
   findServer,
   queryServer,
   serverAlertState,
+  stackHealthState,
   alertEvents,
   alertWebhookUrl,
   getWatchServerIds
@@ -172,9 +173,14 @@ function register(app) {
         ? 'unknown'
         : serverAlertState[srv.id] ? 'online' : 'offline'
     }
+    const stackStatus = {}
+    for (const [service, healthy] of Object.entries(stackHealthState)) {
+      stackStatus[service] = healthy ? 'up' : 'down'
+    }
     res.json({
       configured: !!alertWebhookUrl,
       currentStatus: current,
+      stackStatus,
       events: alertEvents
     })
   })

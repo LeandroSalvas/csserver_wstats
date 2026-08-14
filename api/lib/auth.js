@@ -9,6 +9,7 @@ const path = require('path')
 const { db } = require('./db')
 const { timingSafeEqualStr } = require('./helpers')
 const { serverRepoDir, seedAdminEnabled } = require('./config')
+const { sendAlert, pushAlertEvent } = require('./alerts')
 
 const scrypt = promisify(crypto.scrypt)
 
@@ -41,6 +42,7 @@ function serializeUser(row) {
     provider: row.provider,
     username: row.username,
     displayName: row.display_name || row.username || '',
+    avatarUrl: row.avatar_url || null,
     email: row.email,
     role: row.role,
     status: row.status
@@ -84,17 +86,22 @@ async function findOrCreateUser(provider, providerId, profile = {}) {
     return { ...existing, display_name: profile.displayName || existing.display_name }
   }
 
+  const displayName = profile.displayName || null
   const [result] = await db.query(
     `INSERT INTO users (provider, provider_id, display_name, email, avatar_url, role, status, last_login_at)
      VALUES (?, ?, ?, ?, ?, 'admin', 'pending', NOW())`,
     [
       provider,
       String(providerId),
-      profile.displayName || null,
+      displayName,
       profile.email || null,
       profile.avatarUrl || null
     ]
   )
+  const providerLabel = provider === 'google' ? 'Google' : provider === 'steam' ? 'Steam' : provider
+  const detail = `${displayName || profile.email || providerId} (${providerLabel})`
+  pushAlertEvent(result.insertId, 'user-pending', detail)
+  await sendAlert(`🆕 Novo usuário aguardando aprovação: ${detail}`)
   return {
     id: result.insertId,
     provider,

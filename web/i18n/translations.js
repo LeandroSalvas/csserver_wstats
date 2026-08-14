@@ -324,6 +324,11 @@ const i18n = {
       noAlerts: 'Nenhum alerta registrado',
       webhookConfigured: 'Webhook configurado',
       webhookNotConfigured: 'Webhook não configurado',
+      eventUserPending: 'Aguardando aprovação',
+      eventUserApproved: 'Usuário aprovado',
+      eventUserRejected: 'Usuário rejeitado',
+      eventStackUp: 'voltou',
+      eventStackDown: 'indisponível',
       info: 'Informações',
       infoDescription: 'Esta página mostra o estado atual dos principais subsistemas: API, banco de dados, cache Redis e servidor Counter-Strike.',
       infoAutoUpdate: 'Os indicadores atualizam automaticamente enquanto a página estiver visível.'
@@ -796,6 +801,11 @@ const i18n = {
       noAlerts: 'No alerts recorded',
       webhookConfigured: 'Webhook configured',
       webhookNotConfigured: 'Webhook not configured',
+      eventUserPending: 'Awaiting approval',
+      eventUserApproved: 'User approved',
+      eventUserRejected: 'User rejected',
+      eventStackUp: 'is back',
+      eventStackDown: 'is unavailable',
       info: 'Information',
       infoDescription: 'This page shows the current status of the main subsystems: API, database, Redis cache, and Counter-Strike server.',
       infoAutoUpdate: 'The indicators update automatically while the page is visible.'

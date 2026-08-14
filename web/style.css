@@ -1367,6 +1367,24 @@ button.quick-cmd:hover {
   white-space: nowrap;
 }
 
+.auth-user-avatar {
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  object-fit: cover;
+  flex-shrink: 0;
+}
+
+.auth-user-avatar-fallback {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--accent);
+  color: #fff;
+  font-size: 0.75rem;
+  font-weight: 700;
+}
+
 .auth-logout {
   background: transparent;
   border: none;
@@ -1919,6 +1937,11 @@ select:focus {
 .alert-badge-offline {
   background: rgba(239,68,68,0.18);
   color: #f87171;
+}
+
+.alert-badge-pending {
+  background: rgba(245,158,11,0.18);
+  color: #fbbf24;
 }
 
 .alert-time {

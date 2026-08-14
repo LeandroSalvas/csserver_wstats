@@ -5,6 +5,7 @@ const { GameDig } = require('gamedig')
 const Rcon = require('rcon')
 const fs = require('fs')
 const path = require('path')
+const { execFile } = require('child_process')
 
 const {
   LIVE_DATA_DIR,
@@ -546,29 +547,10 @@ function runRconCommand(password, command, serverId) {
 }
 
 // ALERTAS DE SERVIDOR
+// sendAlert/pushAlertEvent/alertEvents vivem em ./alerts (compartilhado com o
+// fluxo de admins e o checker da stack).
+const { alertEvents, pushAlertEvent, sendAlert } = require('./alerts')
 let serverAlertState = {}
-const alertEvents = []
-
-function pushAlertEvent(serverId, type) {
-  alertEvents.push({ serverId, type, at: new Date().toISOString() })
-  if (alertEvents.length > 20) {
-    alertEvents.shift()
-  }
-}
-
-async function sendAlert(text) {
-  if (!alertWebhookUrl) return
-  try {
-    const isDiscord = /discord(app)?\.com\/api\/webhooks/i.test(alertWebhookUrl)
-    await withTimeout(fetch(alertWebhookUrl, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(isDiscord ? { content: text } : { text })
-    }), 5000)
-  } catch (err) {
-    console.error('Erro ao enviar alerta:', err.message)
-  }
-}
 
 async function checkServerAlerts() {
   const servers = serverConfigs && serverConfigs.length ? serverConfigs : [primaryServer]
@@ -638,6 +620,98 @@ function updateLiveServerGauges(srv, state) {
   mapTimeGauge.set({ server: srv.id }, mapStarted ? Math.max(0, (Date.now() - mapStarted) / 1000) : 0)
 }
 
+// ALERTAS DE INDISPONIBILIDADE DA STACK (containers do projeto via docker.sock).
+// Os servidores de jogo (serviços cs16*) ficam de fora — já têm alerta próprio
+// via GameDig (checkServerAlerts). O projeto é filtrado pelo label do compose.
+const STACK_PROJECT = process.env.STACK_PROJECT || 'csserver_wstats'
+
+const STACK_SERVICE_NAMES = {
+  api: 'API (Node.js)',
+  db: 'Banco (MariaDB)',
+  redis: 'Cache (Redis)',
+  web: 'Frontend (Nginx)',
+  prometheus: 'Prometheus',
+  grafana: 'Grafana',
+  'node-exporter': 'Node Exporter (host)',
+  cadvisor: 'cAdvisor',
+  'nginx-exporter': 'Nginx Exporter',
+  'nginxlog-exporter': 'Nginxlog Exporter',
+  swag: 'Swag (TLS/proxy)',
+  duckdns: 'DuckDNS'
+}
+
+function stackServiceLabel(service) {
+  if (STACK_SERVICE_NAMES[service]) return STACK_SERVICE_NAMES[service]
+  if (/^watch-main-/.test(service)) return `Espectador ${service.replace(/^watch-main-/, '')}`
+  if (/^watch-hltv-/.test(service)) return `HLTV ${service.replace(/^watch-hltv-/, '')}`
+  return service
+}
+
+function isGameServerService(service) {
+  return service === 'cs16' || /^cs16[a-z0-9_-]+$/.test(service)
+}
+
+function runDocker(args, timeout = 20000) {
+  return new Promise((resolve, reject) => {
+    execFile('docker', args, { timeout, maxBuffer: 10 * 1024 * 1024 }, (err, stdout, stderr) => {
+      if (err) {
+        reject(new Error((stderr || stdout || err.message || '').trim().split('\n').slice(-8).join('\n')))
+        return
+      }
+      resolve(stdout || '')
+    })
+  })
+}
+
+const stackHealthState = {}
+
+async function checkStackAlerts() {
+  let out
+  try {
+    out = await runDocker([
+      'ps', '-a',
+      '--filter', `label=com.docker.compose.project=${STACK_PROJECT}`,
+      '--format', '{{.Label "com.docker.compose.service"}}|{{.Names}}|{{.State}}|{{.Status}}'
+    ])
+  } catch (err) {
+    console.error('checkStackAlerts: docker indisponível:', err.message)
+    return
+  }
+
+  const seen = {}
+  for (const line of out.split('\n')) {
+    if (!line.trim()) continue
+    const [service, name, state, status] = line.split('|')
+    if (!service || isGameServerService(service)) continue
+
+    seen[service] = true
+    // Up = rodando E sem "(unhealthy)" (healthcheck). "(health: starting)"
+    // durante o boot conta como up para não disparar alerta em recriação.
+    const healthy = state === 'running' && !String(status).includes('(unhealthy)')
+    const prev = stackHealthState[service]
+    if (prev === undefined) {
+      stackHealthState[service] = healthy
+      continue
+    }
+    if (healthy !== prev) {
+      stackHealthState[service] = healthy
+      const label = stackServiceLabel(service)
+      if (healthy) {
+        pushAlertEvent(service, 'stack-up', label)
+        await sendAlert(`🟢 Serviço ${label} voltou (${name})`)
+      } else {
+        pushAlertEvent(service, 'stack-down', label)
+        await sendAlert(`🔴 Serviço ${label} indisponível (${name} — ${state}${status ? `, ${status}` : ''})`)
+      }
+    }
+  }
+
+  // Containers removidos (ex.: prune) saem do estado sem alerta.
+  for (const service of Object.keys(stackHealthState)) {
+    if (!seen[service]) delete stackHealthState[service]
+  }
+}
+
 module.exports = {
   serverConfigs,
   primaryServer,
@@ -651,8 +725,10 @@ module.exports = {
   getServerMap,
   runRconCommand,
   checkServerAlerts,
+  checkStackAlerts,
   updateLiveServerGauges,
   serverAlertState,
+  stackHealthState,
   alertEvents,
   alertWebhookUrl
 }

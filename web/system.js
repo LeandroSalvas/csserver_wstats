@@ -116,13 +116,42 @@ async function loadAlertsList() {
 
     alerts.events.slice().reverse().forEach((event) => {
       const li = document.createElement('li')
-      const online = event.type === 'online'
-      const serverName = serverNameById[event.serverId] || event.serverId || ''
+      let badgeClass = 'alert-badge-offline'
+      let badgeText = i18nUtils.t('status.offline')
+      let text = ''
+
+      if (event.type === 'online') {
+        badgeClass = 'alert-badge-online'
+        badgeText = i18nUtils.t('status.online')
+        text = serverNameById[event.serverId] || event.serverId || ''
+      } else if (event.type === 'offline') {
+        text = serverNameById[event.serverId] || event.serverId || ''
+      } else if (event.type === 'stack-up') {
+        badgeClass = 'alert-badge-online'
+        badgeText = i18nUtils.t('status.online')
+        text = `${event.detail || event.serverId} ${i18nUtils.t('system.eventStackUp')}`
+      } else if (event.type === 'stack-down') {
+        text = `${event.detail || event.serverId} ${i18nUtils.t('system.eventStackDown')}`
+      } else if (event.type === 'user-pending') {
+        badgeClass = 'alert-badge-pending'
+        badgeText = i18nUtils.t('system.eventUserPending')
+        text = event.detail || event.serverId
+      } else if (event.type === 'user-approved') {
+        badgeClass = 'alert-badge-online'
+        badgeText = i18nUtils.t('system.eventUserApproved')
+        text = event.detail || event.serverId
+      } else if (event.type === 'user-rejected') {
+        badgeText = i18nUtils.t('system.eventUserRejected')
+        text = event.detail || event.serverId
+      } else {
+        text = event.detail || serverNameById[event.serverId] || event.serverId || ''
+      }
+
       li.innerHTML = `
-        <span class="alert-badge ${online ? 'alert-badge-online' : 'alert-badge-offline'}">
-          ${i18nUtils.t(online ? 'status.online' : 'status.offline')}
+        <span class="alert-badge ${badgeClass}">
+          ${escapeHtml(badgeText)}
         </span>
-        ${serverName ? `<span class="alert-server">${escapeHtml(serverName)}</span>` : ''}
+        ${text ? `<span class="alert-server">${escapeHtml(text)}</span>` : ''}
         <span class="alert-time">${formatAlertDate(event.at)}</span>
       `
       list.appendChild(li)
