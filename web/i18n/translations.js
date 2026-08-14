@@ -311,7 +311,8 @@ const i18n = {
       copyError: 'Erro ao copiar',
       watchBrowser: 'Assistir ao vivo no navegador',
       watchDescription: 'Abre um espectador ao vivo direto no navegador, sem instalar o CS. Funciona em Chrome/Firefox/Edge.',
-      watchLaunch: 'Abrir espectador (browser)'
+      watchLaunch: 'Abrir espectador (browser)',
+      watchMobileUnsupported: 'O espectador não está disponível em dispositivos móveis.'
     },
     system: {
       title: 'Status do Sistema',
@@ -349,7 +350,8 @@ const i18n = {
     cstv: {
       title: 'CSTV',
       watch: 'Assista a partida ao vivo',
-      hint: 'Câmera automática. Clique no vídeo para usar teclado e mouse.'
+      hint: 'Câmera automática. Clique no vídeo para usar teclado e mouse.',
+      mobileRedirecting: 'Redirecionando para o Live Match...'
     },
     player: {
       title: 'Player Stats',
@@ -788,7 +790,8 @@ const i18n = {
       browserNote: 'On some PCs the protocol only brings Steam to the foreground or does not start the game; in that case use the steps below.',
       watchBrowser: 'Watch live in the browser',
       watchDescription: 'Opens a live spectator right in the browser, no CS install needed. Works on Chrome/Firefox/Edge.',
-      watchLaunch: 'Open spectator (browser)'
+      watchLaunch: 'Open spectator (browser)',
+      watchMobileUnsupported: 'The spectator is not available on mobile devices.'
     },
     system: {
       title: 'System Status',
@@ -826,7 +829,8 @@ const i18n = {
     cstv: {
       title: 'CSTV',
       watch: 'Watch the live match',
-      hint: 'Automatic camera. Click the video to use keyboard and mouse.'
+      hint: 'Automatic camera. Click the video to use keyboard and mouse.',
+      mobileRedirecting: 'Redirecting to Live Match...'
     },
     player: {
       title: 'Player Stats',

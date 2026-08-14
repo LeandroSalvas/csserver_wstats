@@ -564,8 +564,43 @@ function exportTableCsv(table, filename) {
   URL.revokeObjectURL(url)
 }
 
+function isMobileDevice() {
+  return window.matchMedia('(hover: none)').matches || window.matchMedia('(pointer: coarse)').matches
+}
+
+// Guard de mobile para o espectador (CSTV/WebRTC): não funciona em celulares/
+// tablets. Esconde o botão/iframe ANTES do initWatchLink montar as URLs (evita
+// até o iframe baixar o valve.zip) e, na página /cstv, redireciona pro Live Match.
+let watchMobileBlocked = false
+function initWatchMobileGuard() {
+  if (!isMobileDevice()) return
+
+  document.querySelectorAll('[data-watch-link]').forEach((el) => {
+    el.hidden = true
+    el.removeAttribute('href')
+  })
+  const frame = document.querySelector('[data-spectator-frame]')
+  if (frame) {
+    frame.removeAttribute('src')
+    frame.style.display = 'none'
+  }
+
+  let message = i18nUtils.t('server.watchMobileUnsupported')
+  if (window.location.pathname === '/cstv') {
+    message += ' ' + i18nUtils.t('cstv.mobileRedirecting')
+  }
+  setStatus(message, 'warning')
+
+  if (window.location.pathname === '/cstv') {
+    window.setTimeout(() => { window.location.replace('/ao-vivo') }, 3000)
+  }
+
+  watchMobileBlocked = true
+}
+
 function initWatchLink() {
   const apply = async () => {
+    if (watchMobileBlocked) return
     const applyOne = async (el) => {
       // data-watch-server força um servidor (ex.: página "Conectar", fixa no main).
       const url = await spectatorUrlFor(el.dataset.watchServer || getSelectedServer())
@@ -624,6 +659,7 @@ async function initCommon() {
   applyActiveNav()
   guardPage()
   initConnectPage()
+  initWatchMobileGuard()
   initWatchLink()
   initPlayerSearch()
   initServerSelector()
