@@ -23,6 +23,7 @@ const {
   checkServerAlerts,
   checkStackAlerts
 } = require('./lib/core')
+const { startDiscordBot, destroyDiscordBot } = require('./lib/discordBot')
 
 const app = express()
 app.set('trust proxy', 1)
@@ -112,6 +113,7 @@ async function start() {
     }
     setInterval(checkAlerts, 30000)
     checkAlerts()
+    startDiscordBot()
   })
   return server
 }
@@ -129,6 +131,8 @@ serverPromise.then((srv) => {
 function setupGracefulShutdown(srv) {
   const shutdown = () => {
     console.log('Encerrando com graça (SIGTERM/SIGINT)...')
+
+    destroyDiscordBot()
 
     for (const client of live.sseClients) client.res.end()
     live.sseClients.clear()

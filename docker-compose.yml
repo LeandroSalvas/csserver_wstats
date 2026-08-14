@@ -95,6 +95,9 @@ services:
       # override NÃO define este valor — api estática, sem recriação no add/remove.
       CS_SERVERS: ${CS_SERVERS:-}
       ALERT_WEBHOOK_URL: ${ALERT_WEBHOOK_URL:-}
+      DISCORD_BOT_TOKEN: ${DISCORD_BOT_TOKEN:-}
+      DISCORD_ALLOWED_ROLE_IDS: ${DISCORD_ALLOWED_ROLE_IDS:-}
+      DISCORD_ALLOWED_USER_IDS: ${DISCORD_ALLOWED_USER_IDS:-}
       STEAM_RETURN_URL: ${STEAM_RETURN_URL:-}
       CORS_ALLOWED_ORIGINS: ${CORS_ALLOWED_ORIGINS:-}
       METRICS_USER: ${METRICS_USER:-}
