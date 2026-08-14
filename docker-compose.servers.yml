@@ -61,3 +61,29 @@ services:
       - ./cs/plugins/slots_reserve.amxx:/home/cs16/cstrike/addons/amxmodx/plugins/slots_reserve.amxx
       - ./live/zueira2/live_scoreboard.json:/home/cs16/cstrike/addons/amxmodx/data/live/live_scoreboard.json
       - ./live/zueira2/live_killfeed.json:/home/cs16/cstrike/addons/amxmodx/data/live/live_killfeed.json
+  cs16supertestserver:
+    image: cs16_stats:local
+    restart: always
+    environment:
+      PORT: "27015"
+      MAP: "cs_assault"
+      MAXPLAYERS: "31"
+      SERVER_ID: "supertestserver"
+    ports:
+      - "27018:27015/udp"
+      - "27018:27015/tcp"
+    security_opt:
+      - seccomp=unconfined
+    volumes:
+      - ./config/servers/supertestserver/server.cfg:/home/cs16/cstrike/server.cfg
+      - ./config/servers/supertestserver/users.ini:/home/cs16/cstrike/addons/amxmodx/configs/users.ini
+      - ./config/servers/supertestserver/amxx.cfg:/home/cs16/cstrike/addons/amxmodx/configs/amxx.cfg
+      - ./config/servers/supertestserver/mapcycle.txt:/home/cs16/cstrike/mapcycle.txt
+      - ./config/servers/supertestserver/motd.txt:/home/cs16/cstrike/motd.txt
+      - ./config/servers/supertestserver/plugins.ini:/home/cs16/cstrike/addons/amxmodx/configs/plugins.ini
+      - ./cs/plugins/live_scoreboard.amxx:/home/cs16/cstrike/addons/amxmodx/plugins/live_scoreboard.amxx
+      - ./cs/plugins/live_killfeed.amxx:/home/cs16/cstrike/addons/amxmodx/plugins/live_killfeed.amxx
+      - ./cs/plugins/csstatsx_sql.amxx:/home/cs16/cstrike/addons/amxmodx/plugins/csstatsx_sql.amxx
+      - ./cs/plugins/slots_reserve.amxx:/home/cs16/cstrike/addons/amxmodx/plugins/slots_reserve.amxx
+      - ./live/supertestserver/live_scoreboard.json:/home/cs16/cstrike/addons/amxmodx/data/live/live_scoreboard.json
+      - ./live/supertestserver/live_killfeed.json:/home/cs16/cstrike/addons/amxmodx/data/live/live_killfeed.json

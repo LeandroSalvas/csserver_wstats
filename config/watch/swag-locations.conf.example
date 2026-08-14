@@ -4,8 +4,9 @@
 #   upstream: http://192.168.15.54:<listen_port> (watch-main com network_mode: host)
 # O swag NÃO deve remover o prefixo (o proxy atende em BASE_PATH);
 # cada location termina SEM barra no proxy_pass e repassa o Upgrade/WS.
-# Para ativar: copie os blocos abaixo para dentro do server { } do
-# proxy-confs/zueiracstrike-watch.subdomain.conf e reinicie o swag.
+# Automático: servers.sh compose sincroniza os blocos abaixo no proxy-conf
+# vivo (zueiracstrike-watch.subdomain.conf, região de marcadores) e reinicia o swag.
+# Para re-sync manual: scripts/servers.sh swag-sync.
 
     location /zueira/ {
         proxy_pass http://192.168.15.54:27200;
@@ -27,6 +28,15 @@
 
     location /zueira2/ {
         proxy_pass http://192.168.15.54:27202;
+        proxy_http_version 1.1;
+        proxy_set_header Upgrade $http_upgrade;
+        proxy_set_header Connection "upgrade";
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+    }
+
+    location /supertestserver/ {
+        proxy_pass http://192.168.15.54:27203;
         proxy_http_version 1.1;
         proxy_set_header Upgrade $http_upgrade;
         proxy_set_header Connection "upgrade";
