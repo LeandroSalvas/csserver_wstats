@@ -81,6 +81,7 @@ function renderUsers(users) {
   users.forEach((u) => {
     const tr = document.createElement('tr')
     const isMe = me && me.id === u.id
+    const isLocalAdmin = u.provider === 'local' && u.role === 'superadmin'
 
     const userCell = document.createElement('td')
     const nameWrap = document.createElement('div')
@@ -102,6 +103,12 @@ function renderUsers(users) {
       meBadge.className = 'danger-badge'
       meBadge.textContent = 'você'
       userCell.appendChild(meBadge)
+    } else if (isLocalAdmin) {
+      const localBadge = document.createElement('span')
+      localBadge.className = 'local-badge'
+      localBadge.textContent = 'admin local'
+      localBadge.title = 'Conta de superadmin protegida (não pode ser removida, rebaixada ou desativada)'
+      userCell.appendChild(localBadge)
     }
 
     const providerCell = document.createElement('td')
@@ -120,7 +127,7 @@ function renderUsers(users) {
       opt.selected = u.role === role
       roleSelect.appendChild(opt)
     })
-    roleSelect.disabled = isMe || !isSuper
+    roleSelect.disabled = isMe || !isSuper || isLocalAdmin
     roleSelect.addEventListener('change', () => runUserAction('role', u.id, { role: roleSelect.value }))
     roleCell.appendChild(roleSelect)
 
@@ -145,7 +152,7 @@ function renderUsers(users) {
         actionWrap.appendChild(makeActionBtn(t('adminUsers.approve'), 'approve', u.id))
       }
 
-      if (!isMe) {
+      if (!isMe && !isLocalAdmin) {
         actionWrap.appendChild(makeActionBtn(t('adminUsers.remove'), 'remove', u.id, 'danger', true, u.display_name || u.username || u.id))
       }
     }

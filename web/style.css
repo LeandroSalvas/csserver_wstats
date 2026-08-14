@@ -860,6 +860,16 @@ button.quick-cmd:hover {
   white-space: nowrap;
 }
 
+.local-badge {
+  background: #1e3a5f;
+  color: #bfdbfe;
+  padding: 3px 8px;
+  border-radius: 999px;
+  font-size: 12px;
+  white-space: nowrap;
+  margin-left: 6px;
+}
+
 .admin-input {
   flex: 1;
   min-width: 260px;

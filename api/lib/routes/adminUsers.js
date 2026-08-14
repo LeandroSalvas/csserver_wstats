@@ -1,6 +1,8 @@
 // Gestão de usuários/admins: a LISTAGEM é liberada para qualquer admin ativo
 // (leitura); aprovar/rejeitar, alterar role e remover continuam superadmin.
 // O frontend (users.js) oculta as ações para quem não é superadmin.
+// O admin local (seed) é protegido: nenhum superusuário pode removê-lo,
+// rebaixá-lo ou desativá-lo (reject) — evita trancamento total.
 
 const {
   commandLimiter,
@@ -10,6 +12,13 @@ const {
 } = require('../core')
 
 const { db } = require('../core')
+
+// Admin local = conta de superadmin criada pelo seed (auth.js seedSuperadmin).
+// Identifica-se por provider 'local' + role 'superadmin' (independente do
+// status, senão rejeitar antes burlaria a proteção).
+function isLocalAdmin(row) {
+  return !!row && row.provider === 'local' && row.role === 'superadmin'
+}
 
 function register(app) {
   app.get('/admin/users', requireAdmin, async (req, res) => {
@@ -31,6 +40,15 @@ function register(app) {
       const id = parseInt(req.params.id, 10)
       if (!Number.isInteger(id) || id <= 0) {
         return res.status(400).json({ error: 'ID inválido' })
+      }
+      if (status === 'rejected') {
+        const [rows] = await db.query('SELECT provider, role FROM users WHERE id = ?', [id])
+        if (!rows.length) {
+          return res.status(404).json({ error: 'Usuário não encontrado' })
+        }
+        if (isLocalAdmin(rows[0])) {
+          return res.status(400).json({ error: 'O admin local não pode ser desativado' })
+        }
       }
       const [result] = await db.query('UPDATE users SET status = ? WHERE id = ?', [status, id])
       if (!result.affectedRows) {
@@ -59,8 +77,12 @@ function register(app) {
       if (role !== 'admin' && role !== 'superadmin') {
         return res.status(400).json({ error: 'role deve ser admin ou superadmin' })
       }
-      const [rows] = await db.query('SELECT role FROM users WHERE id = ?', [id])
+      const [rows] = await db.query('SELECT provider, role FROM users WHERE id = ?', [id])
       if (!rows.length) return res.status(404).json({ error: 'Usuário não encontrado' })
+
+      if (isLocalAdmin(rows[0]) && role !== 'superadmin') {
+        return res.status(400).json({ error: 'O admin local não pode ser rebaixado' })
+      }
 
       // Não rebaixar/derrubar o único superadmin ativo.
       if (role !== 'superadmin' && rows[0].role === 'superadmin') {
@@ -89,8 +111,12 @@ function register(app) {
         return res.status(400).json({ error: 'Não é possível remover a própria conta' })
       }
 
-      const [rows] = await db.query('SELECT role, status FROM users WHERE id = ?', [id])
+      const [rows] = await db.query('SELECT provider, role, status FROM users WHERE id = ?', [id])
       if (!rows.length) return res.status(404).json({ error: 'Usuário não encontrado' })
+
+      if (isLocalAdmin(rows[0])) {
+        return res.status(400).json({ error: 'O admin local não pode ser removido' })
+      }
 
       if (rows[0].role === 'superadmin' && rows[0].status === 'active') {
         const [[count]] = await db.query(
