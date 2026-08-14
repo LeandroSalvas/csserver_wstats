@@ -22,7 +22,11 @@ set -uo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 ROOT="$(cd "${SCRIPT_DIR}/.." && pwd)"
+# docker-compose.duckdns.yml (swag/duckdns) entra na config para que o
+# `up --remove-orphans` NÃO os remova como órfãos; o up lista apenas os
+# serviços do espectador, então swag/duckdns não são tocados.
 WATCH_COMPOSE="-f docker-compose.yml -f docker-compose.servers.yml -f docker-compose.watch.yml"
+[ -f "${ROOT}/docker-compose.duckdns.yml" ] && WATCH_COMPOSE+=" -f docker-compose.duckdns.yml"
 SERVERS_LIST="${ROOT}/config/servers.list"
 
 ok()   { printf '\033[32m✔\033[0m %s\n' "$*"; }
@@ -79,7 +83,9 @@ cmd_up() {
 }
 
 cmd_down() {
-  compose_watch down
+  # Só derruba o espectador (com `--profile watch`, o down com a config
+  # completa ainda removeria TODO o projeto — api/db/cs16/swag/...).
+  compose_watch down $(watch_services)
 }
 
 cmd_build() {
