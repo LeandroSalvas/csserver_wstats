@@ -71,7 +71,7 @@ async function loadServersTable() {
     servers.forEach((srv) => {
       const row = document.createElement('tr')
       const online = srv.online
-      const watchLink = srv.spectatorUrl
+      const watchLink = srv.hasWatch && srv.spectatorUrl
         ? `<a href="${escapeHtml(srv.spectatorUrl)}" target="_blank" rel="noopener" class="watch-link">${i18nUtils.t('server.watchLaunch')}</a>`
         : '<span class="muted">-</span>'
       row.innerHTML = `

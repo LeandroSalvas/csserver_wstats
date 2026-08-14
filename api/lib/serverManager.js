@@ -250,6 +250,31 @@ async function listContainers() {
   return byService
 }
 
+// Ids de servidores com a stack de espectador (CSTV) CRIADA, ou seja, com o
+// container watch-main-<id> existente (provisionado com --cstv ou watch.sh).
+// Cache curto (30s): a rota pública /servers usa isso e o docker ps é barato,
+// mas não queremos um exec por requisição.
+let watchCache = { at: 0, ids: new Set() }
+async function getWatchServerIds() {
+  const now = Date.now()
+  if (now - watchCache.at < 30000) return watchCache.ids
+  watchCache = { at: now, ids: new Set() }
+  try {
+    const out = await run('docker', [
+      'ps', '-a',
+      '--filter', 'name=cs16-watch-main-',
+      '--format', '{{.Names}}'
+    ], { timeout: 15000 })
+    for (const line of out.split('\n')) {
+      const m = /^cs16-watch-main-(.+)$/.exec(line.trim())
+      if (m) watchCache.ids.add(m[1])
+    }
+  } catch (err) {
+    console.error('getWatchServerIds: docker indisponível — assumindo stack de espectador ausente:', err.message)
+  }
+  return watchCache.ids
+}
+
 async function availableMaps() {
   const images = ['cs16_stats:local', 'leandrosalvas/cs16_stats:latest']
   for (const img of images) {
@@ -395,5 +420,6 @@ function getProvider() {
 
 module.exports = {
   getProvider,
+  getWatchServerIds,
   serverManagerProvider
 }

@@ -13,7 +13,8 @@ const {
   queryServer,
   serverAlertState,
   alertEvents,
-  alertWebhookUrl
+  alertWebhookUrl,
+  getWatchServerIds
 } = require('../core')
 
 function register(app) {
@@ -59,6 +60,8 @@ function register(app) {
 
   app.get('/servers', async (req, res) => {
     const list = getServerList()
+    let watchIds = new Set()
+    try { watchIds = await getWatchServerIds() } catch (err) { /* mantém vazio */ }
     const results = await Promise.all(list.map(async (srv) => {
       try {
         const state = await queryServer(srv)
@@ -69,6 +72,7 @@ function register(app) {
           port: parseInt(srv.port, 10),
           hostPort: srv.hostPort || parseInt(srv.port, 10),
           spectatorUrl: srv.spectatorUrl || null,
+          hasWatch: watchIds.has(srv.id),
           online: true,
           map: state.map,
           players: state.players.length,
@@ -83,6 +87,7 @@ function register(app) {
           port: parseInt(srv.port, 10),
           hostPort: srv.hostPort || parseInt(srv.port, 10),
           spectatorUrl: srv.spectatorUrl || null,
+          hasWatch: watchIds.has(srv.id),
           online: false,
           map: 'unknown',
           players: 0,

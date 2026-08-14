@@ -34,7 +34,8 @@ const {
   roundTGauge,
   roundCTGauge,
   serverInfoGauge,
-  maxPlayersGauge
+  maxPlayersGauge,
+  pruneServerMetrics
 } = require('./metrics')
 const { readLiveFile, withTimeout } = require('./helpers')
 
@@ -139,7 +140,14 @@ function startConfigWatch() {
     if (next && next.length) {
       const changed = JSON.stringify(next) !== JSON.stringify(serverConfigs)
       serverConfigs = next
-      if (changed) console.log(`serverCtx: config de servidores atualizada (${next.length})`)
+      if (changed) {
+        console.log(`serverCtx: config de servidores atualizada (${next.length})`)
+        // Remove séries de métricas de servidores que saíram da lista — sem
+        // isso o /metrics continua exportando os valores antigos para sempre.
+        try { pruneServerMetrics(next.map((s) => s.id)) } catch (err) {
+          console.error('serverCtx: falha ao podar métricas:', err.message)
+        }
+      }
     }
   }, 5000).unref()
 }

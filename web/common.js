@@ -248,13 +248,15 @@ async function loadServersList() {
   return cachedServers
 }
 
-// URL do espectador para um servidor: usa o spectatorUrl da API quando
-// disponível; senão, cai no SPECTATOR_URL base (main) ou retorna null.
+// URL do espectador para um servidor: usa o spectatorUrl da API quando o
+// servidor tem a stack de espectador criada (hasWatch); senão retorna null
+// (esconde link/iframe). Fallback no SPECTATOR_URL base (main) apenas quando a
+// API não responde (site estático offline).
 async function spectatorUrlFor(serverId) {
   try {
     const servers = await loadServersList()
     const srv = servers && servers.find((s) => s.id === serverId)
-    if (srv && srv.spectatorUrl) return srv.spectatorUrl
+    if (srv) return srv.hasWatch && srv.spectatorUrl ? srv.spectatorUrl : null
   } catch (err) {
     console.error('Erro ao resolver espectador:', err)
   }
@@ -279,6 +281,11 @@ async function initServerSelector() {
   selects.forEach((select) => {
     select.innerHTML = ''
 
+    // data-watch-only: só servidores com a stack de espectador (CSTV) criada
+    // (usado na página /cstv — sem stack, o iframe nunca abriria).
+    const watchOnly = select.dataset.watchOnly === '1'
+    const visible = watchOnly ? servers.filter((s) => s.hasWatch) : servers
+
     let label = selectorLabels.get(select)
     if (!label) {
       label = document.createElement('label')
@@ -289,7 +296,7 @@ async function initServerSelector() {
     }
     label.textContent = i18nUtils.t('server.selectServerLabel')
 
-    if (!servers.length) {
+    if (!visible.length) {
       const option = document.createElement('option')
       option.value = ''
       option.textContent = i18nUtils.t('server.primary')
@@ -298,7 +305,7 @@ async function initServerSelector() {
       return
     }
 
-    servers.forEach((srv) => {
+    visible.forEach((srv) => {
       const option = document.createElement('option')
       option.value = srv.id
       option.textContent = srv.name
@@ -306,13 +313,13 @@ async function initServerSelector() {
     })
 
     let selected = getSelectedServer()
-    if (selected && servers.some((srv) => srv.id === selected)) {
+    if (selected && visible.some((srv) => srv.id === selected)) {
       select.value = selected
     } else {
       // Sem escolha válida: exibe o servidor primário sem persistir (evita
       // gravar um default silencioso no localStorage) e limpa seleção inválida.
       if (selected) setSelectedServer('')
-      select.value = servers[0].id
+      select.value = visible[0].id
     }
 
     if (!select.dataset.listenerAttached) {

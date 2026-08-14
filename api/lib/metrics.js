@@ -143,6 +143,56 @@ const snapshotsByMapGauge = new client.Gauge({
   labelNames: ['server', 'map']
 })
 
+// Métricas com a label `server`: usadas para podar séries de servidores que
+// saíram de config/servers.list. Sem isso os gauges mantêm o último valor e o
+// /metrics continua exportando servidores removidos para sempre.
+const SERVER_KEYED_METRICS = [
+  playersOnlineGauge,
+  matchesTotal,
+  matchDurationHistogram,
+  serverOnlineGauge,
+  serverInfoGauge,
+  maxPlayersGauge,
+  roundTGauge,
+  roundCTGauge,
+  mapTimeGauge,
+  playersRegisteredGauge,
+  statsTotalGauge,
+  accuracyGauge,
+  skillAvgGauge,
+  skillMaxGauge,
+  connectionTimeGauge,
+  activePlayersGauge,
+  killsGauge,
+  snapshotsByMapGauge
+]
+
+// Remove todas as séries dos ids que não estão mais na lista ativa.
+// Nota: prom-client v15 remove(labels) NÃO faz wildcard nas demais labels —
+// precisa remover com o conjunto completo de labels da série.
+function pruneServerMetrics(activeIds) {
+  const active = new Set(activeIds)
+  const stale = new Set()
+  for (const metric of SERVER_KEYED_METRICS) {
+    const series = metric.hashMap || metric.values || {}
+    for (const key of Object.keys(series)) {
+      const labels = series[key].labels || {}
+      if (labels.server !== undefined && !active.has(labels.server)) stale.add(labels.server)
+    }
+  }
+  for (const id of stale) {
+    for (const metric of SERVER_KEYED_METRICS) {
+      const series = metric.hashMap || metric.values || {}
+      for (const key of Object.keys(series)) {
+        const labels = series[key].labels || {}
+        if (labels.server === id) metric.remove(labels)
+      }
+    }
+  }
+  if (stale.size) console.log(`Prune de métricas de servidores removidos: ${[...stale].join(', ')}`)
+  return stale.size
+}
+
 module.exports = {
   register: client.register,
   httpRequestsTotal,
@@ -167,5 +217,6 @@ module.exports = {
   connectionTimeGauge,
   activePlayersGauge,
   killsGauge,
-  snapshotsByMapGauge
+  snapshotsByMapGauge,
+  pruneServerMetrics
 }
