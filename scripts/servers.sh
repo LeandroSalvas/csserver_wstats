@@ -4,6 +4,7 @@
 # Uso:
 #   servers.sh init          Cria config/servers/<id>/* e live/<id>/* a partir de servers.list
 #   servers.sh compose       Gera docker-compose.servers.yml (override)
+#   servers.sh swag-sync     Re-sincroniza os blocos location no proxy-conf vivo do swag
 #   servers.sh config        Valida o compose mergeado
 #   servers.sh build         Builda as imagens cs16_stats:local e csserver_wstats-api
 #   servers.sh up            init + compose + docker compose up -d --no-recreate (rebuilda só se a imagem não existir)
@@ -347,6 +348,7 @@ cmd_compose() {
 
   write_watch_compose || return 1
   write_swag_snippet || return 1
+  apply_swag_locations || return 1
 }
 
 # Gera docker-compose.watch.yml com um par watch-main/watch-hltv por servidor
@@ -440,11 +442,7 @@ write_swag_snippet() {
   watch_upstream="$(env_val WATCH_UPSTREAM_HOST '127.0.0.1')"
   [ -n "$watch_public_base" ] || { err "WATCH_PUBLIC_BASE não definido no .env — sem snippet swag"; return 0; }
 
-  local watch_listen_base
-  watch_listen_base="$(env_val WATCH_LISTEN_BASE 27200)"
-
   local out="${ROOT}/config/watch/swag-locations.conf.example"
-  local listen_port i
   {
     echo "# Gerado por scripts/servers.sh compose — não edite manualmente."
     echo "# Exposição do espectador web no swag (stack separada em ~/duckdns):"
@@ -452,24 +450,131 @@ write_swag_snippet() {
     echo "#   upstream: http://${watch_upstream}:<listen_port> (watch-main com network_mode: host)"
     echo "# O swag NÃO deve remover o prefixo (o proxy atende em BASE_PATH);"
     echo "# cada location termina SEM barra no proxy_pass e repassa o Upgrade/WS."
-    echo "# Para ativar: copie os blocos abaixo para dentro do server { } do"
-    echo "# proxy-confs/zueiracstrike-watch.subdomain.conf e reinicie o swag."
+    echo "# Automático: servers.sh compose sincroniza os blocos abaixo no proxy-conf"
+    echo "# vivo (zueiracstrike-watch.subdomain.conf, região de marcadores) e reinicia o swag."
+    echo "# Para re-sync manual: scripts/servers.sh swag-sync."
     echo ""
-    for i in "${!ids[@]}"; do
-      listen_port=$(( watch_listen_base + i ))
-      echo "    location /${contexts[$i]}/ {"
-      echo "        proxy_pass http://${watch_upstream}:${listen_port};"
-      echo "        proxy_http_version 1.1;"
-      echo "        proxy_set_header Upgrade \$http_upgrade;"
-      echo "        proxy_set_header Connection \"upgrade\";"
-      echo "        proxy_set_header Host \$host;"
-      echo "        proxy_set_header X-Real-IP \$remote_addr;"
-      echo "    }"
-      echo ""
-    done
+    swag_location_blocks
   } > "$out"
 
   ok "snippet swag gerado: config/watch/swag-locations.conf.example"
+}
+
+# Emite os blocos location (4 espaços) a partir dos arrays `ids`/`contexts` do
+# escopo da chamada (bash: escopo dinâmico — cmd_compose/apply_swag_locations
+# declaram os locais e estes são visíveis aqui).
+swag_location_blocks() {
+  local watch_upstream watch_listen_base i
+  watch_upstream="$(env_val WATCH_UPSTREAM_HOST '127.0.0.1')"
+  watch_listen_base="$(env_val WATCH_LISTEN_BASE 27200)"
+  for i in "${!ids[@]}"; do
+    printf '    location /%s/ {\n        proxy_pass http://%s:%d;\n        proxy_http_version 1.1;\n        proxy_set_header Upgrade $http_upgrade;\n        proxy_set_header Connection "upgrade";\n        proxy_set_header Host $host;\n        proxy_set_header X-Real-IP $remote_addr;\n    }\n\n' \
+      "${contexts[$i]}" "$watch_upstream" "$(( watch_listen_base + i ))"
+  done
+}
+
+# Sincroniza os blocos location no proxy-conf VIVO do swag (stack em ~/duckdns)
+# a partir de servers.list. Chamada no fim do cmd_compose (cobre up, compose,
+# provision e unprovision) e via subcomando `swag-sync`. Idempotente: reescreve
+# apenas a região entre os marcadores `# BEGIN/END servers.sh swag locations`
+# (na 1ª execução, migra os blocos legados). Só reinicia o swag se o arquivo
+# mudou E se `nginx -t` validar. No remove, os blocos derivam de servers.list,
+# então o location do servidor removido some daqui automaticamente.
+apply_swag_locations() {
+  local conf
+  conf="${SWAG_PROXY_CONF:-}"
+  if [ -z "$conf" ] && [ -f "${HOME}/duckdns/swag/config/nginx/proxy-confs/zueiracstrike-watch.subdomain.conf" ]; then
+    conf="${HOME}/duckdns/swag/config/nginx/proxy-confs/zueiracstrike-watch.subdomain.conf"
+  fi
+  if [ -z "$conf" ] && [ -f "$(dirname "${ROOT}")/duckdns/swag/config/nginx/proxy-confs/zueiracstrike-watch.subdomain.conf" ]; then
+    conf="$(dirname "${ROOT}")/duckdns/swag/config/nginx/proxy-confs/zueiracstrike-watch.subdomain.conf"
+  fi
+  if [ -z "$conf" ] || [ ! -f "$conf" ]; then
+    info "swag: proxy-conf vivo não encontrado (SWAG_PROXY_CONF unset e ~/duckdns ausente) —"
+    info "      sincronização automática ignorada. Rode: SWAG_PROXY_CONF=/caminho/zueiracstrike-watch.subdomain.conf scripts/servers.sh swag-sync"
+    return 0
+  fi
+
+  local ids=() contexts=() line
+  local id name host_port map maxplayers rotate context
+  while read -r line; do
+    IFS='|' read -r id name host_port map maxplayers rotate context <<< "$line"
+    ids+=("$id")
+    contexts+=("$context")
+  done < <(parse_servers)
+  [ "${#ids[@]}" -gt 0 ] || { err "servers.list vazio — nada a sincronizar no swag"; return 1; }
+
+  # Backup único antes da 1ª modificação (não sobrescreve backups manuais).
+  if [ ! -f "${conf}.bak" ]; then
+    cp -p "$conf" "${conf}.bak"
+    info "swag: backup criado em ${conf}.bak"
+  fi
+
+  local blocks tmp before after
+  blocks="$(swag_location_blocks)"
+  tmp="$(mktemp)"
+  before="$(cksum "$conf" | awk '{print $1}')"
+  # Dono/modo originais: um sync vindo do container de provisionamento roda como
+  # root e o `mv` abaixo recriaria o arquivo como root:root 0600 (mktemp) —
+  # restauramos os dois depois para o host continuar lendo/gravando o conf.
+  local orig_owner orig_perms
+  orig_owner="$(stat -c '%u:%g' "$conf" 2>/dev/null || true)"
+  orig_perms="$(stat -c '%a' "$conf" 2>/dev/null || true)"
+
+  # awk: substitui a região de marcadores (se existir) OU migra os blocos
+  # legados (1ª execução). Preserva o header, comentários e o `location = /`.
+  if awk -v blocks="$blocks" '
+    BEGIN { inmarker=0; seentarget=0 }
+    /^    # BEGIN servers.sh swag locations/ { inmarker=1; next }
+    inmarker && /^    # END servers.sh swag locations/ {
+      inmarker=0
+      print "    # BEGIN servers.sh swag locations"
+      printf "%s\n", blocks
+      print "    # END servers.sh swag locations"
+      next
+    }
+    inmarker { next }
+    $0 ~ /^    location \// {
+      if (!seentarget) {
+        print "    # BEGIN servers.sh swag locations"
+        printf "%s\n", blocks
+        print "    # END servers.sh swag locations"
+        seentarget=1
+      }
+      next
+    }
+    seentarget && $0 !~ /^}/ { next }
+    { print }
+  ' "$conf" > "$tmp" && [ -s "$tmp" ]; then
+    after="$(cksum "$tmp" | awk '{print $1}')"
+    if [ "$before" = "$after" ]; then
+      rm -f "$tmp"
+      ok "swag: locations já estão em dia (${conf##*/})"
+      return 0
+    fi
+    # Só recria o arquivo quando o conteúdo realmente muda.
+    mv "$tmp" "$conf"
+    [ -n "$orig_owner" ] && chown "$orig_owner" "$conf" 2>/dev/null
+    [ -n "$orig_perms" ] && chmod "$orig_perms" "$conf" 2>/dev/null
+  else
+    rm -f "$tmp"
+    err "swag: falha ao sincronizar ${conf}"
+    return 1
+  fi
+
+  ok "swag: ${conf##*/} atualizado (${#ids[@]} location(s))"
+  local swagc
+  swagc="${SWAG_CONTAINER:-swag}"
+  if docker ps --format '{{.Names}}' | grep -qx "$swagc"; then
+    if docker exec "$swagc" nginx -t >/dev/null 2>&1; then
+      docker restart "$swagc" >/dev/null && ok "swag: ${swagc} reiniciado"
+    else
+      err "swag: nginx -t falhou — config NÃO aplicado. Restaure ${conf}.bak e revise o arquivo."
+      return 1
+    fi
+  else
+    info "swag: container '${swagc}' não está em execução — config atualizado, reinicie o swag depois"
+  fi
 }
 
 cmd_config() {
@@ -735,6 +840,7 @@ case "${1:-}" in
   init)    cmd_init ;;
   compose) cmd_compose ;;
   config)  cmd_config "${@:2}" ;;
+  swag-sync) apply_swag_locations ;;
   build)   cmd_build ;;
   up)      cmd_up ;;
   provision) cmd_provision "${@:2}" ;;
