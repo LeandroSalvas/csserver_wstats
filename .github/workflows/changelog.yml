@@ -1,0 +1,29 @@
+name: Discord changelog
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:   # teste manual sem push
+
+permissions:
+  contents: read
+
+jobs:
+  changelog:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Notify Discord
+        env:
+          WEBHOOK: ${{ secrets.DISCORD_CHANGELOG_WEBHOOK }}
+          COMMITS: ${{ toJson(github.event.commits) }}
+          REF: ${{ github.ref_name }}
+          COMPARE: ${{ github.event.compare }}
+          REPO: ${{ github.repository }}
+        run: |
+          [ -z "$WEBHOOK" ] && echo "secret DISCORD_CHANGELOG_WEBHOOK vazio; saindo" && exit 0
+          BODY="$(jq -rn --argjson c "$COMMITS" '
+            ($c | map(("- **" + (.message | split("\n")[0]) + "** — " + .author.name)) | join("\n"))')"
+          [ ${#BODY} -gt 1850 ] && BODY="${BODY:0:1847}..."
+          TEXT="**📦 Push para \`$REF\`** ($REPO)\n\n$BODY\n\n🔗 $COMPARE"
+          jq -n --arg c "$TEXT" '{content: $c}' \
+            | curl -sS -H "Content-Type: application/json" -d @- "$WEBHOOK" -o /dev/null -w "discord: %{http_code}\n"
