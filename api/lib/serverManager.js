@@ -1,11 +1,15 @@
 // Gerenciamento de servidores: adapter flexível (SERVER_MANAGER_PROVIDER).
 // Provider "docker" controla os containers via docker CLI + socket montado no
 // container da API, e provisiona (add/remove) reutilizando scripts/servers.sh
-// dentro de um container descartável (sobrevive à recriação do container api
-// que o próprio `docker compose up` dispara ao regenerar o override).
+// dentro de um container descartável.
 //
 // O container api precisa de: /var/run/docker.sock, repo em SERVER_REPO_DIR (rw)
 // e imagem `csserver_wstats-api` com docker CLI + compose plugin instalados.
+//
+// A API lê config/servers.list em runtime (serverCtx), então o serviço api é
+// ESTÁTICO no compose — add/remove rodam provision/unprovision cirúrgicos
+// (up --no-recreate) que criam/removem só o container do servidor alvo, sem
+// recriar a stack inteira.
 
 const { execFile } = require('child_process')
 const fs = require('fs')
@@ -128,23 +132,65 @@ function hostPathFor(containerPath) {
   return containerPath
 }
 
-function runProvision(args) {
+function runProvision(args, postScript) {
   // O compose resolve os sources dos binds (`./config/...`) contra o working_dir
   // do container de provisionamento, mas o daemon monta contra o path do HOST.
   // Por isso o repo é montado no MESMO caminho absoluto do host (ex.:
   // /home/salvas/csserver_wstats), não em /repo — senão os mounts dos servidores
   // apontariam para /repo/config/... que não existe no host.
+  //
+  // `--network host` deixa o container de provisionamento alcançar o Prometheus
+  // em localhost:9090 (Admin API, bound no 127.0.0.1 do host) — necessário para
+  // o `postScript` (node, roda DEPOIS do servers.sh) limpar as séries do
+  // servidor removido. O provisionamento roda num container descartável e a api
+  // NÃO é recriada no add/remove (config estática), então a resposta ao request
+  // chega normalmente.
   const hostRepo = hostPathFor(serverRepoDir)
   const sh = path.join(hostRepo, 'scripts', 'servers.sh')
+  let cmd = `bash ${JSON.stringify(sh)} ${args.map((a) => JSON.stringify(a)).join(' ')}`
+  if (postScript) {
+    // O script passa por env var (não embutido no -c) para preservar as quebras
+    // de linha: `node -e` com \n literal escapado pelo bash quebraria com
+    // SyntaxError ("Invalid or unexpected token").
+    cmd += ' && node -e "$PROM_POST_SCRIPT"'
+  }
   return run('docker', [
     'run', '--rm',
+    '--network', 'host',
     '-w', hostRepo,
     '-e', `COMPOSE_PROJECT_NAME=${path.basename(hostRepo) || 'csserver_wstats'}`,
+    ...(postScript ? ['-e', `PROM_POST_SCRIPT=${postScript}`] : []),
     '-v', `${hostRepo}:${hostRepo}`,
     '-v', `${hostPathFor('/var/run/docker.sock')}:/var/run/docker.sock`,
     PROVISION_IMAGE,
-    'bash', sh, ...args
+    'bash', '-c', cmd
   ], { timeout: PROVISION_TIMEOUT_MS })
+}
+
+// Gera o script node que roda no container de provisionamento (pós servers.sh up)
+// para remover do TSDB do Prometheus as séries do servidor removido (labels
+// `server` do cs16_stats e `container_label_*` do cAdvisor), espelhando o
+// prom_delete_series do scripts/servers.sh prune --metrics.
+function promDeleteScript(id) {
+  const matches = [
+    `{server="${id}"}`,
+    `{container_label_com_docker_compose_service="cs16${id}"}`
+  ]
+  return `
+(async () => {
+  const base = 'http://localhost:9090/api/v1/admin/tsdb'
+  for (const m of ${JSON.stringify(matches)}) {
+    try {
+      const r = await fetch(base + '/delete_series?match[]=' + encodeURIComponent(m), { method: 'POST' })
+      console.log('prom-cleanup: ' + m + ' -> http ' + r.status)
+    } catch (e) { console.log('prom-cleanup: erro em ' + m + ': ' + e.message) }
+  }
+  try {
+    const r = await fetch(base + '/clean_tombstones', { method: 'POST' })
+    console.log('prom-cleanup: clean_tombstones -> http ' + r.status)
+  } catch (e) { console.log('prom-cleanup: erro no clean_tombstones: ' + e.message) }
+})()
+`
 }
 
 // --- Provider docker ---
@@ -212,7 +258,10 @@ async function availableMaps() {
         'run', '--rm', '--entrypoint', 'ls', img, '/home/cs16/cstrike/maps/'
       ], { timeout: 60000 })
       const maps = out.split('\n')
-        .map((s) => s.replace(/\.bsp\s*$/i, '').trim())
+        .map((s) => s.trim())
+        // O diretório de mapas também tem .res/.txt/.zip/.url — só interessam os .bsp.
+        .filter((s) => /\.bsp$/i.test(s))
+        .map((s) => s.replace(/\.bsp$/i, ''))
         .filter(Boolean)
       if (maps.length) return [...new Set(maps)].sort()
     } catch (err) {
@@ -243,7 +292,9 @@ function validateAddSpec(spec) {
     throw Object.assign(new Error('rotate deve ser yes ou no'), { status: 400 })
   }
 
-  return { name, map, slots, rotate }
+  const cstv = Boolean(spec.cstv)
+
+  return { name, map, slots, rotate, cstv }
 }
 
 const dockerProvider = {
@@ -281,7 +332,7 @@ const dockerProvider = {
   },
 
   async add(spec) {
-    const { name, map, slots, rotate } = validateAddSpec(spec)
+    const { name, map, slots, rotate, cstv } = validateAddSpec(spec)
     const current = readServersList()
     const id = slugifyName(name)
     if (!isValidId(id)) throw Object.assign(new Error('Nome sem caracteres válidos para id'), { status: 400 })
@@ -296,13 +347,17 @@ const dockerProvider = {
     const entry = { id, name, host_port: hostPort, map, maxplayers: slots, rotate, context }
     writeServersList([...current, entry])
     try {
-      await runProvision(['up'])
+      // Provisionamento cirúrgico: só o container do servidor novo (up
+      // --no-recreate), com os serviços de espectador se o formulário marcou CSTV.
+      const args = ['provision', id]
+      if (cstv) args.push('--cstv')
+      await runProvision(args)
     } catch (err) {
       // Rollback: devolve a lista ao estado anterior (sem o servidor novo).
       writeServersList(current)
       throw err
     }
-    return { ...entry, hostPort, containerState: 'created' }
+    return { ...entry, hostPort, cstv, containerState: 'created' }
   },
 
   async remove(id) {
@@ -315,8 +370,11 @@ const dockerProvider = {
     writeServersList(next)
     fs.rmSync(path.join(serverRepoDir, 'config', 'servers', id), { recursive: true, force: true })
     fs.rmSync(path.join(serverRepoDir, 'live', id), { recursive: true, force: true })
+    fs.rmSync(path.join(serverRepoDir, 'config', 'watch', id), { recursive: true, force: true })
+    fs.rmSync(path.join(serverRepoDir, 'live', 'watch', id), { recursive: true, force: true })
     try {
-      await runProvision(['up'])
+      const out = await runProvision(['unprovision', id], promDeleteScript(id))
+      if (out && out.trim()) console.log('Provision (cleanup Prometheus):', out.trim())
     } catch (err) {
       // Melhor esforço: restaura a lista (configs/live já foram removidos).
       writeServersList(current)

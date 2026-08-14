@@ -6,11 +6,13 @@
 #   servers.sh compose       Gera docker-compose.servers.yml (override)
 #   servers.sh config        Valida o compose mergeado
 #   servers.sh build         Builda as imagens cs16_stats:local e csserver_wstats-api
-#   servers.sh up            init + compose + docker compose up -d --remove-orphans (rebuilda só se a imagem não existir)
+#   servers.sh up            init + compose + docker compose up -d --no-recreate (rebuilda só se a imagem não existir)
 #   servers.sh down          docker compose down
 #   servers.sh ps            docker compose ps
 #   servers.sh status        Resumo dos servidores configurados
 #   servers.sh list          Mostra config/servers.list
+#   servers.sh provision <id> [--cstv]   Cria o container do servidor (e opcionalmente os serviços de espectador) SEM recriar nada existente
+#   servers.sh unprovision <id>          Remove o container do servidor + serviços de espectador (add/remove pela API usam isso)
 #   servers.sh prune [ids]   Apaga config/servers/<id> e live/<id> (default: ids fora do servers.list). --metrics remove também os dados do Prometheus/Grafana
 #   servers.sh rcon <id> <cmd>   Executa comando RCON no servidor <id>
 #
@@ -25,9 +27,9 @@ SERVERS_LIST="${ROOT}/config/servers.list"
 TEMPLATE_CFG="${ROOT}/config/templates/server.cfg"
 COMPOSE_BASE="docker-compose.yml"
 OVERRIDE="docker-compose.servers.yml"
-# Arquivo do espectador (profiles: ["watch"]). Incluído apenas para que o compose
-# conheça as services e o `up --remove-orphans` NÃO remova os containers watch
-# em execução (sem --profile, essas services nunca são iniciadas por aqui).
+# Arquivo do espectador (profiles: ["watch"]). Incluído para que o compose
+# conheça as services do espectador (provision/unprovision as operam por id);
+# sem --profile, nunca são iniciadas por aqui.
 WATCH_OVERRIDE="docker-compose.watch.yml"
 COMPOSE_FILES=(-f "${COMPOSE_BASE}" -f "${OVERRIDE}")
 if [ -f "${ROOT}/${WATCH_OVERRIDE}" ]; then
@@ -338,37 +340,6 @@ cmd_compose() {
       echo "      - ./live/${ids[$i]}/live_killfeed.json:/home/cs16/cstrike/addons/amxmodx/data/live/live_killfeed.json"
     done
 
-    # --- API: CS_SERVERS + live data dos servidores adicionais ---
-    local entries=() svc_host j json=""
-    local watch_public_base watch_upstream
-    watch_public_base="$(env_val WATCH_PUBLIC_BASE '')"
-    watch_upstream="$(env_val WATCH_UPSTREAM_HOST '127.0.0.1')"
-    for i in "${!ids[@]}"; do
-      if [ "$i" -eq 0 ]; then
-        svc_host="cs16"
-      else
-        svc_host="cs16${ids[$i]}"
-      fi
-      local spec="null"
-      if [ -n "$watch_public_base" ]; then
-        spec="\"${watch_public_base%/}/${contexts[$i]}/\""
-      fi
-      entries+=("{\"id\":\"${ids[$i]}\",\"name\":\"${names[$i]}\",\"host\":\"${svc_host}\",\"port\":27015,\"hostPort\":${ports[$i]},\"liveDir\":\"/live_data/${ids[$i]}\",\"spectatorUrl\":${spec}}")
-    done
-    for j in "${entries[@]}"; do
-      if [ -z "$json" ]; then json="$j"; else json="${json},${j}"; fi
-    done
-
-    echo "  api:"
-    echo "    environment:"
-    echo "      CS_SERVERS: >-"
-    echo "        [${json}]"
-    echo "    volumes:"
-    for i in "${!ids[@]}"; do
-      [ "$i" -eq 0 ] && continue
-      echo "      - ./live/${ids[$i]}/live_scoreboard.json:/live_data/${ids[$i]}/live_scoreboard.json:ro"
-      echo "      - ./live/${ids[$i]}/live_killfeed.json:/live_data/${ids[$i]}/live_killfeed.json:ro"
-    done
   } > "$out"
 
   ok "override gerado: ${OVERRIDE}"
@@ -525,7 +496,73 @@ cmd_up() {
     cmd_build || return 1
   fi
 
-  docker compose "${COMPOSE_FILES[@]}" up -d --remove-orphans
+  # --no-recreate: NUNCA recria containers existentes. As versões do compose do
+  # host (v5.x) e do container de provisionamento (imagem da api) calculam o
+  # config-hash de formas diferentes — um `up` completo compararia os labels
+  # com outro hash e recriaria a stack inteira (db, web, prometheus, grafana...)
+  # a cada add/remove. Com a API lendo config/servers.list em runtime, nada além
+  # do servidor alvo precisa mudar de container.
+  docker compose "${COMPOSE_FILES[@]}" up -d --no-recreate
+}
+
+# provision <id> [--cstv]
+# Cria APENAS o container do servidor (e, com --cstv, os serviços de espectador
+# watch-hltv/watch-main). Usado pela API em add. Não recria containers existentes.
+cmd_provision() {
+  local id="${1:-}" cstv=0 arg
+  for arg in "${@:2}"; do
+    case "$arg" in
+      --cstv) cstv=1 ;;
+      *) err "Opção desconhecida: $arg"; return 1 ;;
+    esac
+  done
+  [ -n "$id" ] || { err "Uso: servers.sh provision <id> [--cstv]"; return 1; }
+  valid_id "$id" || { err "id inválido: '$id'"; return 1; }
+
+  cmd_init || return 1
+  cmd_compose || return 1
+
+  local missing=0 img
+  for img in cs16_stats:local csserver_wstats-api; do
+    docker image inspect "$img" >/dev/null 2>&1 || { err "Imagem ${img} ausente"; missing=1; }
+  done
+  if [ "$missing" -eq 1 ]; then
+    info "Construindo imagens (primeira vez) ..."
+    cmd_build || return 1
+  fi
+
+  local svc
+  [ "$id" = "main" ] && svc="cs16" || svc="cs16${id}"
+  docker compose "${COMPOSE_FILES[@]}" up -d --no-recreate "${svc}" || return 1
+  ok "servidor ${id} provisionado (${svc})"
+
+  if [ "$cstv" -eq 1 ]; then
+    docker compose "${COMPOSE_FILES[@]}" --profile watch up -d --no-recreate "watch-hltv-${id}" "watch-main-${id}" || return 1
+    ok "serviços de espectador (CSTV) iniciados para ${id}"
+  fi
+}
+
+# unprovision <id>
+# Derruba/remove o container do servidor + serviços de espectador. Usado pela
+# API em remove. O `servers.sh compose` é rodado AO FINAL para regenerar os
+# overrides sem o servidor removido (os containers são removidos com o arquivo
+# atual, que ainda os conhece).
+cmd_unprovision() {
+  local id="${1:-}"
+  [ -n "$id" ] || { err "Uso: servers.sh unprovision <id>"; return 1; }
+  valid_id "$id" || { err "id inválido: '$id'"; return 1; }
+
+  if [ -f "${ROOT}/${WATCH_OVERRIDE}" ]; then
+    docker compose "${COMPOSE_FILES[@]}" --profile watch rm -sf "watch-hltv-${id}" "watch-main-${id}" 2>/dev/null || true
+    ok "serviços de espectador de ${id} removidos"
+  fi
+
+  local svc
+  [ "$id" = "main" ] && svc="cs16" || svc="cs16${id}"
+  docker compose "${COMPOSE_FILES[@]}" rm -sf "${svc}" 2>/dev/null || true
+  ok "container ${svc} removido"
+
+  cmd_compose || return 1
 }
 
 cmd_down() {
@@ -648,19 +685,24 @@ cmd_rcon() {
   [ -n "$command" ] || { err "Comando RCON vazio"; return 1; }
 
   docker compose "${COMPOSE_FILES[@]}" exec -T api node -e '
+    const fs = require("fs")
+    const path = require("path")
     const Rcon = require("rcon")
     const [srvId, command] = process.argv.slice(1)
-    const list = (() => {
-      try {
-        const raw = process.env.CS_SERVERS
-        const arr = raw ? JSON.parse(raw) : null
-        return Array.isArray(arr) && arr.length ? arr : null
-      } catch (e) { return null }
-    })()
-    const srv = (list && list.find((s) => s.id === srvId))
-      || (list && list[0])
-      || { id: "main", host: process.env.GAMEDIG_HOST || "cs16", port: parseInt(process.env.GAMEDIG_PORT || "27015", 10) }
-    const c = new Rcon(srv.host, parseInt(srv.port, 10), process.env.RCON_PASSWORD, { tcp: false, challenge: true })
+    // A API lê config/servers.list em runtime (sem CS_SERVERS no compose).
+    const file = path.join(process.env.SERVER_REPO_DIR || "/repo", "config", "servers.list")
+    const entries = []
+    try {
+      for (const line of fs.readFileSync(file, "utf8").split("\n")) {
+        const parts = line.trim().split(/\s+/)
+        if (!parts[0] || parts[0].startsWith("#")) continue
+        entries.push({ id: parts[0], host_port: parts[2] || "27015" })
+      }
+    } catch (e) { /* fallback no primário */ }
+    const srv = entries.find((s) => s.id === srvId) || entries[0] || { id: "main", host_port: process.env.GAMEDIG_PORT || "27015" }
+    const host = srv.id === "main" ? (process.env.GAMEDIG_HOST || "cs16") : "cs16" + srv.id
+    const port = srv.id === "main" ? parseInt(process.env.GAMEDIG_PORT || "27015", 10) : 27015
+    const c = new Rcon(host, port, process.env.RCON_PASSWORD, { tcp: false, challenge: true })
     let output = ""
     let done = false
     const finish = () => {
@@ -686,7 +728,7 @@ cmd_rcon() {
 }
 
 usage() {
-  sed -n '2,12p' "${BASH_SOURCE[0]}"
+  sed -n '2,16p' "${BASH_SOURCE[0]}"
 }
 
 case "${1:-}" in
@@ -695,6 +737,8 @@ case "${1:-}" in
   config)  cmd_config "${@:2}" ;;
   build)   cmd_build ;;
   up)      cmd_up ;;
+  provision) cmd_provision "${@:2}" ;;
+  unprovision) cmd_unprovision "${@:2}" ;;
   down)    cmd_down "${@:2}" ;;
   ps)      cmd_ps ;;
   status)  cmd_status ;;

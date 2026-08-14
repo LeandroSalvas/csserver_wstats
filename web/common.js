@@ -61,6 +61,20 @@ function guardPage() {
   window.location.replace(`/login?next=${next}`)
 }
 
+// bfcache: "voltar" restaura a página do cache sem re-executar o JS — após um
+// logout o usuário veria a rota protegida de novo. No pageshow revalidamos a
+// sessão e reaplicamos o guard/estado de autenticação.
+window.addEventListener('pageshow', (event) => {
+  if (!event.persisted) return
+  loadAuthSession().then(() => {
+    guardPage()
+    renderPageNav()
+    renderLanguageToggle()
+    renderAuthBadge()
+    applyActiveNav()
+  })
+})
+
 function renderAuthBadge() {
   document.querySelectorAll('.page-nav-utils').forEach((utils) => {
     let slot = utils.querySelector('.auth-badge-slot')

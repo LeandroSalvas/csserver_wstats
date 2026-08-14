@@ -90,8 +90,9 @@ services:
       GAMEDIG_HOST: ${GAMEDIG_HOST:-cs16}
       GAMEDIG_PORT: ${GAMEDIG_PORT:-27015}
       RCON_PASSWORD: ${RCON_PASSWORD}
-      # Se vazio, a API monitora só o servidor primário. O override gerado por
-      # scripts/servers.sh compose define este valor com todos os servidores.
+      # Fallback de desenvolvimento (sem config/servers.list montado). Em
+      # produção a API lê a lista em tempo de execução (serverCtx), então o
+      # override NÃO define este valor — api estática, sem recriação no add/remove.
       CS_SERVERS: ${CS_SERVERS:-}
       ALERT_WEBHOOK_URL: ${ALERT_WEBHOOK_URL:-}
       STEAM_RETURN_URL: ${STEAM_RETURN_URL:-}
@@ -101,6 +102,10 @@ services:
       GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID:-}
       GOOGLE_CLIENT_SECRET: ${GOOGLE_CLIENT_SECRET:-}
       GOOGLE_RETURN_URL: ${GOOGLE_RETURN_URL:-}
+      # Base pública dos espectadores — a API deriva o spectatorUrl por servidor
+      # do contexto em config/servers.list (sem CS_SERVERS no compose: serviço
+      # api fica estático e add/remove não recriam containers em cascata).
+      WATCH_PUBLIC_BASE: ${WATCH_PUBLIC_BASE:-}
       SEED_ADMIN: ${SEED_ADMIN:-1}
       SERVER_MANAGER_PROVIDER: ${SERVER_MANAGER_PROVIDER:-docker}
       SERVER_REPO_DIR: ${SERVER_REPO_DIR:-/repo}

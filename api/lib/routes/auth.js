@@ -46,7 +46,7 @@ function extractSteamId(claimedId) {
 function sanitizeNext(raw) {
   const next = String(raw || '')
   if (next.startsWith('/') && !next.startsWith('//') && !next.startsWith('/\\')) return next
-  return '/admin'
+  return '/'
 }
 
 function buildReturnToWithNext(base, next) {
@@ -65,7 +65,7 @@ function userStatusRedirect(res, user, fallbackNext) {
     res.redirect(fallbackNext)
     return
   }
-  res.redirect(`/login?pending=1${fallbackNext !== '/admin' ? `&next=${encodeURIComponent(fallbackNext)}` : ''}`)
+  res.redirect(`/login?pending=1${fallbackNext !== '/' ? `&next=${encodeURIComponent(fallbackNext)}` : ''}`)
 }
 
 function register(app) {
@@ -219,7 +219,7 @@ function register(app) {
     if (error) return res.status(403).send(`Erro do Google: ${error}`)
 
     const expectedState = req.session?.oauthState
-    const next = sanitizeNext(req.session?.oauthNext || '/admin')
+    const next = sanitizeNext(req.session?.oauthNext || '/')
     req.session.oauthState = null
     req.session.oauthNext = null
 

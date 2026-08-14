@@ -1,4 +1,6 @@
-// users.js — Gestão de administradores e aprovações (somente superadmin).
+// users.js — Gestão de administradores e aprovações.
+// Admin aprovado (não superadmin): visualização apenas (sem ações); superadmin:
+// aprovar/rejeitar, alterar role e remover.
 
 const usersBody = document.getElementById('usersBody')
 const usersStatus = document.getElementById('usersStatus')
@@ -46,8 +48,13 @@ async function loadUsers() {
 
   try {
     const res = await fetch(`${API}/admin/users`, { credentials: 'include', cache: 'no-store' })
-    if (res.status === 401 || res.status === 403) {
+    if (res.status === 401) {
       window.location.replace('/login?next=' + encodeURIComponent(window.location.pathname))
+      return
+    }
+    if (res.status === 403) {
+      usersStatus.textContent = t('adminUsers.error')
+      showEmptyRow(usersBody, 7, t('adminUsers.error'))
       return
     }
     if (!res.ok) throw new Error(String(res.status))
@@ -69,6 +76,7 @@ function renderUsers(users) {
 
   const fragment = document.createDocumentFragment()
   const me = getCurrentUser()
+  const isSuper = !!(me && me.role === 'superadmin')
 
   users.forEach((u) => {
     const tr = document.createElement('tr')
@@ -112,7 +120,7 @@ function renderUsers(users) {
       opt.selected = u.role === role
       roleSelect.appendChild(opt)
     })
-    roleSelect.disabled = isMe
+    roleSelect.disabled = isMe || !isSuper
     roleSelect.addEventListener('change', () => runUserAction('role', u.id, { role: roleSelect.value }))
     roleCell.appendChild(roleSelect)
 
@@ -129,15 +137,17 @@ function renderUsers(users) {
     const actionWrap = document.createElement('div')
     actionWrap.className = 'servers-actions'
 
-    if (u.status === 'pending') {
-      actionWrap.appendChild(makeActionBtn(t('adminUsers.approve'), 'approve', u.id))
-      actionWrap.appendChild(makeActionBtn(t('adminUsers.reject'), 'reject', u.id, 'danger'))
-    } else if (u.status === 'rejected' || u.status === 'disabled') {
-      actionWrap.appendChild(makeActionBtn(t('adminUsers.approve'), 'approve', u.id))
-    }
+    if (isSuper) {
+      if (u.status === 'pending') {
+        actionWrap.appendChild(makeActionBtn(t('adminUsers.approve'), 'approve', u.id))
+        actionWrap.appendChild(makeActionBtn(t('adminUsers.reject'), 'reject', u.id, 'danger'))
+      } else if (u.status === 'rejected' || u.status === 'disabled') {
+        actionWrap.appendChild(makeActionBtn(t('adminUsers.approve'), 'approve', u.id))
+      }
 
-    if (!isMe) {
-      actionWrap.appendChild(makeActionBtn(t('adminUsers.remove'), 'remove', u.id, 'danger', true, u.display_name || u.username || u.id))
+      if (!isMe) {
+        actionWrap.appendChild(makeActionBtn(t('adminUsers.remove'), 'remove', u.id, 'danger', true, u.display_name || u.username || u.id))
+      }
     }
 
     actionsCell.appendChild(actionWrap)
@@ -183,7 +193,7 @@ async function runUserAction(action, id, extra) {
         body: JSON.stringify(extra || {})
       })
     }
-    if (res.status === 401 || res.status === 403) {
+    if (res.status === 401) {
       window.location.replace('/login?next=' + encodeURIComponent(window.location.pathname))
       return
     }

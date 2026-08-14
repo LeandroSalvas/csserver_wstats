@@ -8,7 +8,7 @@ const {
   requireCsrf,
   getCsrfToken,
   runRconCommand,
-  primaryServer
+  getServerList
 } = require('../core')
 
 function register(app) {
@@ -30,7 +30,7 @@ function register(app) {
       res.json({
         success: true,
         command: command.trim(),
-        server: server || primaryServer.id,
+        server: server || (getServerList()[0] || {}).id || 'main',
         response
       })
     } catch (err) {

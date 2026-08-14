@@ -3,6 +3,8 @@
 
 const { GameDig } = require('gamedig')
 const Rcon = require('rcon')
+const fs = require('fs')
+const path = require('path')
 
 const {
   LIVE_DATA_DIR,
@@ -11,7 +13,9 @@ const {
   GAMEDIG_HOST,
   GAMEDIG_PORT,
   SNAPSHOT_STALE_MS,
-  alertWebhookUrl
+  alertWebhookUrl,
+  serverRepoDir,
+  watchPublicBase
 } = require('./config')
 const { db } = require('./db')
 const {
@@ -34,28 +38,111 @@ const {
 } = require('./metrics')
 const { readLiveFile, withTimeout } = require('./helpers')
 
-function getServerConfigs() {
-  const raw = process.env.CS_SERVERS
-  if (!raw) return null
-  try {
-    const list = JSON.parse(raw)
-    if (!Array.isArray(list) || !list.length) return null
-    return list.map((s) => ({
-      ...s,
-      port: parseInt(s.port, 10) || 27015,
-      hostPort: s.hostPort != null ? parseInt(s.hostPort, 10) : (parseInt(s.port, 10) || 27015)
-    }))
-  } catch (err) {
-    console.error('CS_SERVERS inválido:', err.message)
-    return null
-  }
+// --- Config de servidores em tempo de execução ---
+// Fonte de verdade: config/servers.list (mesmo formato do scripts/servers.sh:
+// id name host_port map maxplayers rotate context; 1ª linha = main). A lista é
+// recarregada por poll (startConfigWatch), então add/remove de servidor NÃO
+// exige recriar o container da api — o serviço api fica estático no compose e
+// o provisionamento não recria mais nada em cascata.
+
+function slugifyContext(name) {
+  return String(name || '').toLowerCase().replace(/[^a-z0-9]/g, '')
 }
 
-const serverConfigs = getServerConfigs()
+function parseServersList(text) {
+  const out = []
+  for (const line of String(text).split('\n')) {
+    const parts = String(line).trim().split(/\s+/)
+    if (!parts[0] || parts[0].startsWith('#')) continue
+    const [id, name, host_port, map, maxplayers, rotate = 'yes', context = slugifyContext(name)] = parts
+    if (!id || !name) continue
+    out.push({ id, name, host_port, map, maxplayers, rotate, context })
+  }
+  return out
+}
+
+function buildConfigs(entries) {
+  return entries.map((s, i) => {
+    const hostPort = parseInt(s.host_port, 10) || 27015
+    const host = i === 0 ? 'cs16' : `cs16${s.id}`
+    const spectatorUrl = watchPublicBase
+      ? `${watchPublicBase.replace(/\/+$/, '')}/${s.context}/`
+      : undefined
+    return {
+      id: s.id,
+      name: s.name,
+      host,
+      port: 27015,
+      hostPort,
+      liveDir: path.join(serverRepoDir, 'live', s.id),
+      spectatorUrl,
+      map: s.map,
+      maxplayers: parseInt(s.maxplayers, 10) || undefined,
+      rotate: s.rotate,
+      context: s.context
+    }
+  })
+}
+
+function defaultPrimaryServer() {
+  return { id: 'main', name: GAMEDIG_HOST, host: GAMEDIG_HOST, port: GAMEDIG_PORT, hostPort: GAMEDIG_PORT, liveDir: LIVE_DATA_DIR }
+}
+
+// Carrega a lista de servidores: prioridade para config/servers.list (montada
+// no container em SERVER_REPO_DIR); se o arquivo não existir (dev sem repo),
+// usa o fallback histórico process.env.CS_SERVERS.
+function loadServerConfigs() {
+  try {
+    const text = fs.readFileSync(path.join(serverRepoDir, 'config', 'servers.list'), 'utf8')
+    const entries = parseServersList(text)
+    if (entries.length) return buildConfigs(entries)
+  } catch (err) {
+    /* cai no fallback abaixo */
+  }
+  const raw = process.env.CS_SERVERS
+  if (raw) {
+    try {
+      const list = JSON.parse(raw)
+      if (Array.isArray(list) && list.length) {
+        return list.map((s) => ({
+          ...s,
+          port: parseInt(s.port, 10) || 27015,
+          hostPort: s.hostPort != null ? parseInt(s.hostPort, 10) : (parseInt(s.port, 10) || 27015)
+        }))
+      }
+    } catch (err) {
+      console.error('CS_SERVERS inválido:', err.message)
+    }
+  }
+  return null
+}
+
+let serverConfigs = loadServerConfigs()
 
 const primaryServer = serverConfigs && serverConfigs.length
   ? serverConfigs[0]
-  : { id: 'main', name: GAMEDIG_HOST, host: GAMEDIG_HOST, port: GAMEDIG_PORT, hostPort: GAMEDIG_PORT, liveDir: LIVE_DATA_DIR }
+  : defaultPrimaryServer()
+
+// Lista atual (refresca a cada chamada) com fallback no servidor primário.
+// live.js/outros módulos NÃO podem importar `serverConfigs` destruturado —
+// CommonJS copia o valor no require e ficaria obsoleto após um reload.
+function getServerList() {
+  return serverConfigs && serverConfigs.length ? serverConfigs : [primaryServer]
+}
+
+// Poll de 5s sobre config/servers.list. Mantém a última lista boa se o arquivo
+// sumir/ler vazio no meio do caminho (escrita em andamento).
+function startConfigWatch() {
+  const file = path.join(serverRepoDir, 'config', 'servers.list')
+  setInterval(() => {
+    const next = loadServerConfigs()
+    if (next && next.length) {
+      const changed = JSON.stringify(next) !== JSON.stringify(serverConfigs)
+      serverConfigs = next
+      if (changed) console.log(`serverCtx: config de servidores atualizada (${next.length})`)
+    }
+  }, 5000).unref()
+}
 
 // Filtro opcional ?server= para queries por servidor.
 // Retorna null quando não informado, { invalid } quando o id não é configurado,
@@ -546,6 +633,8 @@ function updateLiveServerGauges(srv, state) {
 module.exports = {
   serverConfigs,
   primaryServer,
+  getServerList,
+  startConfigWatch,
   getServerFilter,
   findServer,
   resolveServer,

@@ -8,8 +8,7 @@ const {
   register: promRegister,
   dbUpGauge,
   redisUpGauge,
-  serverConfigs,
-  primaryServer,
+  getServerList,
   findServer,
   queryServer,
   serverAlertState,
@@ -59,7 +58,7 @@ function register(app) {
   })
 
   app.get('/servers', async (req, res) => {
-    const list = serverConfigs && serverConfigs.length ? serverConfigs : [primaryServer]
+    const list = getServerList()
     const results = await Promise.all(list.map(async (srv) => {
       try {
         const state = await queryServer(srv)
@@ -133,7 +132,7 @@ function register(app) {
   })
 
   app.get('/server', async (req, res) => {
-    const srv = req.query.server ? findServer(req.query.server) : primaryServer
+    const srv = req.query.server ? findServer(req.query.server) : getServerList()[0]
     if (!srv) return res.status(400).json({ error: `Servidor não configurado: ${req.query.server}` })
 
     try {
@@ -161,7 +160,7 @@ function register(app) {
   })
 
   app.get('/alerts', (req, res) => {
-    const servers = serverConfigs && serverConfigs.length ? serverConfigs : [primaryServer]
+    const servers = getServerList()
     const current = {}
     for (const srv of servers) {
       current[srv.id] = serverAlertState[srv.id] === undefined

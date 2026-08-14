@@ -5,15 +5,14 @@ const {
   getPagination,
   getServerFilter,
   handleError,
-  serverConfigs,
-  primaryServer
+  getServerList
 } = require('../core')
 
 // Mapa id -> nome de exibição. A coluna cs_matches.server guarda o id; o nome
-// (ex.: "Zueira") vive apenas na config CS_SERVERS. Usamos o mapa para anexar
+// (ex.: "Zueira") vive apenas na config servers.list. Usamos o mapa para anexar
 // `serverName` às respostas sem trocar o `server` (id), que serve de filtro/link.
 function buildServerNameMap() {
-  const list = serverConfigs && serverConfigs.length ? serverConfigs : [primaryServer]
+  const list = getServerList()
   const map = {}
   for (const srv of list) map[srv.id] = srv.name || srv.id
   return map

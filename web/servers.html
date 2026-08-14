@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>🎮 CS 1.6 Server Stats</title>
   <link rel="icon" type="image/svg+xml" href="/favicon.svg">
-  <link rel="stylesheet" href="/style.css?v=10">
+  <link rel="stylesheet" href="/style.css?v=11">
 </head>
 <body class="body-font-default" data-requires-admin>
 
@@ -46,10 +46,17 @@
           <datalist id="mapsList"></datalist>
         </div>
 
-        <div class="login-field">
+        <div class="login-field rotate-field">
           <label>
             <input type="checkbox" id="addRotate" checked />
             <span data-i18n="serverManager.addRotate">Rotacionar mapas</span>
+          </label>
+        </div>
+
+        <div class="login-field rotate-field">
+          <label>
+            <input type="checkbox" id="addCstv" />
+            <span data-i18n="serverManager.addCstv">Ativar serviços do CSTV</span>
           </label>
         </div>
 
@@ -80,8 +87,8 @@
     </div>
   </div>
 
-  <script src="/i18n/translations.js?v=6" defer></script>
-  <script src="/common.js?v=6" defer></script>
-  <script src="/servers.js?v=2" defer></script>
+  <script src="/i18n/translations.js?v=7" defer></script>
+  <script src="/common.js?v=7" defer></script>
+  <script src="/servers.js?v=4" defer></script>
 </body>
 </html>

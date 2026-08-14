@@ -10,6 +10,7 @@ const addSlots = document.getElementById('addSlots')
 const addMap = document.getElementById('addMap')
 const mapsList = document.getElementById('mapsList')
 const addRotate = document.getElementById('addRotate')
+const addCstv = document.getElementById('addCstv')
 const addServerBtn = document.getElementById('addServerBtn')
 const cancelAddBtn = document.getElementById('cancelAddBtn')
 const addStatus = document.getElementById('addStatus')
@@ -22,26 +23,45 @@ function csrfHeaders() {
   return { 'x-csrf-token': getCsrfToken() || '' }
 }
 
-async function loadServers() {
+async function loadServers(silent = false) {
   serversBody.innerHTML = ''
-  showSkeletonRows(serversBody, 7, 3)
-  serversStatus.textContent = t('serverManager.loading')
+  if (!silent) {
+    showSkeletonRows(serversBody, 7, 3)
+    serversStatus.textContent = t('serverManager.loading')
+  }
 
   try {
     const res = await fetch(`${API}/admin/servers`, { credentials: 'include', cache: 'no-store' })
     if (res.status === 401 || res.status === 403) {
       window.location.replace('/login?next=' + encodeURIComponent(window.location.pathname))
-      return
+      return false
     }
     if (!res.ok) throw new Error(String(res.status))
     const data = await res.json()
     renderServers(data.servers || [])
     serversStatus.textContent = ''
+    return true
   } catch (err) {
     console.error(err)
-    serversStatus.textContent = t('serverManager.actionError')
-    showEmptyRow(serversBody, 7, t('serverManager.actionError'))
+    return false
   }
+}
+
+// A api lê config/servers.list em runtime e NÃO é recriada no add/remove
+// (provisionamento cirúrgico com up --no-recreate), então a resposta chega
+// normalmente. O poll fica como rede de segurança para qualquer falha de rede.
+function pollLoadServers(maxTries = 30, onGiveUp) {
+  let tries = 0
+  const attempt = async () => {
+    if (await loadServers(true)) return
+    tries += 1
+    if (tries >= maxTries) {
+      if (onGiveUp) onGiveUp()
+      return
+    }
+    window.setTimeout(attempt, 3000)
+  }
+  attempt()
 }
 
 function statusLabel(state) {
@@ -140,8 +160,12 @@ function makeActionBtn(label, action, id, cls = '', serverName = '', isRemove = 
 async function runServerAction(action, id) {
   serversStatus.textContent = t('serverManager.provisioning')
   try {
-    const res = await fetch(`${API}/admin/servers/${encodeURIComponent(id)}/${action}`, {
-      method: 'POST',
+    const isRemove = action === 'remove'
+    const url = isRemove
+      ? `${API}/admin/servers/${encodeURIComponent(id)}`
+      : `${API}/admin/servers/${encodeURIComponent(id)}/${action}`
+    const res = await fetch(url, {
+      method: isRemove ? 'DELETE' : 'POST',
       headers: csrfHeaders(),
       credentials: 'include'
     })
@@ -159,7 +183,7 @@ async function runServerAction(action, id) {
   } catch (err) {
     console.error(err)
     serversStatus.textContent = t('serverManager.actionRestarting')
-    setTimeout(loadServers, 800)
+    pollLoadServers(30, () => { serversStatus.textContent = t('serverManager.actionError') })
   }
 }
 
@@ -202,7 +226,7 @@ async function addServer() {
         ...csrfHeaders()
       },
       credentials: 'include',
-      body: JSON.stringify({ name, slots, map, rotate: addRotate.checked ? 'yes' : 'no' })
+      body: JSON.stringify({ name, slots, map, rotate: addRotate.checked ? 'yes' : 'no', cstv: addCstv.checked })
     })
     if (res.status === 401 || res.status === 403) {
       window.location.replace('/login?next=' + encodeURIComponent(window.location.pathname))
@@ -224,13 +248,17 @@ async function addServer() {
     addStatus.textContent = t('serverManager.addProvisioning')
     addForm.hidden = true
     addToggleBtn.hidden = false
-    loadServers()
+    pollLoadServers()
   } finally {
     setAddBusy(false)
   }
 }
 
-refreshBtn.addEventListener('click', loadServers)
+refreshBtn.addEventListener('click', async () => {
+  if (!(await loadServers())) {
+    serversStatus.textContent = t('serverManager.actionError')
+  }
+})
 addToggleBtn.addEventListener('click', () => {
   addForm.hidden = !addForm.hidden
   addToggleBtn.hidden = !addForm.hidden

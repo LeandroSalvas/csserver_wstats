@@ -1,9 +1,10 @@
-// Gestão de usuários/admins e aprovações (apenas superadmin ativo).
-// O superadmin local pode aprovar/rejeitar os logins sociais que entraram
-// como 'pending', alterar roles e remover usuários.
+// Gestão de usuários/admins: a LISTAGEM é liberada para qualquer admin ativo
+// (leitura); aprovar/rejeitar, alterar role e remover continuam superadmin.
+// O frontend (users.js) oculta as ações para quem não é superadmin.
 
 const {
   commandLimiter,
+  requireAdmin,
   requireSuperadmin,
   requireCsrf
 } = require('../core')
@@ -11,7 +12,7 @@ const {
 const { db } = require('../core')
 
 function register(app) {
-  app.get('/admin/users', requireSuperadmin, async (req, res) => {
+  app.get('/admin/users', requireAdmin, async (req, res) => {
     try {
       const [rows] = await db.query(
         `SELECT id, provider, provider_id, username, display_name, email, avatar_url,

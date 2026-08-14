@@ -9,7 +9,7 @@ const {
   matchDurationHistogram
 } = require('./metrics')
 const { readLiveFile } = require('./helpers')
-const { serverConfigs, primaryServer, resolveLiveDir } = require('./serverCtx')
+const { getServerList, resolveLiveDir } = require('./serverCtx')
 
 const sseClients = new Set()
 let ssePingTimer = null
@@ -23,7 +23,7 @@ function checkLiveChanges() {
     client.res.write(': ping\n\n')
   }
 
-  const servers = serverConfigs && serverConfigs.length ? serverConfigs : [primaryServer]
+  const servers = getServerList()
   for (const srv of servers) {
     const scoreboard = readLiveFile('live_scoreboard.json', resolveLiveDir(srv.id))
     if (scoreboard && Array.isArray(scoreboard.players)) {
@@ -44,7 +44,7 @@ function startSsePolling() {
 const processedMatches = new Set()
 
 async function processLastMatch() {
-  const servers = serverConfigs && serverConfigs.length ? serverConfigs : [primaryServer]
+  const servers = getServerList()
 
   for (const srv of servers) {
     const scoreboard = readLiveFile('live_scoreboard.json', resolveLiveDir(srv.id))

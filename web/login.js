@@ -10,11 +10,11 @@ const steamLoginBtn = document.getElementById('steamLoginBtn')
 const googleLoginBtn = document.getElementById('googleLoginBtn')
 const guestNote = document.getElementById('guestNote')
 
-// Só aceita um path absoluto same-origin (mesma regra da API).
+// Só aceita um path absoluto same-origin (mesma regra da API). Default: HOME.
 function safeNext(raw) {
   const next = String(raw || '')
   if (next.startsWith('/') && !next.startsWith('//') && !next.startsWith('/\\')) return next
-  return '/admin'
+  return '/'
 }
 
 function showProviders() {
@@ -42,6 +42,10 @@ async function login(e) {
   loginSubmit.disabled = true
   loginSubmit.textContent = i18nUtils.t('auth.loggingIn')
 
+  // Volta para a página de origem após o login (default: HOME), ex.: /login?next=/usuarios.
+  const params = new URLSearchParams(window.location.search)
+  const next = safeNext(params.get('next'))
+
   try {
     const res = await fetch(`${API}/auth/login`, {
       method: 'POST',
@@ -50,7 +54,7 @@ async function login(e) {
         'x-csrf-token': getCsrfToken() || ''
       },
       credentials: 'include',
-      body: JSON.stringify({ username, password })
+      body: JSON.stringify({ username, password, next })
     })
 
     const data = await res.json()

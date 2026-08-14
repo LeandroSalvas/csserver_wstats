@@ -61,12 +61,29 @@ services:
       - ./cs/plugins/slots_reserve.amxx:/home/cs16/cstrike/addons/amxmodx/plugins/slots_reserve.amxx
       - ./live/zueira2/live_scoreboard.json:/home/cs16/cstrike/addons/amxmodx/data/live/live_scoreboard.json
       - ./live/zueira2/live_killfeed.json:/home/cs16/cstrike/addons/amxmodx/data/live/live_killfeed.json
-  api:
+  cs16supertestezueira:
+    image: cs16_stats:local
+    restart: always
     environment:
-      CS_SERVERS: >-
-        [{"id":"main","name":"Zueira","host":"cs16","port":27015,"hostPort":27015,"liveDir":"/live_data/main","spectatorUrl":"https://zueiracstrike.duckdns.org:4445/zueira/"},{"id":"fypooldayonly","name":"fy_pool_day_only","host":"cs16fypooldayonly","port":27015,"hostPort":27016,"liveDir":"/live_data/fypooldayonly","spectatorUrl":"https://zueiracstrike.duckdns.org:4445/fypooldayonly/"},{"id":"zueira2","name":"Zueira2","host":"cs16zueira2","port":27015,"hostPort":27017,"liveDir":"/live_data/zueira2","spectatorUrl":"https://zueiracstrike.duckdns.org:4445/zueira2/"}]
+      PORT: "27015"
+      MAP: "cs_italy"
+      MAXPLAYERS: "17"
+      SERVER_ID: "supertestezueira"
+    ports:
+      - "27018:27015/udp"
+      - "27018:27015/tcp"
+    security_opt:
+      - seccomp=unconfined
     volumes:
-      - ./live/fypooldayonly/live_scoreboard.json:/live_data/fypooldayonly/live_scoreboard.json:ro
-      - ./live/fypooldayonly/live_killfeed.json:/live_data/fypooldayonly/live_killfeed.json:ro
-      - ./live/zueira2/live_scoreboard.json:/live_data/zueira2/live_scoreboard.json:ro
-      - ./live/zueira2/live_killfeed.json:/live_data/zueira2/live_killfeed.json:ro
+      - ./config/servers/supertestezueira/server.cfg:/home/cs16/cstrike/server.cfg
+      - ./config/servers/supertestezueira/users.ini:/home/cs16/cstrike/addons/amxmodx/configs/users.ini
+      - ./config/servers/supertestezueira/amxx.cfg:/home/cs16/cstrike/addons/amxmodx/configs/amxx.cfg
+      - ./config/servers/supertestezueira/mapcycle.txt:/home/cs16/cstrike/mapcycle.txt
+      - ./config/servers/supertestezueira/motd.txt:/home/cs16/cstrike/motd.txt
+      - ./config/servers/supertestezueira/plugins.ini:/home/cs16/cstrike/addons/amxmodx/configs/plugins.ini
+      - ./cs/plugins/live_scoreboard.amxx:/home/cs16/cstrike/addons/amxmodx/plugins/live_scoreboard.amxx
+      - ./cs/plugins/live_killfeed.amxx:/home/cs16/cstrike/addons/amxmodx/plugins/live_killfeed.amxx
+      - ./cs/plugins/csstatsx_sql.amxx:/home/cs16/cstrike/addons/amxmodx/plugins/csstatsx_sql.amxx
+      - ./cs/plugins/slots_reserve.amxx:/home/cs16/cstrike/addons/amxmodx/plugins/slots_reserve.amxx
+      - ./live/supertestezueira/live_scoreboard.json:/home/cs16/cstrike/addons/amxmodx/data/live/live_scoreboard.json
+      - ./live/supertestezueira/live_killfeed.json:/home/cs16/cstrike/addons/amxmodx/data/live/live_killfeed.json

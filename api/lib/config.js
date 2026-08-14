@@ -47,6 +47,12 @@ const googleReturnUrl = process.env.GOOGLE_RETURN_URL || ''
 const serverManagerProvider = process.env.SERVER_MANAGER_PROVIDER || 'docker'
 const serverRepoDir = process.env.SERVER_REPO_DIR || '/repo'
 
+// Base pública dos espectadores (ex.: https://zueiracstrike.duckdns.org:4445).
+// A API monta o spectatorUrl por servidor em tempo de execução a partir de
+// config/servers.list (contexto), então o override do compose não precisa mais
+// bakear o CS_SERVERS (api estática = sem recriação em add/remove).
+const watchPublicBase = process.env.WATCH_PUBLIC_BASE || ''
+
 // Seed do Superadmin local no boot (gera ADMIN_CREDENTIALS.txt no repo).
 const seedAdminEnabled = process.env.SEED_ADMIN !== '0'
 
@@ -76,6 +82,7 @@ module.exports = {
   googleReturnUrl,
   serverManagerProvider,
   serverRepoDir,
+  watchPublicBase,
   seedAdminEnabled,
   metricsUser,
   metricsPass
