@@ -21,9 +21,17 @@ jobs:
           REPO: ${{ github.repository }}
         run: |
           [ -z "$WEBHOOK" ] && echo "secret DISCORD_CHANGELOG_WEBHOOK vazio; saindo" && exit 0
-          BODY="$(jq -rn --argjson c "$COMMITS" '
-            ($c | map(("- **" + (.message | split("\n")[0]) + "** — " + .author.name)) | join("\n"))')"
-          [ ${#BODY} -gt 1850 ] && BODY="${BODY:0:1847}..."
+          # workflow_dispatch não traz commits/compare — posta mesmo assim (teste do webhook)
+          if [ -z "$COMMITS" ] || [ "$COMMITS" = "null" ]; then
+            BODY="(teste manual — sem lista de commits)"
+          else
+            BODY="$(jq -rn --argjson c "$COMMITS" '
+              ($c | map(("- **" + (.message | split("\n")[0]) + "** — " + .author.name)) | join("\n"))')"
+            [ ${#BODY} -gt 1850 ] && BODY="${BODY:0:1847}..."
+          fi
+          if [ -z "$COMPARE" ] || [ "$COMPARE" = "null" ]; then
+            COMPARE="https://github.com/$REPO"
+          fi
           TEXT="**📦 Push para \`$REF\`** ($REPO)\n\n$BODY\n\n🔗 $COMPARE"
           jq -n --arg c "$TEXT" '{content: $c}' \
             | curl -sS -H "Content-Type: application/json" -d @- "$WEBHOOK" -o /dev/null -w "discord: %{http_code}\n"
