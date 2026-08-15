@@ -20,7 +20,9 @@ jobs:
           COMPARE: ${{ github.event.compare }}
           REPO: ${{ github.repository }}
         run: |
+          set -euo pipefail
           [ -z "$WEBHOOK" ] && echo "secret DISCORD_CHANGELOG_WEBHOOK vazio; saindo" && exit 0
+          echo "webhook len: ${#WEBHOOK}"
           # workflow_dispatch não traz commits/compare — posta mesmo assim (teste do webhook)
           if [ -z "$COMMITS" ] || [ "$COMMITS" = "null" ]; then
             BODY="(teste manual — sem lista de commits)"
@@ -33,5 +35,10 @@ jobs:
             COMPARE="https://github.com/$REPO"
           fi
           TEXT="**📦 Push para \`$REF\`** ($REPO)\n\n$BODY\n\n🔗 $COMPARE"
-          jq -n --arg c "$TEXT" '{content: $c}' \
-            | curl -sS -H "Content-Type: application/json" -d @- "$WEBHOOK" -o /dev/null -w "discord: %{http_code}\n"
+          HTTP=$(jq -n --arg c "$TEXT" '{content: $c}' \
+              | curl -sS -f -H "Content-Type: application/json" -d @- "$WEBHOOK" -o /dev/null -w "%{http_code}") && RC=0 || RC=$?
+          if [ "$RC" -ne 0 ]; then
+            echo "falha ao postar no Discord (curl exit $RC, http ${HTTP:-?}) — confira o secret DISCORD_CHANGELOG_WEBHOOK"
+            exit 1
+          fi
+          echo "discord: $HTTP"
