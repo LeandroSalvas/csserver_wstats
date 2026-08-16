@@ -132,3 +132,46 @@ services:
       interval: 30s
       timeout: 10s
       retries: 5
+  watch-hltv-awponly:
+    image: cs16_stats:local
+    container_name: cs16-watch-hltv-awponly
+    restart: unless-stopped
+    profiles: ["watch"]
+    network_mode: host
+    environment:
+      LD_LIBRARY_PATH: "/home/cs16"
+    entrypoint: ["/home/cs16/start-hltv.sh"]
+    volumes:
+      - ./config/watch/awponly/hltv.cfg:/home/cs16/hltv.cfg:ro
+      - ./config/watch/awponly/start-hltv.sh:/home/cs16/start-hltv.sh:ro
+      - ./live/watch/awponly:/home/cs16/watch_logs
+    healthcheck:
+      test: ["CMD", "test", "-f", "/home/cs16/hltv.pid"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+  watch-main-awponly:
+    image: csserver_wstats-watch-main
+    container_name: cs16-watch-main-awponly
+    restart: unless-stopped
+    profiles: ["watch"]
+    network_mode: host
+    environment:
+      GAME_SERVER: "127.0.0.1:27103"
+      LISTEN_HOST: "0.0.0.0"
+      LISTEN_PORT: "27203"
+      BASE_PATH: "/awponly"
+      UDP_PORT_RANGE: "27492-27555"
+      CONSOLE_COMMANDS: "spec_autodirector 1"
+      PACKAGE_ZIP: "/valve/valve.zip"
+    volumes:
+      - ./valve/valve.zip:/valve/valve.zip:ro
+    ulimits:
+      nofile:
+        soft: 65536
+        hard: 65536
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://127.0.0.1:27203/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 5

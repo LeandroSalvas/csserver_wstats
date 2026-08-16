@@ -61,3 +61,29 @@ services:
       - ./cs/plugins/slots_reserve.amxx:/home/cs16/cstrike/addons/amxmodx/plugins/slots_reserve.amxx
       - ./live/zueira2/live_scoreboard.json:/home/cs16/cstrike/addons/amxmodx/data/live/live_scoreboard.json
       - ./live/zueira2/live_killfeed.json:/home/cs16/cstrike/addons/amxmodx/data/live/live_killfeed.json
+  cs16awponly:
+    image: cs16_stats:local
+    restart: always
+    environment:
+      PORT: "27015"
+      MAP: "awp_map"
+      MAXPLAYERS: "21"
+      SERVER_ID: "awponly"
+    ports:
+      - "27018:27015/udp"
+      - "27018:27015/tcp"
+    security_opt:
+      - seccomp=unconfined
+    volumes:
+      - ./config/servers/awponly/server.cfg:/home/cs16/cstrike/server.cfg
+      - ./config/servers/awponly/users.ini:/home/cs16/cstrike/addons/amxmodx/configs/users.ini
+      - ./config/servers/awponly/amxx.cfg:/home/cs16/cstrike/addons/amxmodx/configs/amxx.cfg
+      - ./config/servers/awponly/mapcycle.txt:/home/cs16/cstrike/mapcycle.txt
+      - ./config/servers/awponly/motd.txt:/home/cs16/cstrike/motd.txt
+      - ./config/servers/awponly/plugins.ini:/home/cs16/cstrike/addons/amxmodx/configs/plugins.ini
+      - ./cs/plugins/live_scoreboard.amxx:/home/cs16/cstrike/addons/amxmodx/plugins/live_scoreboard.amxx
+      - ./cs/plugins/live_killfeed.amxx:/home/cs16/cstrike/addons/amxmodx/plugins/live_killfeed.amxx
+      - ./cs/plugins/csstatsx_sql.amxx:/home/cs16/cstrike/addons/amxmodx/plugins/csstatsx_sql.amxx
+      - ./cs/plugins/slots_reserve.amxx:/home/cs16/cstrike/addons/amxmodx/plugins/slots_reserve.amxx
+      - ./live/awponly/live_scoreboard.json:/home/cs16/cstrike/addons/amxmodx/data/live/live_scoreboard.json
+      - ./live/awponly/live_killfeed.json:/home/cs16/cstrike/addons/amxmodx/data/live/live_killfeed.json

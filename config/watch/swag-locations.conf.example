@@ -35,3 +35,12 @@
         proxy_set_header X-Real-IP $remote_addr;
     }
 
+    location /awponly/ {
+        proxy_pass http://192.168.15.54:27203;
+        proxy_http_version 1.1;
+        proxy_set_header Upgrade $http_upgrade;
+        proxy_set_header Connection "upgrade";
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+    }
+
