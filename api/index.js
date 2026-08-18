@@ -113,10 +113,6 @@ async function start() {
     }
     setInterval(checkAlerts, 30000)
     checkAlerts()
-    setInterval(serverCtx.snapshot, 60000)
-    serverCtx.snapshot()
-    setInterval(serverCtx.collectDbStats, 60000)
-    serverCtx.collectDbStats()
     startDiscordBot()
   })
   return server

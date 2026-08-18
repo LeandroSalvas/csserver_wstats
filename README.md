@@ -17,7 +17,7 @@ O projeto é orquestrado com Docker Compose. Os serviços base são:
 
 | Serviço | Descrição |
 |---------|-----------|
-| `cs16` | Servidores de jogo Counter-Strike 1.6 com AMX Mod X e stats plugin (um container por servidor; o primário é o `main`) |
+| `cs16` | Servidores de jogo Counter-Strike 1.6 com ReHLDS, ReGameDLL, AMX Mod X e stats plugin. Suporta 5 modos de jogo (standard, zombies, csdm, surf, gungame) com plugins e configs específicas por modo (um container por servidor; o primário é o `main`) |
 | `db` | MariaDB para armazenamento de estatísticas |
 | `redis` | Cache e armazenamento de sessões |
 | `api` | Backend Node.js (Express) com endpoints REST |
@@ -44,11 +44,33 @@ O **swag** (proxy TLS) e o **duckdns** (DNS dinâmico) são **parte da stack** (
 
 #### Servidor de Jogo
 
-- Counter-Strike 1.6 pronto para rodar com AMX Mod X
+- Counter-Strike 1.6 com **ReHLDS**, **ReGameDLL**, Metamod-R, ReUnion e **AMX Mod X 1.10**
+- **5 modos de jogo**: standard (CS clássico), zombies (Zombie Plague 5.0.8a), csdm (ReDeathmatch), surf (Survival Surf), gungame (GunGame)
+- Cada modo tem plugins, configs e MOTD próprios (templates em `config/templates/modes/` e `config/templates/motd/`)
 - Configurações de servidor centralizadas (`server.cfg`, `users.ini`, `mapcycle.txt`, `motd.txt`)
-- Suporte a bots PodBot (mínimo 2 bots, com slot reservado ao HLTV)
+- UAC (User Access Control) para proteção contra exploração de bugs
+- ZBot com modo `fill` (preenche vagas com bots, piso de 2 bots, slot reservado ao HLTV)
 - Stats plugin integrado para coleta automática de dados
-- Multi-servidor: vários servidores com porta, mapa, nome e arquivos live próprios (`config/servers.list` é a fonte da verdade)
+- Multi-servidor: vários servidores com porta, mapa, modo e arquivos live próprios (`config/servers.list` é a fonte da verdade)
+- **CSTV opt-in por servidor**: a 9ª coluna `cstv` em `servers.list` controla quais servidores têm espectador web (watch-hltv + watch-main)
+
+#### Modos de Jogo
+
+O projeto suporta 5 modos de jogo, cada um com plugins e configurações específicas:
+
+| Modo | Descrição | Plugins principais |
+|------|-----------|-------------------|
+| `standard` | CS 1.6 clássico (bomb/defuse, rescue) | `csstatsx_sql`, `live_scoreboard`, `live_killfeed`, `slots_reserve` |
+| `zombies` | Zombie Plague 5.0.8a (humans vs zombies) | `zp50_*` (70+ plugins), `live_scoreboard`, `live_killfeed` |
+| `csdm` | ReDeathmatch (deathmatch com classes) | `redm_*` (classes), `csdm_*` (spawns), `live_scoreboard`, `live_killfeed` |
+| `surf` | Survival Surf (surf em mapas customizados) | `live_scoreboard`, `live_killfeed` |
+| `gungame` | GunGame (progressão de armas por kills) | `regg_*` (regg engine), `live_scoreboard`, `live_killfeed` |
+
+- A 8ª coluna `mode` em `servers.list` define o modo (default: `standard`)
+- Cada modo tem templates de `server.cfg` e `plugins.ini` em `config/templates/modes/`
+- Cada modo tem MOTD personalizado em `config/templates/motd/`
+- Plugins por modo ficam em `cs16/vendor/mode_plugins/<modo>/`
+- **CSTV indisponível para modo zombies** (restrição no frontend e backend)
 
 #### Painel Web
 
@@ -233,18 +255,29 @@ Os arquivos em `live/<id>/` são compartilhados entre o plugin do servidor CS e 
 | `live/<id>/live_killfeed.json` | Killfeed ao vivo (escrito pelo plugin AMX Mod X) |
 | `live/watch/<id>/` | Logs do relay HLTV e `last_hltv_crash.txt` (espectador, por servidor) |
 
-#### Plugins AMX Mod X (`cs/plugins/`)
+#### Plugins AMX Mod X (`cs16/plugins/`)
 
-Os fontes dos plugins que escrevem os arquivos live ficam versionados em `cs/plugins/` e são **compilados e montados no container do servidor** (sobrepõem os binários da imagem `leandrosalvas/cs16_stats`):
+Os fontes dos plugins que escrevem os arquivos live ficam versionados em `cs16/plugins/` e são **compilados e montados no container do servidor** (sobrepõem os binários da imagem `leandrosalvas/cs16_stats`):
 
 | Arquivo | Descrição |
 |---------|-----------|
-| `cs/plugins/live_scoreboard.sma` | Gera `live/live_scoreboard.json` (scoreboard T/CT) |
-| `cs/plugins/live_killfeed.sma` | Gera `live/live_killfeed.json` (kill feed) |
-| `cs/plugins/slots_reserve.sma` | Reserva um slot para o HLTV (espectador) e evita que ele tome o lugar de um jogador |
-| `cs/plugins/plugins.ini` | Lista de plugins ativos do AMX Mod X |
+| `cs16/plugins/live_scoreboard.sma` | Gera `live/live_scoreboard.json` (scoreboard T/CT) |
+| `cs16/plugins/live_killfeed.sma` | Gera `live/live_killfeed.json` (kill feed) |
+| `cs16/plugins/slots_reserve.sma` | Reserva um slot para o HLTV (espectador) e evita que ele tome o lugar de um jogador |
+| `cs16/plugins/csstatsx_sql.sma` | Coleta de estatísticas para o banco SQL |
+| `cs16/plugins/adminslots.sma` | Gerenciamento de slots de admin |
+| `cs16/plugins/amx_settings_api.sma` | API de configurações do AMX |
+| `cs16/plugins/cs_ham_bots_api.sma` | API HAM para bots |
+| `cs16/plugins/cs_maxspeed_api.sma` | API de velocidade máxima |
+| `cs16/plugins/cs_player_models_api.sma` | API de modelos de jogador |
+| `cs16/plugins/cs_teams_api.sma` | API de times |
+| `cs16/plugins/cs_weap_models_api.sma` | API de modelos de armas |
+| `cs16/plugins/cs_weap_restrict_api.sma` | API de restrição de armas |
+| `cs16/plugins/plugins.ini` | Lista de plugins ativos do AMX Mod X |
 
-Para alterar um plugin, edite o `.sma` e recompile:
+Além destes, cada modo tem plugins próprios em `cs16/vendor/mode_plugins/<modo>/` (ex.: `zombies/`, `csdm/`, `gungame/`, `surf/`), montados no container conforme o modo configurado.
+
+Para alterar um plugin, edite o `.sma` em `cs16/plugins/` e recompile:
 
 ```bash
 ./cs/build-plugins.sh   # usa o amxxpc da imagem cs16_stats para gerar os .amxx
@@ -272,6 +305,8 @@ Os blocos `server_name` com domínios no `web/nginx.conf` são específicos da i
 
 #### Multi-servidor (provisionamento automático)
 
+> **Novo na stack?** Para um guia completo de instalação do zero (pré-requisitos, .env, troubleshooting), veja [INSTALL.md](INSTALL.md).
+
 O projeto pode rodar vários servidores CS 1.6 ao mesmo tempo, cada um com porta, mapa, nome, arquivos live e espectador web próprios. O servidor **primário** (primeira linha de `config/servers.list`) é o único usado por snapshots/rankings e pelo registro de partidas (`cs_matches`).
 
 **Fluxo de uso:**
@@ -282,7 +317,7 @@ O projeto pode rodar vários servidores CS 1.6 ao mesmo tempo, cada um com porta
 # mapas (e quais mapas), gera o servers.list, cria os arquivos de config/live e sobe a stack.
 ./scripts/setup.sh
 
-# Opção B (manual) — edite config/servers.list (formato: id nome porta_host mapa maxplayers rotate context)
+# Opção B (manual) — edite config/servers.list (formato: id nome porta_host mapa maxplayers rotate context mode cstv)
 ./scripts/servers.sh up
 ```
 
@@ -295,7 +330,7 @@ O projeto pode rodar vários servidores CS 1.6 ao mesmo tempo, cada um com porta
 | `./scripts/servers.sh compose` | Gera `docker-compose.servers.yml` (override) + `docker-compose.watch.yml` (espectador) + `config/watch/swag-locations.conf.example` **e sincroniza os blocos `location` no swag vivo** |
 | `./scripts/servers.sh swag-sync` | Re-sincroniza os blocos `location` no proxy-conf vivo do swag e reinicia o swag se mudou (idempotente) |
 | `./scripts/servers.sh config` | Valida o compose mergeado |
-| `./scripts/servers.sh up` | `init` + `compose` + `docker compose up -d --remove-orphans` (sem `--build`; builds são explícitos via `servers.sh build`) |
+| `./scripts/servers.sh up` | `init` + `compose` + `docker compose up -d --no-recreate` (sem `--build`; builds são explícitos via `servers.sh build`) |
 | `./scripts/servers.sh build` | Constrói as imagens `cs16_stats:local` e `csserver_wstats-api` |
 | `./scripts/servers.sh down` | Para a stack |
 | `./scripts/servers.sh ps` | Estado dos containers |
@@ -307,10 +342,11 @@ O projeto pode rodar vários servidores CS 1.6 ao mesmo tempo, cada um com porta
 **Exemplo de `config/servers.list`:**
 
 ```
-main Zueira 27015 de_dust2 32 yes zueira
-frag Frag 27016 de_inferno 24 yes frag
-dm Deathmatch 27017 fy_iceworld 20 yes dm
-awp AWP 27018 awp_map 16 yes awp
+# Formato: id name host_port map maxplayers rotate context mode cstv
+main Zueira 27015 de_dust2 30 yes zueira standard yes
+gungame GunGame 27016 fy_iceworld 16 no gungame gungame yes
+deathmatch DeathMatch 27017 de_dust 30 yes deathmatch csdm yes
+zombies Zombies 27018 de_aztec 30 yes zombies zombies no
 ```
 
 Regras e detalhes:
@@ -318,6 +354,8 @@ Regras e detalhes:
 - A 1ª linha é o primário e deve manter o id `main`.
 - `porta_host` é a porta publicada no host; dentro do container todos usam a porta interna `27015`.
 - `context` (7ª coluna, opcional) é o slug do path do espectador web (`WATCH_PUBLIC_BASE/<context>/`); deve ser único e usar apenas `a-z0-9`. Default = slug do nome.
+- `mode` (8ª coluna, opcional) é o modo de jogo: `standard` (padrão), `zombies`, `csdm`, `surf` ou `gungame`. Cada modo tem plugins, configs e MOTD próprios.
+- `cstv` (9ª coluna, opcional) habilita os serviços de espectador web (watch-hltv + watch-main) para o servidor: `yes` ou `no` (padrão). Indisponível para modo `zombies`.
 - `maxplayers` = slots **visíveis** (pares entre 2 e 30, máximo 30). O engine usa `visible + 1` (slot escondido reservado ao HLTV via plugin `slots_reserve`); como 30+1=31 fica sempre abaixo do teto de 32 do engine, o slot escondido existe em qualquer configuração. A API não conta o HLTV (`<context>-hltv`) nos `players`/`playersList`. `pb_minbots 2` garante um piso de 2 bots.
 - `rotate`: `yes` (padrão) = rotação de mapas, com a lista em `config/servers/<id>/mapcycle.txt` (o assistente pergunta quais mapas da imagem entram na rotação); `no` = o `mapcycle.txt` fica apenas com o mapa escolhido (servidor sem troca de mapa).
 - Se o `mapcycle.txt` do servidor ainda não existir com `rotate=yes`, o `init` copia o `config/mapcycle.txt` compartilhado como padrão; com `rotate=no`, ele regrava o mapa único se o conteúdo mudar.
@@ -344,10 +382,10 @@ Informe o total desejado, o nome do novo servidor (rotação de mapas, porta/map
 1. **Edite `config/servers.list`** e adicione a linha:
 
    ```
-   surf Surf 27019 surf_ski_2 20 yes
+   surf Surf 27019 surf_ski_2 20 yes surf surf surf yes
    ```
 
-   Formato: `id nome porta_host mapa maxplayers rotate` — use um `id` curto, sem espaços. Se quiser rotação customizada, crie/edite `config/servers/<id>/mapcycle.txt` com a lista de mapas (ou rode o assistente); para não rotacionar, use `no`.
+   Formato: `id nome porta_host mapa maxplayers rotate context mode cstv` — use um `id` curto, sem espaços. As colunas `context`, `mode` e `cstv` são opcionais: `context` default = slug do nome; `mode` default = `standard`; `cstv` default = `no` (indisponível para `zombies`). Se quiser rotação customizada, crie/edite `config/servers/<id>/mapcycle.txt` com a lista de mapas (ou rode o assistente); para não rotacionar, use `no`.
 
 2. **Rode o provisionador** (gera os arquivos e sobe a stack):
 
@@ -364,8 +402,9 @@ Informe o total desejado, o nome do novo servidor (rotação de mapas, porta/map
 
 O que acontece por baixo dos panos:
 
-- O `init` cria `config/servers/surf/` (server.cfg com hostname "Surf" e a senha RCON do `.env`, `users.ini`, `mapcycle.txt`, `motd.txt` e `plugins.ini`) e `live/surf/` com os JSONs vazios. O `mapcycle.txt` só é criado se não existir (ou vira só o mapa escolhido com `rotate=no`), preservando a rotação escolhida por servidor.
+- O `init` cria `config/servers/surf/` (server.cfg com hostname "Surf" e a senha RCON do `.env`, `users.ini`, `mapcycle.txt`, `motd.txt` e `plugins.ini`) e `live/surf/` com os JSONs vazios. O `mapcycle.txt` só é criado se não existir (ou vira só o mapa escolhido com `rotate=no`), preservando a rotação escolhida por servidor. Para modos específicos (zombies, csdm, surf, gungame), templates de `server.cfg` e `plugins.ini` são copiados de `config/templates/modes/<modo>/` quando existentes.
 - O `compose` regenera `docker-compose.servers.yml` com o container `cs16surf` (porta 27019 publicada) e adiciona o servidor ao `CS_SERVERS` da API.
+- Se `cstv=yes`, o `init` também cria `config/watch/surf/` (hltv.cfg + start-hltv.sh) e o `compose` gera os containers `cs16-watch-hltv-surf` + `cs16-watch-main-surf`.
 - A API passa a detectar o novo servidor via Gamedig; os seletores de servidor de todas as páginas o exibem automaticamente, assim como os alertas de online/offline e as métricas do Grafana.
 
 ##### Personalizar um servidor
@@ -393,13 +432,13 @@ Informe o total desejado (menor que o atual) e escolha quais servidores remover.
 **Ou manualmente:**
 
 1. Apague a linha correspondente em `config/servers.list`.
-2. Atualize a stack (o `up` usa `--remove-orphans` e já destrói o container do servidor removido):
+2. Atualize a stack (regenera o compose sem o servidor; `--no-recreate` não remove containers existentes):
 
    ```bash
    ./scripts/servers.sh up
    ```
 
-3. Se quiser apagar também os arquivos de config/live do servidor removido:
+3. Remova o container e, opcionalmente, os arquivos de config/live:
 
    ```bash
    ./scripts/servers.sh prune surf
@@ -415,7 +454,7 @@ Informe o total desejado (menor que o atual) e escolha quais servidores remover.
 
 #### Espectador Web (WebRTC)
 
-O espectador permite assistir **qualquer servidor** direto no navegador, sem instalar o CS 1.6. Para cada servidor de `config/servers.list` há um par `watch-main-<id>` + `watch-hltv-<id>`; o fluxo (por servidor) é:
+O espectador permite assistir **servidores habilitados** direto no navegador, sem instalar o CS 1.6. Apenas servidores com `cstv=yes` na 9ª coluna do `config/servers.list` recebem os containers de espectador (modo `zombies` é automaticamente desabilitado). Para cada servidor habilitado há um par `watch-main-<id>` + `watch-hltv-<id>`; o fluxo (por servidor) é:
 
 ```
 Browser (Xash3D WASM) ──WebRTC──▶ watch-main-<id> (proxy 27200+i) ──UDP──▶ watch-hltv-<id> (relay 27100+i) ──▶ cs16<id> (127.0.0.1:<host_port>)
@@ -804,7 +843,7 @@ The project is orchestrated with Docker Compose. The base services are:
 
 | Service | Description |
 |---------|-------------|
-| `cs16` | Counter-Strike 1.6 game servers with AMX Mod X and stats plugin (one container per server; the primary is `main`) |
+| `cs16` | Counter-Strike 1.6 game servers with ReHLDS, ReGameDLL, AMX Mod X and stats plugin. Supports 5 game modes (standard, zombies, csdm, surf, gungame) with mode-specific plugins and configs (one container per server; the primary is `main`) |
 | `db` | MariaDB for stats storage |
 | `redis` | Cache and session store |
 | `api` | Node.js (Express) backend with REST endpoints |
@@ -831,11 +870,31 @@ The **swag** (TLS proxy) and **duckdns** (dynamic DNS) are **part of the stack**
 
 #### Game Server
 
-- Counter-Strike 1.6 ready to run with AMX Mod X
+- Counter-Strike 1.6 with **ReHLDS**, **ReGameDLL**, Metamod-R, ReUnion and **AMX Mod X 1.10**
+- **5 game modes**: standard (classic CS), zombies (Zombie Plague 5.0.8a), csdm (ReDeathmatch), surf (Survival Surf), gungame (GunGame)
+- Each mode has its own plugins, configs, and MOTD (templates in `config/templates/modes/` and `config/templates/motd/`)
 - Centralized server configuration (`server.cfg`, `users.ini`, `mapcycle.txt`, `motd.txt`)
-- PodBot bot support (2-bot floor, with a reserved slot for HLTV)
+- UAC (User Access Control) for bug exploitation protection
+- ZBot with `fill` mode (fills empty slots with bots, 2-bot floor, reserved slot for HLTV)
 - Integrated stats plugin for automatic data collection
-- Multi-server: multiple servers, each with its own port, map, name, and live files (`config/servers.list` is the source of truth)
+- Multi-server: multiple servers, each with its own port, map, mode, and live files (`config/servers.list` is the source of truth)
+- **CSTV opt-in per server**: the 9th column `cstv` in `servers.list` controls which servers have web spectators (watch-hltv + watch-main)
+
+#### Game Modes
+
+| Mode | Description | Key plugins |
+|------|-------------|-------------|
+| `standard` | Classic CS 1.6 (bomb/defuse, rescue) | `csstatsx_sql`, `live_scoreboard`, `live_killfeed`, `slots_reserve` |
+| `zombies` | Zombie Plague 5.0.8a (humans vs zombies) | `zp50_*` (70+ plugins), `live_scoreboard`, `live_killfeed` |
+| `csdm` | ReDeathmatch (deathmatch with classes) | `redm_*` (classes), `csdm_*` (spawns), `live_scoreboard`, `live_killfeed` |
+| `surf` | Survival Surf (custom surf maps) | `live_scoreboard`, `live_killfeed` |
+| `gungame` | GunGame (weapon progression by kills) | `regg_*` (regg engine), `live_scoreboard`, `live_killfeed` |
+
+- The 8th column `mode` in `servers.list` sets the mode (default: `standard`)
+- Each mode has `server.cfg` and `plugins.ini` templates in `config/templates/modes/`
+- Each mode has a custom MOTD in `config/templates/motd/`
+- Mode-specific plugins are in `cs16/vendor/mode_plugins/<mode>/`
+- **CSTV unavailable for zombies mode** (frontend and backend restriction)
 
 #### Web Panel
 
@@ -885,6 +944,8 @@ The **swag** (TLS proxy) and **duckdns** (dynamic DNS) are **part of the stack**
   - Internal (no host bind): `9113` (nginx-exporter) and `4040` (nginxlog-exporter)
 
 ### Quick Start
+
+> **New to the stack?** For a complete installation guide from scratch (prerequisites, .env configuration, troubleshooting), see [INSTALL.md](INSTALL.md).
 
 **1. Clone the repository (with submodules):**
 
@@ -1020,18 +1081,29 @@ Files in `live/<id>/` are shared between the CS server plugin and the API for re
 | `live/<id>/live_killfeed.json` | Live killfeed (written by AMX Mod X plugin) |
 | `live/watch/<id>/` | HLTV relay logs and `last_hltv_crash.txt` (spectator, per server) |
 
-#### AMX Mod X plugins (`cs/plugins/`)
+#### AMX Mod X plugins (`cs16/plugins/`)
 
-The sources of the plugins that write the live files are versioned in `cs/plugins/` and are **compiled and mounted into the game server container** (overriding the binaries shipped in the `leandrosalvas/cs16_stats` image):
+The sources of the plugins that write the live files are versioned in `cs16/plugins/` and are **compiled and mounted into the game server container** (overriding the binaries shipped in the `leandrosalvas/cs16_stats` image):
 
 | File | Description |
 |------|-------------|
-| `cs/plugins/live_scoreboard.sma` | Generates `live/live_scoreboard.json` (T/CT scoreboard) |
-| `cs/plugins/live_killfeed.sma` | Generates `live/live_killfeed.json` (kill feed) |
-| `cs/plugins/slots_reserve.sma` | Reserves a slot for HLTV (spectator) so it never takes a player's place |
-| `cs/plugins/plugins.ini` | Active AMX Mod X plugin list |
+| `cs16/plugins/live_scoreboard.sma` | Generates `live/live_scoreboard.json` (T/CT scoreboard) |
+| `cs16/plugins/live_killfeed.sma` | Generates `live/live_killfeed.json` (kill feed) |
+| `cs16/plugins/slots_reserve.sma` | Reserves a slot for HLTV (spectator) so it never takes a player's place |
+| `cs16/plugins/csstatsx_sql.sma` | Stats collection for the SQL database |
+| `cs16/plugins/adminslots.sma` | Admin slot management |
+| `cs16/plugins/amx_settings_api.sma` | AMX settings API |
+| `cs16/plugins/cs_ham_bots_api.sma` | HAM API for bots |
+| `cs16/plugins/cs_maxspeed_api.sma` | Max speed API |
+| `cs16/plugins/cs_player_models_api.sma` | Player models API |
+| `cs16/plugins/cs_teams_api.sma` | Teams API |
+| `cs16/plugins/cs_weap_models_api.sma` | Weapon models API |
+| `cs16/plugins/cs_weap_restrict_api.sma` | Weapon restriction API |
+| `cs16/plugins/plugins.ini` | Active AMX Mod X plugin list |
 
-To change a plugin, edit the `.sma` and recompile:
+Additionally, each mode has its own plugins in `cs16/vendor/mode_plugins/<mode>/` (e.g., `zombies/`, `csdm/`, `gungame/`, `surf/`), mounted into the container based on the configured mode.
+
+To change a plugin, edit the `.sma` in `cs16/plugins/` and recompile:
 
 ```bash
 ./cs/build-plugins.sh   # uses the cs16_stats image amxxpc to produce the .amxx files
@@ -1069,7 +1141,7 @@ The project can run multiple CS 1.6 servers at the same time, each with its own 
 # (and which maps), writes servers.list, creates the config/live files, and starts the stack.
 ./scripts/setup.sh
 
-# Option B (manual) — edit config/servers.list (format: id name host_port map maxplayers rotate)
+# Option B (manual) — edit config/servers.list (format: id name host_port map maxplayers rotate context mode cstv)
 ./scripts/servers.sh up
 ```
 
@@ -1094,10 +1166,11 @@ The project can run multiple CS 1.6 servers at the same time, each with its own 
 **Example `config/servers.list`:**
 
 ```
-main Zueira 27015 de_dust2 32 yes zueira
-frag Frag 27016 de_inferno 24 yes frag
-dm Deathmatch 27017 fy_iceworld 20 yes dm
-awp AWP 27018 awp_map 16 yes awp
+# Format: id name host_port map maxplayers rotate context mode cstv
+main Zueira 27015 de_dust2 30 yes zueira standard yes
+gungame GunGame 27016 fy_iceworld 16 no gungame gungame yes
+deathmatch DeathMatch 27017 de_dust 30 yes deathmatch csdm yes
+zombies Zombies 27018 de_aztec 30 yes zombies zombies no
 ```
 
 Rules and details:
@@ -1105,6 +1178,8 @@ Rules and details:
 - The 1st line is the primary and must keep the id `main`.
 - `host_port` is the host-published port; inside the container all servers use the internal port `27015`.
 - `context` (optional 7th column) is the web-spectator path slug (`WATCH_PUBLIC_BASE/<context>/`); must be unique and use only `a-z0-9`. Default = slugified name.
+- `mode` (optional 8th column) is the game mode: `standard` (default), `zombies`, `csdm`, `surf`, or `gungame`. Each mode has its own plugins, configs, and MOTD.
+- `cstv` (optional 9th column) enables web spectator services (watch-hltv + watch-main) for the server: `yes` or `no` (default). Unavailable for `zombies` mode.
 - `maxplayers` = **visible** slots (even, 2..30, max **30**). The engine uses `visible + 1` (hidden slot reserved for HLTV via the `slots_reserve` plugin); since 30+1=31 is always below the engine's 32 cap, the hidden slot always exists. The API excludes the HLTV (`<context>-hltv`) from `players`/`playersList`. `pb_minbots 2` keeps a 2-bot floor.
 - `rotate`: `yes` (default) = map rotation, with the list in `config/servers/<id>/mapcycle.txt` (the wizard asks which maps from the image go into the rotation); `no` = the `mapcycle.txt` holds only the chosen map (no map changes).
 - If the server's `mapcycle.txt` does not exist yet with `rotate=yes`, `init` copies the shared `config/mapcycle.txt` as the default; with `rotate=no` it rewrites the single map when the content changes.
@@ -1131,10 +1206,10 @@ Enter the desired total, the new server's name (map rotation, port/map/slots hav
 1. **Edit `config/servers.list`** and add the line:
 
    ```
-   surf Surf 27019 surf_ski_2 20 yes
+   surf Surf 27019 surf_ski_2 20 yes surf surf surf yes
    ```
 
-   Format: `id name host_port map maxplayers rotate` — use a short `id`, with no spaces. For a custom rotation, create/edit `config/servers/<id>/mapcycle.txt` with the map list (or run the wizard); use `no` to disable rotation.
+   Format: `id name host_port map maxplayers rotate context mode cstv` — use a short `id`, with no spaces. The `context`, `mode`, and `cstv` columns are optional: `context` defaults to slugified name; `mode` defaults to `standard`; `cstv` defaults to `no` (unavailable for `zombies`). For a custom rotation, create/edit `config/servers/<id>/mapcycle.txt` with the map list (or run the wizard); use `no` to disable rotation.
 
 2. **Run the provisioner** (generates the files and starts the stack):
 
@@ -1151,8 +1226,9 @@ Enter the desired total, the new server's name (map rotation, port/map/slots hav
 
 What happens under the hood:
 
-- `init` creates `config/servers/surf/` (server.cfg with hostname "Surf" and the RCON password from `.env`, `users.ini`, `mapcycle.txt`, `motd.txt`, and `plugins.ini`) and `live/surf/` with empty JSON files. The `mapcycle.txt` is only created if missing (or becomes the single chosen map with `rotate=no`), preserving the per-server rotation.
+- `init` creates `config/servers/surf/` (server.cfg with hostname "Surf" and the RCON password from `.env`, `users.ini`, `mapcycle.txt`, `motd.txt`, and `plugins.ini`) and `live/surf/` with empty JSON files. The `mapcycle.txt` is only created if missing (or becomes the single chosen map with `rotate=no`), preserving the per-server rotation. For specific modes (zombies, csdm, surf, gungame), `server.cfg` and `plugins.ini` templates are copied from `config/templates/modes/<mode>/` when they exist.
 - `compose` regenerates `docker-compose.servers.yml` with the `cs16surf` container (port 27019 published) and adds the server to the API `CS_SERVERS`.
+- If `cstv=yes`, `init` also creates `config/watch/surf/` (hltv.cfg + start-hltv.sh) and `compose` generates `cs16-watch-hltv-surf` + `cs16-watch-main-surf` containers.
 - The API starts detecting the new server via Gamedig; the server selectors on all pages show it automatically, as do the online/offline alerts and the Grafana metrics.
 
 ##### Customizing a server
@@ -1180,13 +1256,13 @@ Enter a lower total and choose which servers to remove. The wizard asks whether 
 **Or manually:**
 
 1. Delete the matching line from `config/servers.list`.
-2. Refresh the stack (`up` uses `--remove-orphans` and already destroys the removed server's container):
+2. Refresh the stack (regenerates compose without the server; `--no-recreate` does not remove existing containers):
 
    ```bash
    ./scripts/servers.sh up
    ```
 
-3. If you also want to delete the removed server's config/live files:
+3. Remove the container and optionally the config/live files:
 
    ```bash
    ./scripts/servers.sh prune surf
@@ -1202,7 +1278,7 @@ Enter a lower total and choose which servers to remove. The wizard asks whether 
 
 #### Web Spectator (WebRTC)
 
-The spectator lets you watch **any server** directly in the browser, without installing CS 1.6. Each `config/servers.list` server gets a `watch-main-<id>` + `watch-hltv-<id>` pair; the flow (per server) is:
+The spectator lets you watch **enabled servers** directly in the browser, without installing CS 1.6. Only servers with `cstv=yes` in the 9th column of `config/servers.list` get spectator containers (zombies mode is automatically disabled). Each enabled server gets a `watch-main-<id>` + `watch-hltv-<id>` pair; the flow (per server) is:
 
 ```
 Browser (Xash3D WASM) ──WebRTC──▶ watch-main-<id> (proxy 27200+i) ──UDP──▶ watch-hltv-<id> (relay 27100+i) ──▶ cs16<id> (127.0.0.1:<host_port>)

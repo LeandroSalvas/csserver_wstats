@@ -59,8 +59,8 @@ function readServersList() {
   for (const line of lines) {
     const parts = String(line).trim().split(/\s+/)
     if (!parts[0] || parts[0].startsWith('#')) continue
-    const [id, name, hostPort, map, maxplayers, rotate = 'yes', context = slugifyName(name), mode = 'standard', cstv = 'no'] = parts
-    servers.push({ id, name, hostPort, map, maxplayers, rotate, context, mode, cstv })
+    const [id, name, host_port, map, maxplayers, rotate = 'yes', context = slugifyName(name)] = parts
+    servers.push({ id, name, host_port, map, maxplayers, rotate, context })
   }
   return servers
 }
@@ -77,7 +77,7 @@ function writeServersList(servers, header) {
       .join('\n')
   }
   const rows = servers.map((s) =>
-    `${s.id} ${s.name} ${s.hostPort} ${s.map} ${s.maxplayers} ${s.rotate} ${s.context} ${s.mode || 'standard'} ${s.cstv || 'no'}`
+    `${s.id} ${s.name} ${s.host_port} ${s.map} ${s.maxplayers} ${s.rotate} ${s.context}`
   )
   const content = [
     preservedHeader || header || `# Lista de servidores CS 1.6 gerenciados pelo docker-compose.`,
@@ -88,7 +88,7 @@ function writeServersList(servers, header) {
 }
 
 function nextFreePort(servers, start = 27016) {
-  const used = new Set(servers.map((s) => s.hostPort))
+  const used = new Set(servers.map((s) => s.host_port))
   let port = start
   while (used.has(String(port))) port += 1
   return port
@@ -328,17 +328,7 @@ function validateAddSpec(spec) {
 
   const cstv = Boolean(spec.cstv)
 
-  const VALID_MODES = ['standard', 'zombies', 'csdm', 'surf', 'gungame']
-  const mode = String(spec.mode || 'standard').toLowerCase()
-  if (!VALID_MODES.includes(mode)) {
-    throw Object.assign(new Error(`Modo inválido '${mode}'. Use: ${VALID_MODES.join(', ')}`), { status: 400 })
-  }
-
-  if (cstv && mode === 'zombies') {
-    throw Object.assign(new Error('CSTV não é suportado para o modo Zombies'), { status: 400 })
-  }
-
-  return { name, map, slots, rotate, cstv, mode }
+  return { name, map, slots, rotate, cstv }
 }
 
 const dockerProvider = {
@@ -351,13 +341,11 @@ const dockerProvider = {
       return {
         id: cfg.id,
         name: cfg.name,
-        hostPort: cfg.hostPort,
+        hostPort: cfg.host_port,
         map: cfg.map,
         maxplayers: cfg.maxplayers,
         rotate: cfg.rotate,
         context: cfg.context,
-        mode: cfg.mode || 'standard',
-        cstv: cfg.cstv || 'no',
         containerState: container ? container.State : 'absent',
         containerStatus: container ? container.Status : '',
         online: false
@@ -378,7 +366,7 @@ const dockerProvider = {
   },
 
   async add(spec) {
-    const { name, map, slots, rotate, cstv, mode } = validateAddSpec(spec)
+    const { name, map, slots, rotate, cstv } = validateAddSpec(spec)
     const current = readServersList()
     const id = slugifyName(name)
     if (!isValidId(id)) throw Object.assign(new Error('Nome sem caracteres válidos para id'), { status: 400 })
@@ -390,7 +378,7 @@ const dockerProvider = {
       throw Object.assign(new Error(`Contexto de espectador '${context}' já está em uso`), { status: 400 })
     }
     const hostPort = nextFreePort(current)
-    const entry = { id, name, hostPort, map, maxplayers: slots, rotate, context, mode, cstv: cstv ? 'yes' : 'no' }
+    const entry = { id, name, host_port: hostPort, map, maxplayers: slots, rotate, context }
     writeServersList([...current, entry])
     try {
       // Provisionamento cirúrgico: só o container do servidor novo (up
