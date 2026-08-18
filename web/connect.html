@@ -26,6 +26,7 @@
 
     <div class="card">
       <h2 data-i18n="server.address">Endereço do servidor</h2>
+      <p data-i18n="server.addressDesc">Conecte-se ao nosso servidor principal. Temos diversos servidores disponíveis com diferentes modos de jogo.</p>
       <p><strong data-i18n="server.host">Host:</strong> <span data-connect-host>zueiracstrike.duckdns.org</span> &nbsp;·&nbsp; <strong data-i18n="server.port">Porta:</strong> <span data-connect-port>27015</span></p>
       <p><strong data-i18n="server.fullConnect">Conexão completa:</strong> <code data-connect-address>zueiracstrike.duckdns.org:27015</code></p>
 
@@ -47,6 +48,24 @@
         <li data-i18n="server.findServers">No jogo, acesse Find Servers / Internet.</li>
         <li data-i18n="server.addFavorites">Adicione o servidor aos favoritos usando <strong><span data-connect-address>zueiracstrike.duckdns.org:27015</span></strong>.</li>
       </ul>
+    </div>
+
+    <div class="card">
+      <h2 data-i18n="server.availableServers">Servidores disponíveis</h2>
+      <div class="table-responsive">
+        <table class="servers-table">
+          <thead>
+            <tr>
+              <th data-i18n="labels.name">Nome</th>
+              <th data-i18n="labels.port">Porta</th>
+              <th data-i18n="labels.map">Mapa</th>
+              <th data-i18n="labels.players">Players</th>
+              <th data-i18n="labels.status">Status</th>
+            </tr>
+          </thead>
+          <tbody id="connectServersBody"></tbody>
+        </table>
+      </div>
     </div>
 
     <div class="card">

@@ -46,6 +46,17 @@
           <datalist id="mapsList"></datalist>
         </div>
 
+        <div class="login-field">
+          <label for="addMode" data-i18n="serverManager.addMode">Modo de jogo</label>
+          <select id="addMode" class="admin-input">
+            <option value="standard" data-i18n="serverManager.modeStandard">Standard</option>
+            <option value="zombies" data-i18n="serverManager.modeZombies">Zombies</option>
+            <option value="csdm" data-i18n="serverManager.modeCsdm">CSDM</option>
+            <option value="surf" data-i18n="serverManager.modeSurf">Surf</option>
+            <option value="gungame" data-i18n="serverManager.modeGungame">GunGame</option>
+          </select>
+        </div>
+
         <div class="login-field rotate-field">
           <label>
             <input type="checkbox" id="addRotate" checked />
@@ -58,6 +69,7 @@
             <input type="checkbox" id="addCstv" />
             <span data-i18n="serverManager.addCstv">Ativar serviços do CSTV</span>
           </label>
+          <small id="addCstvHint" class="field-hint" data-i18n="serverManager.addCstvHint" style="display:none"></small>
         </div>
 
         <div class="toolbar">
@@ -76,6 +88,7 @@
               <th data-i18n="serverManager.map">Mapa</th>
               <th data-i18n="serverManager.players">Jogadores</th>
               <th data-i18n="serverManager.slots">Slots</th>
+              <th data-i18n="serverManager.mode">Modo</th>
               <th data-i18n="serverManager.port">Porta</th>
               <th data-i18n="serverManager.status">Status</th>
               <th data-i18n="serverManager.actions">Ações</th>

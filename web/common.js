@@ -659,6 +659,7 @@ async function initCommon() {
   applyActiveNav()
   guardPage()
   initConnectPage()
+  initConnectServersTable()
   initWatchMobileGuard()
   initWatchLink()
   initPlayerSearch()
@@ -691,6 +692,31 @@ function initConnectPage() {
       }
       window.setTimeout(() => { copyBtn.textContent = i18nUtils.t('server.copy') }, 2000)
     })
+  }
+}
+
+async function initConnectServersTable() {
+  const tbody = document.getElementById('connectServersBody')
+  if (!tbody) return
+
+  try {
+    const servers = await loadServersList()
+    if (!Array.isArray(servers) || servers.length === 0) return
+
+    servers.forEach((srv) => {
+      const row = document.createElement('tr')
+      const online = srv.online
+      row.innerHTML = `
+        <td>${escapeHtml(srv.name)}</td>
+        <td>${escapeHtml(String(srv.hostPort ?? srv.port))}</td>
+        <td>${escapeHtml(srv.map)}</td>
+        <td>${srv.players}/${srv.maxplayers}</td>
+        <td><span class="status-pill ${online ? 'status-ok' : 'status-error'}">${i18nUtils.t(online ? 'status.online' : 'status.offline')}</span></td>
+      `
+      tbody.appendChild(row)
+    })
+  } catch (err) {
+    console.error('Erro ao carregar servidores na página conectar:', err)
   }
 }
 

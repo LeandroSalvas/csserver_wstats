@@ -918,6 +918,39 @@ button.quick-cmd:hover {
   background: rgba(239,68,68,0.22);
 }
 
+.admin-live-btn:disabled {
+  opacity: 0.5;
+  cursor: wait;
+  pointer-events: none;
+}
+
+.spinner {
+  display: inline-block;
+  width: 12px;
+  height: 12px;
+  border: 2px solid currentColor;
+  border-top-color: transparent;
+  border-radius: 50%;
+  animation: spin .6s linear infinite;
+  vertical-align: middle;
+  margin-right: 4px;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+.servers-actions .action-working {
+  opacity: 0.5;
+  pointer-events: none;
+}
+
+.rcon-status .spinner {
+  width: 10px;
+  height: 10px;
+  margin-right: 6px;
+}
+
 .password-toggle {
   border: 1px solid var(--accent-border);
   background: var(--accent-tint);
@@ -2807,6 +2840,12 @@ table td.duel-lose {
   accent-color: var(--accent-strong);
   cursor: pointer;
   flex-shrink: 0;
+}
+
+.field-hint {
+  font-size: 0.8rem;
+  color: var(--text-muted, #888);
+  margin-left: 26px;
 }
 
 .servers-context {

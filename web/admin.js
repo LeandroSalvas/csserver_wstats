@@ -37,13 +37,14 @@ const commandReference = [
   { category: 'amx', command: 'amx_modules', descriptionKey: 'cmd.amxModules' },
   { category: 'amx', command: 'amx_reloadadmins', descriptionKey: 'cmd.amxReloadadmins' },
 
-  { category: 'podbod', command: 'pb add 50', descriptionKey: 'cmd.pbAdd' },
-  { category: 'podbod', command: 'pb remove <id>', descriptionKey: 'cmd.pbRemove' },
-  { category: 'podbod', command: 'pb removebots', descriptionKey: 'cmd.pbRemovebots' },
-  { category: 'podbod', command: 'pb killbots', descriptionKey: 'cmd.pbKillbots' },
-  { category: 'podbod', command: 'pb fillserver', descriptionKey: 'cmd.pbFillserver' },
-  { category: 'podbod', command: 'pb help', descriptionKey: 'cmd.pbHelp' },
-  { category: 'podbod', command: 'pb weaponmode 1', descriptionKey: 'cmd.pbWeaponmode' },
+  { category: 'zbot', command: 'bot_add', descriptionKey: 'cmd.botAdd' },
+  { category: 'zbot', command: 'bot_kick <nome>', descriptionKey: 'cmd.botKick' },
+  { category: 'zbot', command: 'bot_kick_all', descriptionKey: 'cmd.botKickAll' },
+  { category: 'zbot', command: 'bot_stop 1', descriptionKey: 'cmd.botStop' },
+  { category: 'zbot', command: 'bot_difficulty <0-3>', descriptionKey: 'cmd.botDifficulty' },
+  { category: 'zbot', command: 'bot_chatter <off|minimal|radio|normal>', descriptionKey: 'cmd.botChatter' },
+  { category: 'zbot', command: 'bot_quota <n>', descriptionKey: 'cmd.botQuota' },
+  { category: 'zbot', command: 'bot_quota_mode <fill|normal>', descriptionKey: 'cmd.botQuotaMode' },
 
   { category: 'dangerous', command: 'restart', descriptionKey: 'cmd.restartDanger', danger: true },
   { category: 'dangerous', command: 'exec server.cfg', descriptionKey: 'cmd.execDanger', danger: true }
@@ -55,7 +56,7 @@ const commandCategories = {
   gameplay: 'cmd.categoryGameplay',
   messages: 'cmd.categoryMessages',
   amx: 'cmd.categoryAmx',
-  podbod: 'cmd.categoryPodbod',
+  zbot: 'cmd.categoryZbot',
   dangerous: 'cmd.categoryDangerous'
 }
 

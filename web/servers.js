@@ -11,22 +11,39 @@ const addMap = document.getElementById('addMap')
 const mapsList = document.getElementById('mapsList')
 const addRotate = document.getElementById('addRotate')
 const addCstv = document.getElementById('addCstv')
+const addMode = document.getElementById('addMode')
 const addServerBtn = document.getElementById('addServerBtn')
 const cancelAddBtn = document.getElementById('cancelAddBtn')
 const addStatus = document.getElementById('addStatus')
 
+let actionInProgress = false
+
 function t(key) {
   return i18nUtils.t(key)
+}
+
+function capitalize(s) {
+  return s ? s.charAt(0).toUpperCase() + s.slice(1) : ''
 }
 
 function csrfHeaders() {
   return { 'x-csrf-token': getCsrfToken() || '' }
 }
 
+function statusHtml(text) {
+  return `<span class="spinner"></span>${escapeHtml(text)}`
+}
+
+function setAllButtonsDisabled(disabled) {
+  serversBody.querySelectorAll('.admin-live-btn').forEach((btn) => {
+    btn.disabled = disabled
+  })
+}
+
 async function loadServers(silent = false) {
   serversBody.innerHTML = ''
   if (!silent) {
-    showSkeletonRows(serversBody, 7, 3)
+    showSkeletonRows(serversBody, 8, 3)
     serversStatus.textContent = t('serverManager.loading')
   }
 
@@ -43,15 +60,16 @@ async function loadServers(silent = false) {
     return true
   } catch (err) {
     console.error(err)
+    if (!silent) {
+      serversStatus.textContent = t('serverManager.actionError')
+    }
     return false
   }
 }
 
-// A api lê config/servers.list em runtime e NÃO é recriada no add/remove
-// (provisionamento cirúrgico com up --no-recreate), então a resposta chega
-// normalmente. O poll fica como rede de segurança para qualquer falha de rede.
 function pollLoadServers(maxTries = 30, onGiveUp) {
   let tries = 0
+  serversStatus.innerHTML = statusHtml(t('serverManager.actionWait'))
   const attempt = async () => {
     if (await loadServers(true)) return
     tries += 1
@@ -59,6 +77,7 @@ function pollLoadServers(maxTries = 30, onGiveUp) {
       if (onGiveUp) onGiveUp()
       return
     }
+    serversStatus.innerHTML = statusHtml(t('serverManager.actionWait'))
     window.setTimeout(attempt, 3000)
   }
   attempt()
@@ -72,7 +91,7 @@ function statusLabel(state) {
 
 function renderServers(servers) {
   if (!servers.length) {
-    showEmptyRow(serversBody, 7, t('serverManager.noServers'))
+    showEmptyRow(serversBody, 8, t('serverManager.noServers'))
     return
   }
 
@@ -109,6 +128,10 @@ function renderServers(servers) {
     const slotsCell = document.createElement('td')
     slotsCell.textContent = s.maxplayers || '-'
 
+    const modeCell = document.createElement('td')
+    const modeLabel = t(`serverManager.mode${capitalize(s.mode || 'standard')}`)
+    modeCell.textContent = modeLabel || s.mode || 'standard'
+
     const portCell = document.createElement('td')
     portCell.textContent = s.hostPort || '-'
 
@@ -134,7 +157,7 @@ function renderServers(servers) {
     }
     actionsCell.appendChild(actionWrap)
 
-    tr.append(nameCell, mapCell, playersCell, slotsCell, portCell, statusCell, actionsCell)
+    tr.append(nameCell, mapCell, playersCell, slotsCell, modeCell, portCell, statusCell, actionsCell)
     fragment.appendChild(tr)
   })
 
@@ -157,8 +180,23 @@ function makeActionBtn(label, action, id, cls = '', serverName = '', isRemove = 
   return btn
 }
 
+function actionMessage(action) {
+  const map = {
+    start: 'serverManager.actionStart',
+    stop: 'serverManager.actionStop',
+    restart: 'serverManager.actionRestart',
+    remove: 'serverManager.actionRemove'
+  }
+  return t(map[action] || 'serverManager.provisioning')
+}
+
 async function runServerAction(action, id) {
-  serversStatus.textContent = t('serverManager.provisioning')
+  if (actionInProgress) return
+  actionInProgress = true
+
+  serversStatus.innerHTML = statusHtml(actionMessage(action))
+  setAllButtonsDisabled(true)
+
   try {
     const isRemove = action === 'remove'
     const url = isRemove
@@ -179,11 +217,17 @@ async function runServerAction(action, id) {
       return
     }
     serversStatus.textContent = t('serverManager.actionOk')
+    if (isRemove) {
+      showSkeletonRows(serversBody, 8, 3)
+    }
     setTimeout(loadServers, 800)
   } catch (err) {
     console.error(err)
-    serversStatus.textContent = t('serverManager.actionRestarting')
+    showSkeletonRows(serversBody, 8, 3)
     pollLoadServers(30, () => { serversStatus.textContent = t('serverManager.actionError') })
+  } finally {
+    actionInProgress = false
+    setAllButtonsDisabled(false)
   }
 }
 
@@ -204,6 +248,13 @@ async function loadMaps() {
 function setAddBusy(busy) {
   addServerBtn.disabled = busy
   addServerBtn.textContent = busy ? t('serverManager.provisioning') : t('serverManager.addConfirm')
+  addName.disabled = busy
+  addSlots.disabled = busy
+  addMap.disabled = busy
+  addRotate.disabled = busy
+  addCstv.disabled = busy
+  addMode.disabled = busy
+  cancelAddBtn.disabled = busy
 }
 
 async function addServer() {
@@ -226,7 +277,7 @@ async function addServer() {
         ...csrfHeaders()
       },
       credentials: 'include',
-      body: JSON.stringify({ name, slots, map, rotate: addRotate.checked ? 'yes' : 'no', cstv: addCstv.checked })
+      body: JSON.stringify({ name, slots, map, rotate: addRotate.checked ? 'yes' : 'no', cstv: addCstv.checked, mode: addMode.value })
     })
     if (res.status === 401 || res.status === 403) {
       window.location.replace('/login?next=' + encodeURIComponent(window.location.pathname))
@@ -248,7 +299,9 @@ async function addServer() {
     addStatus.textContent = t('serverManager.addProvisioning')
     addForm.hidden = true
     addToggleBtn.hidden = false
-    pollLoadServers()
+    pollLoadServers(30, () => {
+      addStatus.textContent = t('serverManager.actionError')
+    })
   } finally {
     setAddBusy(false)
   }
@@ -274,9 +327,15 @@ cancelAddBtn.addEventListener('click', () => {
 addServerBtn.addEventListener('click', addServer)
 addMap.addEventListener('focus', loadMaps)
 
+addMode.addEventListener('change', () => {
+  const isZombies = addMode.value === 'zombies'
+  if (isZombies) addCstv.checked = false
+  addCstv.disabled = isZombies
+  const hint = document.getElementById('addCstvHint')
+  if (hint) hint.style.display = isZombies ? '' : 'none'
+})
+
 document.addEventListener('DOMContentLoaded', async () => {
-  // Aguarda a sessão para que isActiveAdmin() veja o usuário logado de verdade
-  // (senão o load é pulado e só o botão Atualizar carregava os dados).
   await window.authSessionPromise
   if (!isActiveAdmin(getCurrentUser())) return
   loadServers()
