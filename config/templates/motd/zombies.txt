@@ -1,0 +1,52 @@
+<html>
+<body bgcolor="#1a1411" text="#f0e9e4" link="#fb923c">
+
+<table width="100%" cellpadding="0" cellspacing="0"><tr><td align="center">
+<table width="620" cellpadding="20" cellspacing="0" border="0" bgcolor="#1a1411">
+
+<tr><td align="center">
+<font size="5" color="#fb923c"><b>ZUEIRA SERVER - ZOMBIES</b></font><br>
+<font size="2" color="#fdba74"><b>SOBREVIVA AO APOCALIPSE ZUMBI</b></font>
+</td></tr>
+
+<tr><td><hr noshade size="2" color="#fb923c"></td></tr>
+
+<tr><td>
+<font size="3" color="#fb923c"><b>REGRAS DA CASA</b></font><br><br>
+<font color="#f0e9e4">&#9658; <b color="#ffffff">Sem xit / hacks:</b> Ban permanente e sem choro.</font><br>
+<font color="#f0e9e4">&#9658; <b color="#ffffff">Respeito no mic:</b> Zueira liberada, preconceito jamais.</font><br>
+<font color="#f0e9e4">&#9658; <b color="#ffffff">Sem mic de chiado:</b> Ninguem quer ouvir o seu ventilador.</font><br>
+<font color="#f0e9e4">&#9658; <b color="#ffffff">Jogo limpo:</b> Nao faca ghosting nem passe call morto.</font><br>
+</td></tr>
+
+<tr><td><hr noshade size="1" color="#3d312b"></td></tr>
+
+<tr><td>
+<font size="3" color="#fb923c"><b>COMANDOS UTEIS</b></font><br><br>
+<font color="#f0e9e4">&#9658; <b color="#ffffff">/me</b> - Veja seus danos na rodada.</font><br>
+<font color="#f0e9e4">&#9658; <b color="#ffffff">/top15</b> - Veja quem sao os viciados do server.</font><br>
+<font color="#f0e9e4">&#9658; <b color="#ffffff">/rank</b> - Descubra a sua posicao atual.</font><br>
+<font color="#f0e9e4">&#9658; <b color="#ffffff">/rs</b> - Resete o seu placar de pato.</font><br>
+</td></tr>
+
+<tr><td><hr noshade size="1" color="#3d312b"></td></tr>
+
+<tr><td>
+<font size="3" color="#fb923c"><b>AVISOS DO SERVIDOR</b></font><br><br>
+<font color="#f0e9e4">&#9658; Sobreviva! Fique com os humanos, complete os objetivos ou elimine todos os zombies.</font><br>
+<font color="#f0e9e4">&#9658; Inatividade no servidor resulta em <b color="#ffffff">kick automatico</b> para abrir vaga.</font><br>
+<font color="#f0e9e4">&#9658; Admins online tem palavra final nas punicoes.</font><br>
+</td></tr>
+
+<tr><td><hr noshade size="1" color="#3d312b"></td></tr>
+
+<tr><td align="center">
+<font size="2" color="#f0e9e4">Procure um <b color="#facc15">ADMIN</b> e apoie o servidor! Fale com a administracao no Discord.</font><br>
+<font size="1" color="#f0e9e4">Bom jogo e boas mitadas!</font>
+</td></tr>
+
+</table>
+</td></tr></table>
+
+</body>
+</html>

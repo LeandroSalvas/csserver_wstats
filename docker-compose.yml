@@ -23,10 +23,11 @@ services:
       - ./config/servers/main/plugins.ini:/home/cs16/cstrike/addons/amxmodx/configs/plugins.ini
       - ./live/main/live_scoreboard.json:/home/cs16/cstrike/addons/amxmodx/data/live/live_scoreboard.json
       - ./live/main/live_killfeed.json:/home/cs16/cstrike/addons/amxmodx/data/live/live_killfeed.json
-      - ./cs/plugins/live_scoreboard.amxx:/home/cs16/cstrike/addons/amxmodx/plugins/live_scoreboard.amxx
-      - ./cs/plugins/live_killfeed.amxx:/home/cs16/cstrike/addons/amxmodx/plugins/live_killfeed.amxx
-      - ./cs/plugins/csstatsx_sql.amxx:/home/cs16/cstrike/addons/amxmodx/plugins/csstatsx_sql.amxx
-      - ./cs/plugins/slots_reserve.amxx:/home/cs16/cstrike/addons/amxmodx/plugins/slots_reserve.amxx
+      - ./cs16/plugins/live_scoreboard.amxx:/home/cs16/cstrike/addons/amxmodx/plugins/live_scoreboard.amxx
+      - ./cs16/plugins/live_killfeed.amxx:/home/cs16/cstrike/addons/amxmodx/plugins/live_killfeed.amxx
+      - ./cs16/plugins/csstatsx_sql.amxx:/home/cs16/cstrike/addons/amxmodx/plugins/csstatsx_sql.amxx
+      - ./cs16/plugins/slots_reserve.amxx:/home/cs16/cstrike/addons/amxmodx/plugins/slots_reserve.amxx
+      - ./cs16/plugins/adminslots.amxx:/home/cs16/cstrike/addons/amxmodx/plugins/adminslots.amxx
 
     ports:
       - "27015:27015/udp"

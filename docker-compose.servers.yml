@@ -9,81 +9,169 @@ services:
       MAP: "de_dust2"
       MAXPLAYERS: "31"
       SERVER_ID: "main"
-  cs16fypooldayonly:
+  cs16gungame:
     image: cs16_stats:local
     restart: always
     environment:
       PORT: "27015"
-      MAP: "fy_pool_day"
-      MAXPLAYERS: "9"
-      SERVER_ID: "fypooldayonly"
+      MAP: "fy_iceworld"
+      MAXPLAYERS: "17"
+      SERVER_ID: "gungame"
     ports:
       - "27016:27015/udp"
       - "27016:27015/tcp"
     security_opt:
       - seccomp=unconfined
     volumes:
-      - ./config/servers/fypooldayonly/server.cfg:/home/cs16/cstrike/server.cfg
-      - ./config/servers/fypooldayonly/users.ini:/home/cs16/cstrike/addons/amxmodx/configs/users.ini
-      - ./config/servers/fypooldayonly/amxx.cfg:/home/cs16/cstrike/addons/amxmodx/configs/amxx.cfg
-      - ./config/servers/fypooldayonly/mapcycle.txt:/home/cs16/cstrike/mapcycle.txt
-      - ./config/servers/fypooldayonly/motd.txt:/home/cs16/cstrike/motd.txt
-      - ./config/servers/fypooldayonly/plugins.ini:/home/cs16/cstrike/addons/amxmodx/configs/plugins.ini
-      - ./cs/plugins/live_scoreboard.amxx:/home/cs16/cstrike/addons/amxmodx/plugins/live_scoreboard.amxx
-      - ./cs/plugins/live_killfeed.amxx:/home/cs16/cstrike/addons/amxmodx/plugins/live_killfeed.amxx
-      - ./cs/plugins/csstatsx_sql.amxx:/home/cs16/cstrike/addons/amxmodx/plugins/csstatsx_sql.amxx
-      - ./cs/plugins/slots_reserve.amxx:/home/cs16/cstrike/addons/amxmodx/plugins/slots_reserve.amxx
-      - ./live/fypooldayonly/live_scoreboard.json:/home/cs16/cstrike/addons/amxmodx/data/live/live_scoreboard.json
-      - ./live/fypooldayonly/live_killfeed.json:/home/cs16/cstrike/addons/amxmodx/data/live/live_killfeed.json
-  cs16zueira2:
+      - ./config/servers/gungame/server.cfg:/home/cs16/cstrike/server.cfg
+      - ./config/servers/gungame/users.ini:/home/cs16/cstrike/addons/amxmodx/configs/users.ini
+      - ./config/servers/gungame/amxx.cfg:/home/cs16/cstrike/addons/amxmodx/configs/amxx.cfg
+      - ./config/servers/gungame/mapcycle.txt:/home/cs16/cstrike/mapcycle.txt
+      - ./config/servers/gungame/motd.txt:/home/cs16/cstrike/motd.txt
+      - ./config/servers/gungame/plugins.ini:/home/cs16/cstrike/addons/amxmodx/configs/plugins.ini
+      - ./cs16/plugins/live_scoreboard.amxx:/home/cs16/cstrike/addons/amxmodx/plugins/live_scoreboard.amxx
+      - ./cs16/plugins/live_killfeed.amxx:/home/cs16/cstrike/addons/amxmodx/plugins/live_killfeed.amxx
+      - ./cs16/plugins/csstatsx_sql.amxx:/home/cs16/cstrike/addons/amxmodx/plugins/csstatsx_sql.amxx
+      - ./cs16/plugins/slots_reserve.amxx:/home/cs16/cstrike/addons/amxmodx/plugins/slots_reserve.amxx
+      - ./cs16/plugins/adminslots.amxx:/home/cs16/cstrike/addons/amxmodx/plugins/adminslots.amxx
+      - ./live/gungame/live_scoreboard.json:/home/cs16/cstrike/addons/amxmodx/data/live/live_scoreboard.json
+      - ./live/gungame/live_killfeed.json:/home/cs16/cstrike/addons/amxmodx/data/live/live_killfeed.json
+      - ./cs16/vendor/mode_plugins/gungame/regg_balancer.amxx:/home/cs16/cstrike/addons/amxmodx/plugins/regg_balancer.amxx
+      - ./cs16/vendor/mode_plugins/gungame/regg_block_send_wpn_anim.amxx:/home/cs16/cstrike/addons/amxmodx/plugins/regg_block_send_wpn_anim.amxx
+      - ./cs16/vendor/mode_plugins/gungame/regg_controller.amxx:/home/cs16/cstrike/addons/amxmodx/plugins/regg_controller.amxx
+      - ./cs16/vendor/mode_plugins/gungame/regg_core.amxx:/home/cs16/cstrike/addons/amxmodx/plugins/regg_core.amxx
+      - ./cs16/vendor/mode_plugins/gungame/regg_informer.amxx:/home/cs16/cstrike/addons/amxmodx/plugins/regg_informer.amxx
+      - ./cs16/vendor/mode_plugins/gungame/regg_leader.amxx:/home/cs16/cstrike/addons/amxmodx/plugins/regg_leader.amxx
+      - ./cs16/vendor/mode_plugins/gungame/regg_map_cleaner.amxx:/home/cs16/cstrike/addons/amxmodx/plugins/regg_map_cleaner.amxx
+      - ./cs16/vendor/mode_plugins/gungame/regg_mapmanager.amxx:/home/cs16/cstrike/addons/amxmodx/plugins/regg_mapmanager.amxx
+      - ./cs16/vendor/mode_plugins/gungame/regg_motd.amxx:/home/cs16/cstrike/addons/amxmodx/plugins/regg_motd.amxx
+      - ./cs16/vendor/mode_plugins/gungame/regg_notify.amxx:/home/cs16/cstrike/addons/amxmodx/plugins/regg_notify.amxx
+      - ./cs16/vendor/mode_plugins/gungame/regg_show_winner.amxx:/home/cs16/cstrike/addons/amxmodx/plugins/regg_show_winner.amxx
+      - ./cs16/vendor/mode_plugins/gungame/regg_store_points.amxx:/home/cs16/cstrike/addons/amxmodx/plugins/regg_store_points.amxx
+      - ./cs16/vendor/mode_plugins/gungame/regg_vote.amxx:/home/cs16/cstrike/addons/amxmodx/plugins/regg_vote.amxx
+      - ./cs16/vendor/mode_plugins/gungame/regg_warmup.amxx:/home/cs16/cstrike/addons/amxmodx/plugins/regg_warmup.amxx
+  cs16deathmatch:
     image: cs16_stats:local
     restart: always
     environment:
       PORT: "27015"
       MAP: "de_dust"
-      MAXPLAYERS: "17"
-      SERVER_ID: "zueira2"
+      MAXPLAYERS: "31"
+      SERVER_ID: "deathmatch"
     ports:
       - "27017:27015/udp"
       - "27017:27015/tcp"
     security_opt:
       - seccomp=unconfined
     volumes:
-      - ./config/servers/zueira2/server.cfg:/home/cs16/cstrike/server.cfg
-      - ./config/servers/zueira2/users.ini:/home/cs16/cstrike/addons/amxmodx/configs/users.ini
-      - ./config/servers/zueira2/amxx.cfg:/home/cs16/cstrike/addons/amxmodx/configs/amxx.cfg
-      - ./config/servers/zueira2/mapcycle.txt:/home/cs16/cstrike/mapcycle.txt
-      - ./config/servers/zueira2/motd.txt:/home/cs16/cstrike/motd.txt
-      - ./config/servers/zueira2/plugins.ini:/home/cs16/cstrike/addons/amxmodx/configs/plugins.ini
-      - ./cs/plugins/live_scoreboard.amxx:/home/cs16/cstrike/addons/amxmodx/plugins/live_scoreboard.amxx
-      - ./cs/plugins/live_killfeed.amxx:/home/cs16/cstrike/addons/amxmodx/plugins/live_killfeed.amxx
-      - ./cs/plugins/csstatsx_sql.amxx:/home/cs16/cstrike/addons/amxmodx/plugins/csstatsx_sql.amxx
-      - ./cs/plugins/slots_reserve.amxx:/home/cs16/cstrike/addons/amxmodx/plugins/slots_reserve.amxx
-      - ./live/zueira2/live_scoreboard.json:/home/cs16/cstrike/addons/amxmodx/data/live/live_scoreboard.json
-      - ./live/zueira2/live_killfeed.json:/home/cs16/cstrike/addons/amxmodx/data/live/live_killfeed.json
-  cs16awponly:
+      - ./config/servers/deathmatch/server.cfg:/home/cs16/cstrike/server.cfg
+      - ./config/servers/deathmatch/users.ini:/home/cs16/cstrike/addons/amxmodx/configs/users.ini
+      - ./config/servers/deathmatch/amxx.cfg:/home/cs16/cstrike/addons/amxmodx/configs/amxx.cfg
+      - ./config/servers/deathmatch/mapcycle.txt:/home/cs16/cstrike/mapcycle.txt
+      - ./config/servers/deathmatch/motd.txt:/home/cs16/cstrike/motd.txt
+      - ./config/servers/deathmatch/plugins.ini:/home/cs16/cstrike/addons/amxmodx/configs/plugins.ini
+      - ./cs16/plugins/live_scoreboard.amxx:/home/cs16/cstrike/addons/amxmodx/plugins/live_scoreboard.amxx
+      - ./cs16/plugins/live_killfeed.amxx:/home/cs16/cstrike/addons/amxmodx/plugins/live_killfeed.amxx
+      - ./cs16/plugins/csstatsx_sql.amxx:/home/cs16/cstrike/addons/amxmodx/plugins/csstatsx_sql.amxx
+      - ./cs16/plugins/slots_reserve.amxx:/home/cs16/cstrike/addons/amxmodx/plugins/slots_reserve.amxx
+      - ./cs16/plugins/adminslots.amxx:/home/cs16/cstrike/addons/amxmodx/plugins/adminslots.amxx
+      - ./live/deathmatch/live_scoreboard.json:/home/cs16/cstrike/addons/amxmodx/data/live/live_scoreboard.json
+      - ./live/deathmatch/live_killfeed.json:/home/cs16/cstrike/addons/amxmodx/data/live/live_killfeed.json
+      - ./cs16/vendor/mode_plugins/csdm/ReDeathmatch.amxx:/home/cs16/cstrike/addons/amxmodx/plugins/ReDeathmatch.amxx
+      - ./cs16/vendor/mode_plugins/csdm/redm_spawns.amxx:/home/cs16/cstrike/addons/amxmodx/plugins/redm_spawns.amxx
+  cs16zombies:
     image: cs16_stats:local
     restart: always
     environment:
       PORT: "27015"
-      MAP: "awp_map"
-      MAXPLAYERS: "21"
-      SERVER_ID: "awponly"
+      MAP: "de_aztec"
+      MAXPLAYERS: "31"
+      SERVER_ID: "zombies"
     ports:
       - "27018:27015/udp"
       - "27018:27015/tcp"
     security_opt:
       - seccomp=unconfined
     volumes:
-      - ./config/servers/awponly/server.cfg:/home/cs16/cstrike/server.cfg
-      - ./config/servers/awponly/users.ini:/home/cs16/cstrike/addons/amxmodx/configs/users.ini
-      - ./config/servers/awponly/amxx.cfg:/home/cs16/cstrike/addons/amxmodx/configs/amxx.cfg
-      - ./config/servers/awponly/mapcycle.txt:/home/cs16/cstrike/mapcycle.txt
-      - ./config/servers/awponly/motd.txt:/home/cs16/cstrike/motd.txt
-      - ./config/servers/awponly/plugins.ini:/home/cs16/cstrike/addons/amxmodx/configs/plugins.ini
-      - ./cs/plugins/live_scoreboard.amxx:/home/cs16/cstrike/addons/amxmodx/plugins/live_scoreboard.amxx
-      - ./cs/plugins/live_killfeed.amxx:/home/cs16/cstrike/addons/amxmodx/plugins/live_killfeed.amxx
-      - ./cs/plugins/csstatsx_sql.amxx:/home/cs16/cstrike/addons/amxmodx/plugins/csstatsx_sql.amxx
-      - ./cs/plugins/slots_reserve.amxx:/home/cs16/cstrike/addons/amxmodx/plugins/slots_reserve.amxx
-      - ./live/awponly/live_scoreboard.json:/home/cs16/cstrike/addons/amxmodx/data/live/live_scoreboard.json
-      - ./live/awponly/live_killfeed.json:/home/cs16/cstrike/addons/amxmodx/data/live/live_killfeed.json
+      - ./config/servers/zombies/server.cfg:/home/cs16/cstrike/server.cfg
+      - ./config/servers/zombies/users.ini:/home/cs16/cstrike/addons/amxmodx/configs/users.ini
+      - ./config/servers/zombies/amxx.cfg:/home/cs16/cstrike/addons/amxmodx/configs/amxx.cfg
+      - ./config/servers/zombies/mapcycle.txt:/home/cs16/cstrike/mapcycle.txt
+      - ./config/servers/zombies/motd.txt:/home/cs16/cstrike/motd.txt
+      - ./config/servers/zombies/plugins.ini:/home/cs16/cstrike/addons/amxmodx/configs/plugins.ini
+      - ./cs16/plugins/live_scoreboard.amxx:/home/cs16/cstrike/addons/amxmodx/plugins/live_scoreboard.amxx
+      - ./cs16/plugins/live_killfeed.amxx:/home/cs16/cstrike/addons/amxmodx/plugins/live_killfeed.amxx
+      - ./cs16/plugins/csstatsx_sql.amxx:/home/cs16/cstrike/addons/amxmodx/plugins/csstatsx_sql.amxx
+      - ./cs16/plugins/slots_reserve.amxx:/home/cs16/cstrike/addons/amxmodx/plugins/slots_reserve.amxx
+      - ./cs16/plugins/adminslots.amxx:/home/cs16/cstrike/addons/amxmodx/plugins/adminslots.amxx
+      - ./live/zombies/live_scoreboard.json:/home/cs16/cstrike/addons/amxmodx/data/live/live_scoreboard.json
+      - ./live/zombies/live_killfeed.json:/home/cs16/cstrike/addons/amxmodx/data/live/live_killfeed.json
+      - ./cs16/vendor/mode_plugins/zombies/zp50_admin_commands.amxx:/home/cs16/cstrike/addons/amxmodx/plugins/zp50_admin_commands.amxx
+      - ./cs16/vendor/mode_plugins/zombies/zp50_admin_menu.amxx:/home/cs16/cstrike/addons/amxmodx/plugins/zp50_admin_menu.amxx
+      - ./cs16/vendor/mode_plugins/zombies/zp50_admin_models.amxx:/home/cs16/cstrike/addons/amxmodx/plugins/zp50_admin_models.amxx
+      - ./cs16/vendor/mode_plugins/zombies/zp50_ambience_effects.amxx:/home/cs16/cstrike/addons/amxmodx/plugins/zp50_ambience_effects.amxx
+      - ./cs16/vendor/mode_plugins/zombies/zp50_ambience_sounds.amxx:/home/cs16/cstrike/addons/amxmodx/plugins/zp50_ambience_sounds.amxx
+      - ./cs16/vendor/mode_plugins/zombies/zp50_ammopacks.amxx:/home/cs16/cstrike/addons/amxmodx/plugins/zp50_ammopacks.amxx
+      - ./cs16/vendor/mode_plugins/zombies/zp50_biohazard_compat.amxx:/home/cs16/cstrike/addons/amxmodx/plugins/zp50_biohazard_compat.amxx
+      - ./cs16/vendor/mode_plugins/zombies/zp50_buy_menus.amxx:/home/cs16/cstrike/addons/amxmodx/plugins/zp50_buy_menus.amxx
+      - ./cs16/vendor/mode_plugins/zombies/zp50_buy_zones.amxx:/home/cs16/cstrike/addons/amxmodx/plugins/zp50_buy_zones.amxx
+      - ./cs16/vendor/mode_plugins/zombies/zp50_class_human.amxx:/home/cs16/cstrike/addons/amxmodx/plugins/zp50_class_human.amxx
+      - ./cs16/vendor/mode_plugins/zombies/zp50_class_human_classic.amxx:/home/cs16/cstrike/addons/amxmodx/plugins/zp50_class_human_classic.amxx
+      - ./cs16/vendor/mode_plugins/zombies/zp50_class_human_raptor.amxx:/home/cs16/cstrike/addons/amxmodx/plugins/zp50_class_human_raptor.amxx
+      - ./cs16/vendor/mode_plugins/zombies/zp50_class_nemesis.amxx:/home/cs16/cstrike/addons/amxmodx/plugins/zp50_class_nemesis.amxx
+      - ./cs16/vendor/mode_plugins/zombies/zp50_class_survivor.amxx:/home/cs16/cstrike/addons/amxmodx/plugins/zp50_class_survivor.amxx
+      - ./cs16/vendor/mode_plugins/zombies/zp50_class_zombie.amxx:/home/cs16/cstrike/addons/amxmodx/plugins/zp50_class_zombie.amxx
+      - ./cs16/vendor/mode_plugins/zombies/zp50_class_zombie_classic.amxx:/home/cs16/cstrike/addons/amxmodx/plugins/zp50_class_zombie_classic.amxx
+      - ./cs16/vendor/mode_plugins/zombies/zp50_class_zombie_fat.amxx:/home/cs16/cstrike/addons/amxmodx/plugins/zp50_class_zombie_fat.amxx
+      - ./cs16/vendor/mode_plugins/zombies/zp50_class_zombie_leech.amxx:/home/cs16/cstrike/addons/amxmodx/plugins/zp50_class_zombie_leech.amxx
+      - ./cs16/vendor/mode_plugins/zombies/zp50_class_zombie_light.amxx:/home/cs16/cstrike/addons/amxmodx/plugins/zp50_class_zombie_light.amxx
+      - ./cs16/vendor/mode_plugins/zombies/zp50_class_zombie_rage.amxx:/home/cs16/cstrike/addons/amxmodx/plugins/zp50_class_zombie_rage.amxx
+      - ./cs16/vendor/mode_plugins/zombies/zp50_class_zombie_raptor.amxx:/home/cs16/cstrike/addons/amxmodx/plugins/zp50_class_zombie_raptor.amxx
+      - ./cs16/vendor/mode_plugins/zombies/zp50_core.amxx:/home/cs16/cstrike/addons/amxmodx/plugins/zp50_core.amxx
+      - ./cs16/vendor/mode_plugins/zombies/zp50_deathmatch.amxx:/home/cs16/cstrike/addons/amxmodx/plugins/zp50_deathmatch.amxx
+      - ./cs16/vendor/mode_plugins/zombies/zp50_effects_cure.amxx:/home/cs16/cstrike/addons/amxmodx/plugins/zp50_effects_cure.amxx
+      - ./cs16/vendor/mode_plugins/zombies/zp50_effects_infect.amxx:/home/cs16/cstrike/addons/amxmodx/plugins/zp50_effects_infect.amxx
+      - ./cs16/vendor/mode_plugins/zombies/zp50_effects_lighting.amxx:/home/cs16/cstrike/addons/amxmodx/plugins/zp50_effects_lighting.amxx
+      - ./cs16/vendor/mode_plugins/zombies/zp50_flashlight.amxx:/home/cs16/cstrike/addons/amxmodx/plugins/zp50_flashlight.amxx
+      - ./cs16/vendor/mode_plugins/zombies/zp50_gamemode_armageddon.amxx:/home/cs16/cstrike/addons/amxmodx/plugins/zp50_gamemode_armageddon.amxx
+      - ./cs16/vendor/mode_plugins/zombies/zp50_gamemode_infection.amxx:/home/cs16/cstrike/addons/amxmodx/plugins/zp50_gamemode_infection.amxx
+      - ./cs16/vendor/mode_plugins/zombies/zp50_gamemode_multi.amxx:/home/cs16/cstrike/addons/amxmodx/plugins/zp50_gamemode_multi.amxx
+      - ./cs16/vendor/mode_plugins/zombies/zp50_gamemode_nemesis.amxx:/home/cs16/cstrike/addons/amxmodx/plugins/zp50_gamemode_nemesis.amxx
+      - ./cs16/vendor/mode_plugins/zombies/zp50_gamemode_plague.amxx:/home/cs16/cstrike/addons/amxmodx/plugins/zp50_gamemode_plague.amxx
+      - ./cs16/vendor/mode_plugins/zombies/zp50_gamemode_survivor.amxx:/home/cs16/cstrike/addons/amxmodx/plugins/zp50_gamemode_survivor.amxx
+      - ./cs16/vendor/mode_plugins/zombies/zp50_gamemode_swarm.amxx:/home/cs16/cstrike/addons/amxmodx/plugins/zp50_gamemode_swarm.amxx
+      - ./cs16/vendor/mode_plugins/zombies/zp50_gamemodes.amxx:/home/cs16/cstrike/addons/amxmodx/plugins/zp50_gamemodes.amxx
+      - ./cs16/vendor/mode_plugins/zombies/zp50_gameplay_fixes.amxx:/home/cs16/cstrike/addons/amxmodx/plugins/zp50_gameplay_fixes.amxx
+      - ./cs16/vendor/mode_plugins/zombies/zp50_grenade_fire.amxx:/home/cs16/cstrike/addons/amxmodx/plugins/zp50_grenade_fire.amxx
+      - ./cs16/vendor/mode_plugins/zombies/zp50_grenade_flare.amxx:/home/cs16/cstrike/addons/amxmodx/plugins/zp50_grenade_flare.amxx
+      - ./cs16/vendor/mode_plugins/zombies/zp50_grenade_flashbangs.amxx:/home/cs16/cstrike/addons/amxmodx/plugins/zp50_grenade_flashbangs.amxx
+      - ./cs16/vendor/mode_plugins/zombies/zp50_grenade_frost.amxx:/home/cs16/cstrike/addons/amxmodx/plugins/zp50_grenade_frost.amxx
+      - ./cs16/vendor/mode_plugins/zombies/zp50_hud_info.amxx:/home/cs16/cstrike/addons/amxmodx/plugins/zp50_hud_info.amxx
+      - ./cs16/vendor/mode_plugins/zombies/zp50_human_ammo.amxx:/home/cs16/cstrike/addons/amxmodx/plugins/zp50_human_ammo.amxx
+      - ./cs16/vendor/mode_plugins/zombies/zp50_human_armor.amxx:/home/cs16/cstrike/addons/amxmodx/plugins/zp50_human_armor.amxx
+      - ./cs16/vendor/mode_plugins/zombies/zp50_item_antidote.amxx:/home/cs16/cstrike/addons/amxmodx/plugins/zp50_item_antidote.amxx
+      - ./cs16/vendor/mode_plugins/zombies/zp50_item_infection_bomb.amxx:/home/cs16/cstrike/addons/amxmodx/plugins/zp50_item_infection_bomb.amxx
+      - ./cs16/vendor/mode_plugins/zombies/zp50_item_nightvision.amxx:/home/cs16/cstrike/addons/amxmodx/plugins/zp50_item_nightvision.amxx
+      - ./cs16/vendor/mode_plugins/zombies/zp50_item_weapons.amxx:/home/cs16/cstrike/addons/amxmodx/plugins/zp50_item_weapons.amxx
+      - ./cs16/vendor/mode_plugins/zombies/zp50_item_zombie_madness.amxx:/home/cs16/cstrike/addons/amxmodx/plugins/zp50_item_zombie_madness.amxx
+      - ./cs16/vendor/mode_plugins/zombies/zp50_items.amxx:/home/cs16/cstrike/addons/amxmodx/plugins/zp50_items.amxx
+      - ./cs16/vendor/mode_plugins/zombies/zp50_items_ammopacks.amxx:/home/cs16/cstrike/addons/amxmodx/plugins/zp50_items_ammopacks.amxx
+      - ./cs16/vendor/mode_plugins/zombies/zp50_items_money.amxx:/home/cs16/cstrike/addons/amxmodx/plugins/zp50_items_money.amxx
+      - ./cs16/vendor/mode_plugins/zombies/zp50_knockback.amxx:/home/cs16/cstrike/addons/amxmodx/plugins/zp50_knockback.amxx
+      - ./cs16/vendor/mode_plugins/zombies/zp50_leap.amxx:/home/cs16/cstrike/addons/amxmodx/plugins/zp50_leap.amxx
+      - ./cs16/vendor/mode_plugins/zombies/zp50_main_menu.amxx:/home/cs16/cstrike/addons/amxmodx/plugins/zp50_main_menu.amxx
+      - ./cs16/vendor/mode_plugins/zombies/zp50_nightvision.amxx:/home/cs16/cstrike/addons/amxmodx/plugins/zp50_nightvision.amxx
+      - ./cs16/vendor/mode_plugins/zombies/zp50_objective_remover.amxx:/home/cs16/cstrike/addons/amxmodx/plugins/zp50_objective_remover.amxx
+      - ./cs16/vendor/mode_plugins/zombies/zp50_painshockfree.amxx:/home/cs16/cstrike/addons/amxmodx/plugins/zp50_painshockfree.amxx
+      - ./cs16/vendor/mode_plugins/zombies/zp50_random_spawn.amxx:/home/cs16/cstrike/addons/amxmodx/plugins/zp50_random_spawn.amxx
+      - ./cs16/vendor/mode_plugins/zombies/zp50_rewards_ammopacks.amxx:/home/cs16/cstrike/addons/amxmodx/plugins/zp50_rewards_ammopacks.amxx
+      - ./cs16/vendor/mode_plugins/zombies/zp50_rewards_frags_hp.amxx:/home/cs16/cstrike/addons/amxmodx/plugins/zp50_rewards_frags_hp.amxx
+      - ./cs16/vendor/mode_plugins/zombies/zp50_rewards_money.amxx:/home/cs16/cstrike/addons/amxmodx/plugins/zp50_rewards_money.amxx
+      - ./cs16/vendor/mode_plugins/zombies/zp50_serverbrowser_info.amxx:/home/cs16/cstrike/addons/amxmodx/plugins/zp50_serverbrowser_info.amxx
+      - ./cs16/vendor/mode_plugins/zombies/zp50_spawn_protection.amxx:/home/cs16/cstrike/addons/amxmodx/plugins/zp50_spawn_protection.amxx
+      - ./cs16/vendor/mode_plugins/zombies/zp50_team_scoring.amxx:/home/cs16/cstrike/addons/amxmodx/plugins/zp50_team_scoring.amxx
+      - ./cs16/vendor/mode_plugins/zombies/zp50_weapon_drop_strip.amxx:/home/cs16/cstrike/addons/amxmodx/plugins/zp50_weapon_drop_strip.amxx
+      - ./cs16/vendor/mode_plugins/zombies/zp50_zombie_damage.amxx:/home/cs16/cstrike/addons/amxmodx/plugins/zp50_zombie_damage.amxx
+      - ./cs16/vendor/mode_plugins/zombies/zp50_zombie_features.amxx:/home/cs16/cstrike/addons/amxmodx/plugins/zp50_zombie_features.amxx
+      - ./cs16/vendor/mode_plugins/zombies/zp50_zombie_sounds.amxx:/home/cs16/cstrike/addons/amxmodx/plugins/zp50_zombie_sounds.amxx
+      - ./cs16/vendor/mode_plugins/zombies/zp50_zp43_compat.amxx:/home/cs16/cstrike/addons/amxmodx/plugins/zp50_zp43_compat.amxx

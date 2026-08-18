@@ -46,9 +46,9 @@ services:
       interval: 30s
       timeout: 10s
       retries: 5
-  watch-hltv-fypooldayonly:
+  watch-hltv-gungame:
     image: cs16_stats:local
-    container_name: cs16-watch-hltv-fypooldayonly
+    container_name: cs16-watch-hltv-gungame
     restart: unless-stopped
     profiles: ["watch"]
     network_mode: host
@@ -56,17 +56,17 @@ services:
       LD_LIBRARY_PATH: "/home/cs16"
     entrypoint: ["/home/cs16/start-hltv.sh"]
     volumes:
-      - ./config/watch/fypooldayonly/hltv.cfg:/home/cs16/hltv.cfg:ro
-      - ./config/watch/fypooldayonly/start-hltv.sh:/home/cs16/start-hltv.sh:ro
-      - ./live/watch/fypooldayonly:/home/cs16/watch_logs
+      - ./config/watch/gungame/hltv.cfg:/home/cs16/hltv.cfg:ro
+      - ./config/watch/gungame/start-hltv.sh:/home/cs16/start-hltv.sh:ro
+      - ./live/watch/gungame:/home/cs16/watch_logs
     healthcheck:
       test: ["CMD", "test", "-f", "/home/cs16/hltv.pid"]
       interval: 30s
       timeout: 10s
       retries: 5
-  watch-main-fypooldayonly:
+  watch-main-gungame:
     image: csserver_wstats-watch-main
-    container_name: cs16-watch-main-fypooldayonly
+    container_name: cs16-watch-main-gungame
     restart: unless-stopped
     profiles: ["watch"]
     network_mode: host
@@ -74,7 +74,7 @@ services:
       GAME_SERVER: "127.0.0.1:27101"
       LISTEN_HOST: "0.0.0.0"
       LISTEN_PORT: "27201"
-      BASE_PATH: "/fypooldayonly"
+      BASE_PATH: "/gungame"
       UDP_PORT_RANGE: "27364-27427"
       CONSOLE_COMMANDS: "spec_autodirector 1"
       PACKAGE_ZIP: "/valve/valve.zip"
@@ -89,9 +89,9 @@ services:
       interval: 30s
       timeout: 10s
       retries: 5
-  watch-hltv-zueira2:
+  watch-hltv-deathmatch:
     image: cs16_stats:local
-    container_name: cs16-watch-hltv-zueira2
+    container_name: cs16-watch-hltv-deathmatch
     restart: unless-stopped
     profiles: ["watch"]
     network_mode: host
@@ -99,17 +99,17 @@ services:
       LD_LIBRARY_PATH: "/home/cs16"
     entrypoint: ["/home/cs16/start-hltv.sh"]
     volumes:
-      - ./config/watch/zueira2/hltv.cfg:/home/cs16/hltv.cfg:ro
-      - ./config/watch/zueira2/start-hltv.sh:/home/cs16/start-hltv.sh:ro
-      - ./live/watch/zueira2:/home/cs16/watch_logs
+      - ./config/watch/deathmatch/hltv.cfg:/home/cs16/hltv.cfg:ro
+      - ./config/watch/deathmatch/start-hltv.sh:/home/cs16/start-hltv.sh:ro
+      - ./live/watch/deathmatch:/home/cs16/watch_logs
     healthcheck:
       test: ["CMD", "test", "-f", "/home/cs16/hltv.pid"]
       interval: 30s
       timeout: 10s
       retries: 5
-  watch-main-zueira2:
+  watch-main-deathmatch:
     image: csserver_wstats-watch-main
-    container_name: cs16-watch-main-zueira2
+    container_name: cs16-watch-main-deathmatch
     restart: unless-stopped
     profiles: ["watch"]
     network_mode: host
@@ -117,7 +117,7 @@ services:
       GAME_SERVER: "127.0.0.1:27102"
       LISTEN_HOST: "0.0.0.0"
       LISTEN_PORT: "27202"
-      BASE_PATH: "/zueira2"
+      BASE_PATH: "/deathmatch"
       UDP_PORT_RANGE: "27428-27491"
       CONSOLE_COMMANDS: "spec_autodirector 1"
       PACKAGE_ZIP: "/valve/valve.zip"
@@ -132,9 +132,9 @@ services:
       interval: 30s
       timeout: 10s
       retries: 5
-  watch-hltv-awponly:
+  watch-hltv-zombies:
     image: cs16_stats:local
-    container_name: cs16-watch-hltv-awponly
+    container_name: cs16-watch-hltv-zombies
     restart: unless-stopped
     profiles: ["watch"]
     network_mode: host
@@ -142,17 +142,17 @@ services:
       LD_LIBRARY_PATH: "/home/cs16"
     entrypoint: ["/home/cs16/start-hltv.sh"]
     volumes:
-      - ./config/watch/awponly/hltv.cfg:/home/cs16/hltv.cfg:ro
-      - ./config/watch/awponly/start-hltv.sh:/home/cs16/start-hltv.sh:ro
-      - ./live/watch/awponly:/home/cs16/watch_logs
+      - ./config/watch/zombies/hltv.cfg:/home/cs16/hltv.cfg:ro
+      - ./config/watch/zombies/start-hltv.sh:/home/cs16/start-hltv.sh:ro
+      - ./live/watch/zombies:/home/cs16/watch_logs
     healthcheck:
       test: ["CMD", "test", "-f", "/home/cs16/hltv.pid"]
       interval: 30s
       timeout: 10s
       retries: 5
-  watch-main-awponly:
+  watch-main-zombies:
     image: csserver_wstats-watch-main
-    container_name: cs16-watch-main-awponly
+    container_name: cs16-watch-main-zombies
     restart: unless-stopped
     profiles: ["watch"]
     network_mode: host
@@ -160,7 +160,7 @@ services:
       GAME_SERVER: "127.0.0.1:27103"
       LISTEN_HOST: "0.0.0.0"
       LISTEN_PORT: "27203"
-      BASE_PATH: "/awponly"
+      BASE_PATH: "/zombies"
       UDP_PORT_RANGE: "27492-27555"
       CONSOLE_COMMANDS: "spec_autodirector 1"
       PACKAGE_ZIP: "/valve/valve.zip"

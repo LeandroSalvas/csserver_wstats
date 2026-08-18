@@ -69,14 +69,15 @@ get_rcon_password() {
   printf '%s' "${v:-}"
 }
 
-# Emite uma linha por servidor no formato  id|name|host_port|map|maxplayers|rotate|context
+# Emite uma linha por servidor no formato  id|name|host_port|map|maxplayers|rotate|context|mode
 parse_servers() {
-  local id name host_port map maxplayers rotate context rest
-  while IFS=' ' read -r id name host_port map maxplayers rotate context rest; do
+  local id name host_port map maxplayers rotate context mode rest
+  while IFS=' ' read -r id name host_port map maxplayers rotate context mode rest; do
     [[ -z "$id" || "$id" =~ ^# ]] && continue
     : "${rotate:=yes}"
     : "${context:=$(slugify "$name")}"
-    printf '%s|%s|%s|%s|%s|%s|%s\n' "$id" "$name" "$host_port" "$map" "$maxplayers" "$rotate" "$context"
+    : "${mode:=standard}"
+    printf '%s|%s|%s|%s|%s|%s|%s|%s\n' "$id" "$name" "$host_port" "$map" "$maxplayers" "$rotate" "$context" "$mode"
   done < "${SERVERS_LIST}"
 }
 
@@ -97,10 +98,11 @@ cmd_init() {
 
   local changed=0 index=0
   while read -r line; do
-    local id name host_port map maxplayers rotate context
-    IFS='|' read -r id name host_port map maxplayers rotate context <<< "$line"
+    local id name host_port map maxplayers rotate context mode
+    IFS='|' read -r id name host_port map maxplayers rotate context mode <<< "$line"
     : "${rotate:=yes}"
     : "${context:=$(slugify "$name")}"
+    : "${mode:=standard}"
 
     valid_id "$id" || { err "id inválido em servers.list: '$id' (use apenas a-z0-9, _ e -)."; return 1; }
     valid_context "$context" || { err "context inválido em servers.list para '$id': '$context' (use apenas a-z0-9)."; return 1; }
@@ -115,24 +117,54 @@ cmd_init() {
     mkdir -p "${ROOT}/config/servers/${id}"
     mkdir -p "${ROOT}/live/${id}"
 
-    local out="${ROOT}/config/servers/${id}/server.cfg"
-    if [ ! -f "$out" ]; then
-      sed -e "s|__HOSTNAME__|${name}|g" -e "s|__RCON_PASSWORD__|${rcon_pass}|g" \
-        -e "s|__SERVER_ID__|${id}|g" -e "s|__RANKBOTS__|0|g" \
-        -e "s|__VISIBLE_MAXPLAYERS__|${maxplayers}|g" \
-        "${TEMPLATE_CFG}" > "$out"
-      ok "gerado ${out}"
-      changed=1
+    local mode_template="${ROOT}/config/templates/modes/${mode}.cfg"
+    local src_template="${TEMPLATE_CFG}"
+    if [ "$mode" != "standard" ] && [ -f "$mode_template" ]; then
+      src_template="$mode_template"
     fi
 
-    local f
-    for f in users.ini motd.txt; do
-      if [ ! -f "${ROOT}/config/servers/${id}/${f}" ]; then
-        cp "${ROOT}/config/${f}" "${ROOT}/config/servers/${id}/${f}"
-        ok "gerado config/servers/${id}/${f}"
+    # server.cfg — sempre comparar com o template; se diferente, atualizar (com .bak)
+    local out="${ROOT}/config/servers/${id}/server.cfg"
+    local tmp_out="${out}.tmp"
+    sed -e "s|__HOSTNAME__|${name}|g" -e "s|__RCON_PASSWORD__|${rcon_pass}|g" \
+      -e "s|__SERVER_ID__|${id}|g" -e "s|__RANKBOTS__|0|g" \
+      -e "s|__VISIBLE_MAXPLAYERS__|${maxplayers}|g" \
+      "${src_template}" > "$tmp_out"
+    if [ ! -f "$out" ]; then
+      mv "$tmp_out" "$out"
+      ok "gerado ${out} (modo: ${mode})"
+      changed=1
+    elif ! cmp -s "$tmp_out" "$out"; then
+      cp "${out}" "${out}.bak"
+      mv "$tmp_out" "$out"
+      ok "atualizado ${out} (template mudou, .bak criado)"
+      changed=1
+    else
+      rm -f "$tmp_out"
+    fi
+
+    # motd.txt — copia do template do modo; se diferente, atualizar (com .bak)
+    local motd_template="${ROOT}/config/templates/motd/${mode}.txt"
+    local motd_dst="${ROOT}/config/servers/${id}/motd.txt"
+    if [ -f "$motd_template" ]; then
+      if [ ! -f "$motd_dst" ]; then
+        cp "$motd_template" "$motd_dst"
+        ok "gerado config/servers/${id}/motd.txt (modo: ${mode})"
+        changed=1
+      elif ! cmp -s "$motd_template" "$motd_dst"; then
+        cp "${motd_dst}" "${motd_dst}.bak"
+        cp "$motd_template" "$motd_dst"
+        ok "atualizado config/servers/${id}/motd.txt (template mudou, .bak criado)"
         changed=1
       fi
-    done
+    fi
+
+    # users.ini — só cria se não existir (não sobrescreve edits manuais)
+    if [ ! -f "${ROOT}/config/servers/${id}/users.ini" ]; then
+      cp "${ROOT}/config/users.ini" "${ROOT}/config/servers/${id}/users.ini"
+      ok "gerado config/servers/${id}/users.ini"
+      changed=1
+    fi
 
     # mapcycle.txt: rotate=no força só o mapa escolhido; rotate=yes preserva a
     # lista por servidor (criada pelo assistente) e só cria a padrão se faltar.
@@ -161,9 +193,21 @@ cmd_init() {
       changed=1
     fi
 
-    if [ ! -f "${ROOT}/config/servers/${id}/plugins.ini" ]; then
-      cp "${ROOT}/cs/plugins/plugins.ini" "${ROOT}/config/servers/${id}/plugins.ini"
-      ok "gerado config/servers/${id}/plugins.ini"
+    # plugins.ini — sempre comparar com o template do modo; se diferente, atualizar (com .bak)
+    local mode_ini="${ROOT}/config/templates/modes/${mode}.ini"
+    local src_ini="${ROOT}/cs16/plugins/plugins.ini"
+    if [ "$mode" != "standard" ] && [ -f "$mode_ini" ]; then
+      src_ini="$mode_ini"
+    fi
+    local ini_dst="${ROOT}/config/servers/${id}/plugins.ini"
+    if [ ! -f "$ini_dst" ]; then
+      cp "${src_ini}" "$ini_dst"
+      ok "gerado config/servers/${id}/plugins.ini (modo: ${mode})"
+      changed=1
+    elif ! cmp -s "$src_ini" "$ini_dst"; then
+      cp "${ini_dst}" "${ini_dst}.bak"
+      cp "${src_ini}" "$ini_dst"
+      ok "atualizado config/servers/${id}/plugins.ini (template mudou, .bak criado)"
       changed=1
     fi
 
@@ -194,8 +238,9 @@ cmd_init() {
     mkdir -p "${ROOT}/live/watch/${id}"
 
     local hcfg="${ROOT}/config/watch/${id}/hltv.cfg"
-    if [ ! -f "$hcfg" ]; then
-      cat > "$hcfg" <<EOF
+    local hcfg_new
+    hcfg_new="$(mktemp)"
+    cat > "$hcfg_new" <<EOF
 // HLTV relay config (auto-executed from /home/cs16) — gerado por servers.sh init.
 // O módulo proxy precisa ser carregado explicitamente antes dos comandos.
 loadmodule proxy
@@ -212,13 +257,19 @@ hostname "${context}-hltv"
 chatmode 1
 signoncommands "spec_autodirector 1"
 EOF
-      ok "gerado ${hcfg}"
+    if [ -f "$hcfg" ] && cmp -s "$hcfg_new" "$hcfg"; then
+      rm -f "$hcfg_new"
+    else
+      [ -f "$hcfg" ] && cp "$hcfg" "${hcfg}.bak"
+      mv "$hcfg_new" "$hcfg"
+      ok "atualizado ${hcfg}"
       changed=1
     fi
 
     local hs="${ROOT}/config/watch/${id}/start-hltv.sh"
-    if [ ! -f "$hs" ]; then
-      cat > "$hs" <<EOF
+    local hs_new
+    hs_new="$(mktemp)"
+    cat > "$hs_new" <<EOF
 #!/bin/bash
 # Inicia o relay HLTV do servidor '${id}' (${name}) — gerado por servers.sh init.
 # O hltv.cfg (mesmo diretório) é executado automaticamente e contém o connect.
@@ -233,8 +284,13 @@ while true; do
   sleep 3
 done
 EOF
-      chmod +x "$hs"
-      ok "gerado ${hs}"
+    chmod +x "$hs_new"
+    if [ -f "$hs" ] && cmp -s "$hs_new" "$hs"; then
+      rm -f "$hs_new"
+    else
+      [ -f "$hs" ] && cp "$hs" "${hs}.bak"
+      mv "$hs_new" "$hs"
+      ok "atualizado ${hs}"
       changed=1
     fi
 
@@ -246,16 +302,15 @@ EOF
 }
 
 cmd_compose() {
-  local ids=() names=() ports=() maps=() maxps=() contexts=() line
+  local ids=() names=() ports=() maps=() maxps=() contexts=() modes=() line
 
   while read -r line; do
-    local id name host_port map maxplayers rotate context
-    IFS='|' read -r id name host_port map maxplayers rotate context <<< "$line"
+    local id name host_port map maxplayers rotate context mode
+    IFS='|' read -r id name host_port map maxplayers rotate context mode <<< "$line"
     : "${rotate:=yes}"
     : "${context:=$(slugify "$name")}"
-    valid_id "$id" || { err "id inválido em servers.list: '$id' (use apenas a-z0-9, _ e -)."; return 1; }
-    valid_context "$context" || { err "context inválido em servers.list para '$id': '$context' (use apenas a-z0-9)."; return 1; }
-    ids+=("$id"); names+=("$name"); ports+=("$host_port"); maps+=("$map"); maxps+=("$maxplayers"); contexts+=("$context")
+    : "${mode:=standard}"
+    ids+=("$id"); names+=("$name"); ports+=("$host_port"); maps+=("$map"); maxps+=("$maxplayers"); contexts+=("$context"); modes+=("$mode")
   done < <(parse_servers)
 
   [ "${#ids[@]}" -gt 0 ] || { err "servers.list sem servidores"; return 1; }
@@ -340,12 +395,25 @@ cmd_compose() {
       echo "      - ./config/servers/${ids[$i]}/mapcycle.txt:/home/cs16/cstrike/mapcycle.txt"
       echo "      - ./config/servers/${ids[$i]}/motd.txt:/home/cs16/cstrike/motd.txt"
       echo "      - ./config/servers/${ids[$i]}/plugins.ini:/home/cs16/cstrike/addons/amxmodx/configs/plugins.ini"
-      echo "      - ./cs/plugins/live_scoreboard.amxx:/home/cs16/cstrike/addons/amxmodx/plugins/live_scoreboard.amxx"
-      echo "      - ./cs/plugins/live_killfeed.amxx:/home/cs16/cstrike/addons/amxmodx/plugins/live_killfeed.amxx"
-      echo "      - ./cs/plugins/csstatsx_sql.amxx:/home/cs16/cstrike/addons/amxmodx/plugins/csstatsx_sql.amxx"
-      echo "      - ./cs/plugins/slots_reserve.amxx:/home/cs16/cstrike/addons/amxmodx/plugins/slots_reserve.amxx"
+      echo "      - ./cs16/plugins/live_scoreboard.amxx:/home/cs16/cstrike/addons/amxmodx/plugins/live_scoreboard.amxx"
+      echo "      - ./cs16/plugins/live_killfeed.amxx:/home/cs16/cstrike/addons/amxmodx/plugins/live_killfeed.amxx"
+      echo "      - ./cs16/plugins/csstatsx_sql.amxx:/home/cs16/cstrike/addons/amxmodx/plugins/csstatsx_sql.amxx"
+      echo "      - ./cs16/plugins/slots_reserve.amxx:/home/cs16/cstrike/addons/amxmodx/plugins/slots_reserve.amxx"
+      echo "      - ./cs16/plugins/adminslots.amxx:/home/cs16/cstrike/addons/amxmodx/plugins/adminslots.amxx"
       echo "      - ./live/${ids[$i]}/live_scoreboard.json:/home/cs16/cstrike/addons/amxmodx/data/live/live_scoreboard.json"
       echo "      - ./live/${ids[$i]}/live_killfeed.json:/home/cs16/cstrike/addons/amxmodx/data/live/live_killfeed.json"
+
+      # Plugins específicos do modo (mount individual de cada .amxx)
+      local mode_dir="${ROOT}/cs16/vendor/mode_plugins/${modes[$i]}"
+      if [ "${modes[$i]}" != "standard" ] && [ -d "$mode_dir" ]; then
+        local amxx_file
+        for amxx_file in "${mode_dir}"/*.amxx; do
+          [ -f "$amxx_file" ] || continue
+          local base
+          base="$(basename "$amxx_file")"
+          echo "      - ./cs16/vendor/mode_plugins/${modes[$i]}/${base}:/home/cs16/cstrike/addons/amxmodx/plugins/${base}"
+        done
+      fi
     done
 
   } > "$out"
@@ -507,9 +575,9 @@ apply_swag_locations() {
   fi
 
   local ids=() contexts=() line
-  local id name host_port map maxplayers rotate context
+  local id name host_port map maxplayers rotate context mode
   while read -r line; do
-    IFS='|' read -r id name host_port map maxplayers rotate context <<< "$line"
+    IFS='|' read -r id name host_port map maxplayers rotate context mode <<< "$line"
     ids+=("$id")
     contexts+=("$context")
   done < <(parse_servers)
@@ -696,11 +764,12 @@ cmd_status() {
   local -i w_id=2 w_name=4 w_port=9 w_map=4 w_rot=3 w_max=3
   local line
   while read -r line; do
-    local id name host_port map maxplayers rotate context
-    IFS='|' read -r id name host_port map maxplayers rotate context <<< "$line"
+    local id name host_port map maxplayers rotate context mode
+    IFS='|' read -r id name host_port map maxplayers rotate context mode <<< "$line"
     : "${rotate:=yes}"
     : "${context:=$(slugify "$name")}"
-    s_rows+=("${id}|${name}|${host_port}|${map}|${rotate}|${maxplayers}|${context}")
+    : "${mode:=standard}"
+    s_rows+=("${id}|${name}|${host_port}|${map}|${rotate}|${maxplayers}|${context}|${mode}")
     ((${#id} > w_id)) && w_id=${#id}
     ((${#name} > w_name)) && w_name=${#name}
     ((${#host_port} > w_port)) && w_port=${#host_port}
