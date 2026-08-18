@@ -38,6 +38,14 @@ api/node_modules/
 # valve.zip (assets proprietários do Half-Life) — não versionar; o código do
 # bridge WebRTC vive no submodule watch/webxash3d-proxy (fork privado).
 valve/
+
+# Binários baixados do stack UAC (ReHLDS/ReGameDLL/Metamod-R/ReUnion/AMXX/UAC)
+# pinados por versão — baixados em cs16/vendor/ durante a homologação.
+cs16/vendor/
+# Plugins por modo (exceção — devem ser versionados)
+!cs16/vendor/mode_plugins/
+!cs16/vendor/mode_plugins/**
 watch/webxash3d-proxy/dist/
 watch/webxash3d-proxy/target/
 watch/webxash3d-proxy/client/node_modules/
+*.bak
