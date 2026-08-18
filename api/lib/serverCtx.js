@@ -56,9 +56,9 @@ function parseServersList(text) {
   for (const line of String(text).split('\n')) {
     const parts = String(line).trim().split(/\s+/)
     if (!parts[0] || parts[0].startsWith('#')) continue
-    const [id, name, host_port, map, maxplayers, rotate = 'yes', context = slugifyContext(name)] = parts
+    const [id, name, host_port, map, maxplayers, rotate = 'yes', context = slugifyContext(name), mode = 'standard'] = parts
     if (!id || !name) continue
-    out.push({ id, name, host_port, map, maxplayers, rotate, context })
+    out.push({ id, name, host_port, map, maxplayers, rotate, context, mode })
   }
   return out
 }
@@ -81,7 +81,8 @@ function buildConfigs(entries) {
       map: s.map,
       maxplayers: parseInt(s.maxplayers, 10) || undefined,
       rotate: s.rotate,
-      context: s.context
+      context: s.context,
+      mode: s.mode || 'standard'
     }
   })
 }
@@ -727,6 +728,8 @@ module.exports = {
   checkServerAlerts,
   checkStackAlerts,
   updateLiveServerGauges,
+  snapshot,
+  collectDbStats,
   serverAlertState,
   stackHealthState,
   alertEvents,
