@@ -282,11 +282,19 @@ O espectador permite assistir servidores direto no navegador via WebRTC.
 
 ### Requisitos
 
-1. **`valve.zip`** — assets proprietários do Half-Life/CS 1.6. Copie de uma instalação existente:
+1. **`valve.zip`** — assets proprietários do Half-Life/CS 1.6 (~449 MB). Gere a partir do container do servidor de jogo:
    ```bash
+   # Gera o valve.zip dentro do container e copia para o host
+   docker exec csserver_wstats-cs16zombies-1 bash -c "cd /home/cs16 && apt-get update -qq && apt-get install -y -qq zip > /dev/null 2>&1 && zip -r /tmp/valve.zip valve/"
    mkdir -p valve
-   cp /caminho/para/valve.zip valve/
+   docker cp csserver_wstats-cs16zombies-1:/tmp/valve.zip valve/
+   docker exec csserver_wstats-cs16zombies-1 rm /tmp/valve.zip
    ```
+   > **Ou** copie de uma instalação local do Half-Life/CS 1.6:
+   > ```bash
+   > mkdir -p valve
+   > cd /caminho/para/Half-Life && zip -r /caminho/para/csserver_wstats/valve.zip valve/
+   > ```
 2. **`cstv=yes`** no `servers.list` para os servidores desejados
 3. **HTTPS habilitado** (swag + duckdns) — os espectadores servem em `https://...:4445/<context>/`
 
