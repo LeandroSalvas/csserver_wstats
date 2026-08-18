@@ -59,8 +59,8 @@ function readServersList() {
   for (const line of lines) {
     const parts = String(line).trim().split(/\s+/)
     if (!parts[0] || parts[0].startsWith('#')) continue
-    const [id, name, hostPort, map, maxplayers, rotate = 'yes', context = slugifyName(name), mode = 'standard'] = parts
-    servers.push({ id, name, hostPort, map, maxplayers, rotate, context, mode })
+    const [id, name, hostPort, map, maxplayers, rotate = 'yes', context = slugifyName(name), mode = 'standard', cstv = 'no'] = parts
+    servers.push({ id, name, hostPort, map, maxplayers, rotate, context, mode, cstv })
   }
   return servers
 }
@@ -77,7 +77,7 @@ function writeServersList(servers, header) {
       .join('\n')
   }
   const rows = servers.map((s) =>
-    `${s.id} ${s.name} ${s.hostPort} ${s.map} ${s.maxplayers} ${s.rotate} ${s.context} ${s.mode || 'standard'}`
+    `${s.id} ${s.name} ${s.hostPort} ${s.map} ${s.maxplayers} ${s.rotate} ${s.context} ${s.mode || 'standard'} ${s.cstv || 'no'}`
   )
   const content = [
     preservedHeader || header || `# Lista de servidores CS 1.6 gerenciados pelo docker-compose.`,
@@ -357,6 +357,7 @@ const dockerProvider = {
         rotate: cfg.rotate,
         context: cfg.context,
         mode: cfg.mode || 'standard',
+        cstv: cfg.cstv || 'no',
         containerState: container ? container.State : 'absent',
         containerStatus: container ? container.Status : '',
         online: false
@@ -389,7 +390,7 @@ const dockerProvider = {
       throw Object.assign(new Error(`Contexto de espectador '${context}' já está em uso`), { status: 400 })
     }
     const hostPort = nextFreePort(current)
-    const entry = { id, name, hostPort, map, maxplayers: slots, rotate, context, mode }
+    const entry = { id, name, hostPort, map, maxplayers: slots, rotate, context, mode, cstv: cstv ? 'yes' : 'no' }
     writeServersList([...current, entry])
     try {
       // Provisionamento cirúrgico: só o container do servidor novo (up

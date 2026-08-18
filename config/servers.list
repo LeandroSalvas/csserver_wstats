@@ -1,5 +1,5 @@
 # Lista de servidores CS 1.6 gerenciados pelo docker-compose.
-# Formato: id name host_port map maxplayers rotate context mode
+# Formato: id name host_port map maxplayers rotate context mode cstv
 # - A primeira linha é o servidor primário (id "main"), usado por snapshots/rankings e partidas.
 # - maxplayers = vagas VISÍVEIS (par entre 2 e 30, máximo 30); o maxplayers real é
 #   esse valor + 1 (slot escondido reservado ao HLTV). 30+1=31 fica sempre abaixo do
@@ -9,8 +9,10 @@
 # - context: slug do path do espectador web (ex.: /zueira). Obrigatório e único;
 #   default (se omitido) = slugify(name). Altere com cuidado: quebra URLs salvas.
 # - mode: modo de jogo (standard|zombies|csdm|surf|gungame). Default: standard.
+# - cstv: yes = serviços de espectador web (watch-hltv + watch-main) habilitados;
+#   no = sem espectador. Default: no. Indisponível para modo zombies.
 # - Edite à mão e rode: scripts/servers.sh up  — ou use scripts/setup.sh (interativo).
-main Zueira 27015 de_dust2 30 yes zueira standard
-gungame GunGame 27016 fy_iceworld 16 no gungame gungame
-deathmatch DeathMatch 27017 de_dust 30 yes deathmatch csdm
-zombies Zombies 27018 de_aztec 30 yes zombies zombies
+main Zueira 27015 de_dust2 30 yes zueira standard yes
+gungame GunGame 27016 fy_iceworld 16 no gungame gungame yes
+deathmatch DeathMatch 27017 de_dust 30 yes deathmatch csdm yes
+zombies Zombies 27018 de_aztec 30 yes zombies zombies no

@@ -33,13 +33,14 @@ ok()   { printf '\033[32m✔\033[0m %s\n' "$*"; }
 err()  { printf '\033[31m✖\033[0m %s\n' "$*" >&2; }
 info() { printf '%s\n' "$*"; }
 
-# Emite uma linha por servidor no formato  id|context
+# Emite uma linha por servidor no formato  id|context|cstv
 parse_servers() {
-  local id name host_port map maxplayers rotate context rest
-  while IFS=' ' read -r id name host_port map maxplayers rotate context rest; do
+  local id name host_port map maxplayers rotate context mode cstv rest
+  while IFS=' ' read -r id name host_port map maxplayers rotate context mode cstv rest; do
     [[ -z "$id" || "$id" =~ ^# ]] && continue
     : "${context:=$(printf '%s' "$name" | tr '[:upper:]' '[:lower:]' | tr -c 'a-z0-9' '')}"
-    printf '%s|%s\n' "$id" "$context"
+    : "${cstv:=no}"
+    printf '%s|%s|%s\n' "$id" "$context" "$cstv"
   done < "${SERVERS_LIST}"
 }
 
@@ -50,9 +51,10 @@ env_val() {
 }
 
 watch_services() {
-  local line id
+  local line id cstv
   while read -r line; do
-    IFS='|' read -r id _ <<< "$line"
+    IFS='|' read -r id _ cstv <<< "$line"
+    [ "$cstv" = "yes" ] || continue
     printf 'watch-main-%s watch-hltv-%s ' "$id" "$id"
   done < <(parse_servers)
 }
@@ -105,15 +107,17 @@ cmd_status() {
 
   info ""
   info "### health por servidor"
-  local line id context watch_hltv_base watch_listen_base
+  local line id context cstv watch_hltv_base watch_listen_base
   watch_hltv_base="$(env_val WATCH_HLTV_BASE 27100)"
   watch_listen_base="$(env_val WATCH_LISTEN_BASE 27200)"
   local i=0
   while read -r line; do
-    IFS='|' read -r id context <<< "$line"
-    printf '%-12s relay:%-5s listen:%-5s path:/%s\n' "${id}" "$(( watch_hltv_base + i ))" "$(( watch_listen_base + i ))" "${context}"
-    docker inspect --format '  {{.Name}}: {{if .State.Health}}{{.State.Health.Status}}{{else}}sem healthcheck{{end}}' \
-      "cs16-watch-hltv-${id}" "cs16-watch-main-${id}" 2>/dev/null
+    IFS='|' read -r id context cstv <<< "$line"
+    if [ "$cstv" = "yes" ]; then
+      printf '%-12s relay:%-5s listen:%-5s path:/%s\n' "${id}" "$(( watch_hltv_base + i ))" "$(( watch_listen_base + i ))" "${context}"
+      docker inspect --format '  {{.Name}}: {{if .State.Health}}{{.State.Health.Status}}{{else}}sem healthcheck{{end}}' \
+        "cs16-watch-hltv-${id}" "cs16-watch-main-${id}" 2>/dev/null
+    fi
     i=$(( i + 1 ))
   done < <(parse_servers)
 
@@ -121,12 +125,14 @@ cmd_status() {
   info "### relay HLTV (último crash por servidor)"
   i=0
   while read -r line; do
-    IFS='|' read -r id context <<< "$line"
-    local crash="${ROOT}/live/watch/${id}/last_hltv_crash.txt"
-    if [ -f "$crash" ]; then
-      info "  ${id}: $(cat "$crash")"
-    else
-      info "  ${id}: sem registro de crash"
+    IFS='|' read -r id context cstv <<< "$line"
+    if [ "$cstv" = "yes" ]; then
+      local crash="${ROOT}/live/watch/${id}/last_hltv_crash.txt"
+      if [ -f "$crash" ]; then
+        info "  ${id}: $(cat "$crash")"
+      else
+        info "  ${id}: sem registro de crash"
+      fi
     fi
     i=$(( i + 1 ))
   done < <(parse_servers)

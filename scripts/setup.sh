@@ -37,13 +37,14 @@ err()  { printf '\033[31m✖\033[0m %s\n' "$*" >&2; }
 info() { printf '%s\n' "$*"; }
 
 load_current() {
-  CUR_IDS=() CUR_NAMES=() CUR_PORTS=() CUR_MAPS=() CUR_SLOTS=() CUR_ROTATE=()
+  CUR_IDS=() CUR_NAMES=() CUR_PORTS=() CUR_MAPS=() CUR_SLOTS=() CUR_ROTATE=() CUR_CSTV=()
   [ -f "${SERVERS_LIST}" ] || return 0
   local line
-  while IFS=' ' read -r id name host_port map maxplayers rotate rest; do
+  while IFS=' ' read -r id name host_port map maxplayers rotate context mode cstv rest; do
     [[ -z "$id" || "$id" =~ ^# ]] && continue
     CUR_IDS+=("$id") CUR_NAMES+=("$name") CUR_PORTS+=("$host_port")
     CUR_MAPS+=("$map") CUR_SLOTS+=("$maxplayers") CUR_ROTATE+=("${rotate:-yes}")
+    CUR_CSTV+=("${cstv:-no}")
   done < "${SERVERS_LIST}"
 }
 
@@ -244,13 +245,25 @@ prompt_new_server() {
   [[ "$map" =~ ^[a-z0-9_]+$ ]] || { err "Nome de mapa inválido: '${map}' (use letras minúsculas, números e _)."; return 1; }
   select_option "Slots (vagas visíveis) do servidor #${idx} — máximo 30 (1 slot extra é reservado ao HLTV)" "30" slots -- "o máximo de vagas visíveis é 30 (30 + 1 reservada ao HLTV; o engine aceita no máx. 32)" 8 16 24 30
 
+  # CSTV: espectador web (indisponível para zombies)
+  local cstv="no"
+  if [ "$YES_MODE" -eq 1 ]; then
+    cstv="no"
+  else
+    ask "Ativar CSTV (espectador web) no servidor #${idx}?" "N" cstv_ans
+    case "$cstv_ans" in
+      s|S|sim|SIM|y|Y|yes|YES) cstv="yes";;
+      *) cstv="no";;
+    esac
+  fi
+
   if is_in_array "$port" "${NEW_PORTS[@]}"; then
     err "Aviso: porta ${port} já usada por outro servidor desta lista."
   fi
 
   NEW_IDS+=("$id") NEW_NAMES+=("$name") NEW_PORTS+=("$port")
-  NEW_MAPS+=("$map") NEW_SLOTS+=("$slots") NEW_ROTATE+=("$rotate")
-  info "  -> id=${id} nome=${name} porta=${port} mapa=${map} slots=${slots} rotacao=${rotate}"
+  NEW_MAPS+=("$map") NEW_SLOTS+=("$slots") NEW_ROTATE+=("$rotate") NEW_CSTV+=("$cstv")
+  info "  -> id=${id} nome=${name} porta=${port} mapa=${map} slots=${slots} rotacao=${rotate} cstv=${cstv}"
 
   if [ "$rotate" = "yes" ]; then
     if [ "$YES_MODE" -eq 1 ]; then
@@ -267,7 +280,7 @@ prompt_new_server() {
 
 build_new_list() {
   local count="$1" total="${#CUR_IDS[@]}"
-  NEW_ROTATE=() NEW_CYCLE=()
+  NEW_ROTATE=() NEW_CYCLE=() NEW_CSTV=()
 
   # redução: escolhe quais remover
   if [ "$count" -lt "$total" ]; then
@@ -296,14 +309,15 @@ build_new_list() {
       [ "${#removed_ids[@]}" -eq "$to_remove" ] || err "Selecione exatamente $to_remove servidor(es)."
     done
 
-    local k nb=() nm=() np=() nma=() ns=() nr=()
+    local k nb=() nm=() np=() nma=() ns=() nr=() nc=()
     for i in $(seq 0 $((total - 1))); do
       is_in_array "${CUR_IDS[$i]}" "${removed_ids[@]}" && continue
       nb+=("${CUR_IDS[$i]}") nm+=("${CUR_NAMES[$i]}") np+=("${CUR_PORTS[$i]}")
       nma+=("${CUR_MAPS[$i]}") ns+=("${CUR_SLOTS[$i]}") nr+=("${CUR_ROTATE[$i]:-yes}")
+      nc+=("${CUR_CSTV[$i]:-no}")
     done
     NEW_IDS=("${nb[@]}") NEW_NAMES=("${nm[@]}") NEW_PORTS=("${np[@]}")
-    NEW_MAPS=("${nma[@]}") NEW_SLOTS=("${ns[@]}") NEW_ROTATE=("${nr[@]}")
+    NEW_MAPS=("${nma[@]}") NEW_SLOTS=("${ns[@]}") NEW_ROTATE=("${nr[@]}") NEW_CSTV=("${nc[@]}")
     local kc
     for kc in "${NEW_IDS[@]}"; do NEW_CYCLE+=(""); done
 
@@ -329,6 +343,7 @@ build_new_list() {
   for i in $(seq 0 $((total - 1))); do
     NEW_IDS+=("${CUR_IDS[$i]}") NEW_NAMES+=("${CUR_NAMES[$i]}") NEW_PORTS+=("${CUR_PORTS[$i]}")
     NEW_MAPS+=("${CUR_MAPS[$i]}") NEW_SLOTS+=("${CUR_SLOTS[$i]}") NEW_ROTATE+=("${CUR_ROTATE[$i]:-yes}")
+    NEW_CSTV+=("${CUR_CSTV[$i]:-no}")
     NEW_CYCLE+=("")
   done
 
@@ -349,19 +364,23 @@ write_list() {
   local tmp="${SERVERS_LIST}.tmp"
   {
     echo "# Lista de servidores CS 1.6 gerenciados pelo docker-compose."
-    echo "# Formato: id hostname host_port map maxplayers rotate context"
+    echo "# Formato: id name host_port map maxplayers rotate context mode cstv"
     echo "# - A primeira linha é o servidor primário (id \"main\"), usado por snapshots/rankings e partidas."
     echo "# - maxplayers = vagas VISÍVEIS (par entre 2 e 30, máximo 30); o maxplayers real é esse valor + 1"
     echo "#   (slot escondido reservado ao HLTV). 30+1=31 fica abaixo do teto de 32 do engine."
     echo "# - host_port é a porta publicada no host (mapeada para a porta interna 27015 do container)."
     echo "# - rotate: yes = rotação de mapas (lista em config/servers/<id>/mapcycle.txt); no = só o mapa escolhido."
     echo "# - context: slug do path do espectador web (default = slug do nome; use apenas a-z0-9, único por servidor)."
-    echo "# - Edite à mão e rode: scripts/servers.sh up  — ou use scripts/setup.sh (interativo)."
+    echo "# - mode: modo de jogo (standard|zombies|csdm|surf|gungame). Default: standard."
+    echo "# - cstv: yes = serviços de espectador web (watch-hltv + watch-main) habilitados; no = sem espectador."
+    echo "# - Edite à mano e rode: scripts/servers.sh up  — ou use scripts/setup.sh (interativo)."
     local i
     for i in "${!NEW_IDS[@]}"; do
-      printf '%s %s %s %s %s %s %s\n' \
-        "${NEW_IDS[$i]}" "${NEW_NAMES[$i]}" "${NEW_PORTS[$i]}" "${NEW_MAPS[$i]}" "${NEW_SLOTS[$i]}" "${NEW_ROTATE[$i]:-yes}" \
-        "$(printf '%s' "${NEW_NAMES[$i]}" | tr '[:upper:]' '[:lower:]' | tr -c 'a-z0-9' '')"
+      printf '%s %s %s %s %s %s %s %s %s\n' \
+        "${NEW_IDS[$i]}" "${NEW_NAMES[$i]}" "${NEW_PORTS[$i]}" "${NEW_MAPS[$i]}" "${NEW_SLOTS[$i]}" \
+        "${NEW_ROTATE[$i]:-yes}" \
+        "$(printf '%s' "${NEW_NAMES[$i]}" | tr '[:upper:]' '[:lower:]' | tr -c 'a-z0-9' '')" \
+        "standard" "${NEW_CSTV[$i]:-no}"
     done
   } > "$tmp"
   mv "$tmp" "${SERVERS_LIST}"

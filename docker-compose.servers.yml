@@ -138,9 +138,9 @@ services:
       - ./cs16/vendor/mode_plugins/zombies/zp50_gamemode_multi.amxx:/home/cs16/cstrike/addons/amxmodx/plugins/zp50_gamemode_multi.amxx
       - ./cs16/vendor/mode_plugins/zombies/zp50_gamemode_nemesis.amxx:/home/cs16/cstrike/addons/amxmodx/plugins/zp50_gamemode_nemesis.amxx
       - ./cs16/vendor/mode_plugins/zombies/zp50_gamemode_plague.amxx:/home/cs16/cstrike/addons/amxmodx/plugins/zp50_gamemode_plague.amxx
+      - ./cs16/vendor/mode_plugins/zombies/zp50_gamemodes.amxx:/home/cs16/cstrike/addons/amxmodx/plugins/zp50_gamemodes.amxx
       - ./cs16/vendor/mode_plugins/zombies/zp50_gamemode_survivor.amxx:/home/cs16/cstrike/addons/amxmodx/plugins/zp50_gamemode_survivor.amxx
       - ./cs16/vendor/mode_plugins/zombies/zp50_gamemode_swarm.amxx:/home/cs16/cstrike/addons/amxmodx/plugins/zp50_gamemode_swarm.amxx
-      - ./cs16/vendor/mode_plugins/zombies/zp50_gamemodes.amxx:/home/cs16/cstrike/addons/amxmodx/plugins/zp50_gamemodes.amxx
       - ./cs16/vendor/mode_plugins/zombies/zp50_gameplay_fixes.amxx:/home/cs16/cstrike/addons/amxmodx/plugins/zp50_gameplay_fixes.amxx
       - ./cs16/vendor/mode_plugins/zombies/zp50_grenade_fire.amxx:/home/cs16/cstrike/addons/amxmodx/plugins/zp50_grenade_fire.amxx
       - ./cs16/vendor/mode_plugins/zombies/zp50_grenade_flare.amxx:/home/cs16/cstrike/addons/amxmodx/plugins/zp50_grenade_flare.amxx
@@ -152,11 +152,11 @@ services:
       - ./cs16/vendor/mode_plugins/zombies/zp50_item_antidote.amxx:/home/cs16/cstrike/addons/amxmodx/plugins/zp50_item_antidote.amxx
       - ./cs16/vendor/mode_plugins/zombies/zp50_item_infection_bomb.amxx:/home/cs16/cstrike/addons/amxmodx/plugins/zp50_item_infection_bomb.amxx
       - ./cs16/vendor/mode_plugins/zombies/zp50_item_nightvision.amxx:/home/cs16/cstrike/addons/amxmodx/plugins/zp50_item_nightvision.amxx
+      - ./cs16/vendor/mode_plugins/zombies/zp50_items_ammopacks.amxx:/home/cs16/cstrike/addons/amxmodx/plugins/zp50_items_ammopacks.amxx
+      - ./cs16/vendor/mode_plugins/zombies/zp50_items.amxx:/home/cs16/cstrike/addons/amxmodx/plugins/zp50_items.amxx
+      - ./cs16/vendor/mode_plugins/zombies/zp50_items_money.amxx:/home/cs16/cstrike/addons/amxmodx/plugins/zp50_items_money.amxx
       - ./cs16/vendor/mode_plugins/zombies/zp50_item_weapons.amxx:/home/cs16/cstrike/addons/amxmodx/plugins/zp50_item_weapons.amxx
       - ./cs16/vendor/mode_plugins/zombies/zp50_item_zombie_madness.amxx:/home/cs16/cstrike/addons/amxmodx/plugins/zp50_item_zombie_madness.amxx
-      - ./cs16/vendor/mode_plugins/zombies/zp50_items.amxx:/home/cs16/cstrike/addons/amxmodx/plugins/zp50_items.amxx
-      - ./cs16/vendor/mode_plugins/zombies/zp50_items_ammopacks.amxx:/home/cs16/cstrike/addons/amxmodx/plugins/zp50_items_ammopacks.amxx
-      - ./cs16/vendor/mode_plugins/zombies/zp50_items_money.amxx:/home/cs16/cstrike/addons/amxmodx/plugins/zp50_items_money.amxx
       - ./cs16/vendor/mode_plugins/zombies/zp50_knockback.amxx:/home/cs16/cstrike/addons/amxmodx/plugins/zp50_knockback.amxx
       - ./cs16/vendor/mode_plugins/zombies/zp50_leap.amxx:/home/cs16/cstrike/addons/amxmodx/plugins/zp50_leap.amxx
       - ./cs16/vendor/mode_plugins/zombies/zp50_main_menu.amxx:/home/cs16/cstrike/addons/amxmodx/plugins/zp50_main_menu.amxx

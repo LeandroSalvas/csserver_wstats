@@ -71,13 +71,14 @@ get_rcon_password() {
 
 # Emite uma linha por servidor no formato  id|name|host_port|map|maxplayers|rotate|context|mode
 parse_servers() {
-  local id name host_port map maxplayers rotate context mode rest
-  while IFS=' ' read -r id name host_port map maxplayers rotate context mode rest; do
+  local id name host_port map maxplayers rotate context mode cstv rest
+  while IFS=' ' read -r id name host_port map maxplayers rotate context mode cstv rest; do
     [[ -z "$id" || "$id" =~ ^# ]] && continue
     : "${rotate:=yes}"
     : "${context:=$(slugify "$name")}"
     : "${mode:=standard}"
-    printf '%s|%s|%s|%s|%s|%s|%s|%s\n' "$id" "$name" "$host_port" "$map" "$maxplayers" "$rotate" "$context" "$mode"
+    : "${cstv:=no}"
+    printf '%s|%s|%s|%s|%s|%s|%s|%s|%s\n' "$id" "$name" "$host_port" "$map" "$maxplayers" "$rotate" "$context" "$mode" "$cstv"
   done < "${SERVERS_LIST}"
 }
 
@@ -98,11 +99,12 @@ cmd_init() {
 
   local changed=0 index=0
   while read -r line; do
-    local id name host_port map maxplayers rotate context mode
-    IFS='|' read -r id name host_port map maxplayers rotate context mode <<< "$line"
+    local id name host_port map maxplayers rotate context mode cstv
+    IFS='|' read -r id name host_port map maxplayers rotate context mode cstv <<< "$line"
     : "${rotate:=yes}"
     : "${context:=$(slugify "$name")}"
     : "${mode:=standard}"
+    : "${cstv:=no}"
 
     valid_id "$id" || { err "id inválido em servers.list: '$id' (use apenas a-z0-9, _ e -)."; return 1; }
     valid_context "$context" || { err "context inválido em servers.list para '$id': '$context' (use apenas a-z0-9)."; return 1; }
@@ -226,16 +228,18 @@ cmd_init() {
     fi
 
     # --- Espectador web (relay HLTV por servidor) ---
-    # Portas derivadas do índice na lista: relay WATCH_HLTV_BASE+i,
-    # listen WATCH_LISTEN_BASE+i, UDP ICE WATCH_UDP_BASE+(i*size)..+size-1.
-    local watch_hltv_base watch_listen_base
-    watch_hltv_base="$(env_val WATCH_HLTV_BASE 27100)"
-    watch_listen_base="$(env_val WATCH_LISTEN_BASE 27200)"
-    local hltv_port=$(( watch_hltv_base + index ))
-    local listen_port=$(( watch_listen_base + index ))
+    # Só gera configs de watch para servidores com cstv=yes.
+    if [ "$cstv" = "yes" ]; then
+      # Portas derivadas do índice na lista: relay WATCH_HLTV_BASE+i,
+      # listen WATCH_LISTEN_BASE+i, UDP ICE WATCH_UDP_BASE+(i*size)..+size-1.
+      local watch_hltv_base watch_listen_base
+      watch_hltv_base="$(env_val WATCH_HLTV_BASE 27100)"
+      watch_listen_base="$(env_val WATCH_LISTEN_BASE 27200)"
+      local hltv_port=$(( watch_hltv_base + index ))
+      local listen_port=$(( watch_listen_base + index ))
 
-    mkdir -p "${ROOT}/config/watch/${id}"
-    mkdir -p "${ROOT}/live/watch/${id}"
+      mkdir -p "${ROOT}/config/watch/${id}"
+      mkdir -p "${ROOT}/live/watch/${id}"
 
     local hcfg="${ROOT}/config/watch/${id}/hltv.cfg"
     local hcfg_new
@@ -293,6 +297,7 @@ EOF
       ok "atualizado ${hs}"
       changed=1
     fi
+    fi # cstv=yes
 
     index=$(( index + 1 ))
   done < <(parse_servers)
@@ -302,15 +307,16 @@ EOF
 }
 
 cmd_compose() {
-  local ids=() names=() ports=() maps=() maxps=() contexts=() modes=() line
+  local ids=() names=() ports=() maps=() maxps=() contexts=() modes=() cstvs=() line
 
   while read -r line; do
-    local id name host_port map maxplayers rotate context mode
-    IFS='|' read -r id name host_port map maxplayers rotate context mode <<< "$line"
+    local id name host_port map maxplayers rotate context mode cstv
+    IFS='|' read -r id name host_port map maxplayers rotate context mode cstv <<< "$line"
     : "${rotate:=yes}"
     : "${context:=$(slugify "$name")}"
     : "${mode:=standard}"
-    ids+=("$id"); names+=("$name"); ports+=("$host_port"); maps+=("$map"); maxps+=("$maxplayers"); contexts+=("$context"); modes+=("$mode")
+    : "${cstv:=no}"
+    ids+=("$id"); names+=("$name"); ports+=("$host_port"); maps+=("$map"); maxps+=("$maxplayers"); contexts+=("$context"); modes+=("$mode"); cstvs+=("$cstv")
   done < <(parse_servers)
 
   [ "${#ids[@]}" -gt 0 ] || { err "servers.list sem servidores"; return 1; }
@@ -424,6 +430,36 @@ cmd_compose() {
   write_watch_compose || return 1
   write_swag_snippet || return 1
   apply_swag_locations || return 1
+  reconcile_watch_ports || true
+}
+
+# Detecta containers watch com portas desatualizadas (stale) e os recria.
+# Chamado ao final de cmd_compose para prevenir o bug de env vars baked-in.
+reconcile_watch_ports() {
+  command -v docker >/dev/null 2>&1 || return 0
+  local watch_hltv_base watch_listen_base
+  watch_hltv_base="$(env_val WATCH_HLTV_BASE 27100)"
+  watch_listen_base="$(env_val WATCH_LISTEN_BASE 27200)"
+
+  local i
+  for i in "${!ids[@]}"; do
+    [ "${cstvs[$i]}" = "yes" ] || continue
+    local expected_listen=$(( watch_listen_base + i ))
+    local expected_hltv=$(( watch_hltv_base + i ))
+    local svc_main="watch-main-${ids[$i]}"
+    local svc_hltv="watch-hltv-${ids[$i]}"
+
+    # Porta efetiva no container em execução (env var LISTEN_PORT baked-in na criação)
+    local running_port
+    running_port=$(docker inspect -f '{{range .Config.Env}}{{println .}}{{end}}' "$svc_main" 2>/dev/null \
+      | grep '^LISTEN_PORT=' | head -1 | cut -d= -f2)
+
+    if [ -n "$running_port" ] && [ "$running_port" != "$expected_listen" ]; then
+      warn "watch ${svc_main} porta stale (${running_port}→${expected_listen}), recriando ..."
+      docker compose "${COMPOSE_FILES[@]}" --profile watch up -d --force-recreate "$svc_hltv" "$svc_main" 2>/dev/null || true
+      ok "watch ${ids[$i]} recriado (listen ${expected_listen}, relay ${expected_hltv})"
+    fi
+  done
 }
 
 # Gera docker-compose.watch.yml com um par watch-main/watch-hltv por servidor
@@ -447,6 +483,7 @@ write_watch_compose() {
 
     local i svc_idx
     for i in "${!ids[@]}"; do
+      [ "${cstvs[$i]}" = "yes" ] || continue
       local ctx="${contexts[$i]}"
       local hltv_port=$(( watch_hltv_base + i ))
       local listen_port=$(( watch_listen_base + i ))
@@ -505,7 +542,7 @@ write_watch_compose() {
     done
   } > "$out"
 
-  ok "override gerado: docker-compose.watch.yml (${#ids[@]} servidor(es))"
+  ok "override gerado: docker-compose.watch.yml ($(printf '%s\n' "${cstvs[@]}" | grep -c '^yes$') servidor(es) com CSTV)"
   cat "$out"
 }
 
@@ -690,8 +727,8 @@ cmd_up() {
 }
 
 # provision <id> [--cstv]
-# Cria APENAS o container do servidor (e, com --cstv, os serviços de espectador
-# watch-hltv/watch-main). Usado pela API em add. Não recria containers existentes.
+# Cria APENAS o container do servidor (e, com --cstv ou cstv=yes na lista,
+# os serviços de espectador watch-hltv/watch-main). Usado pela API em add.
 cmd_provision() {
   local id="${1:-}" cstv=0 arg
   for arg in "${@:2}"; do
@@ -702,6 +739,13 @@ cmd_provision() {
   done
   [ -n "$id" ] || { err "Uso: servers.sh provision <id> [--cstv]"; return 1; }
   valid_id "$id" || { err "id inválido: '$id'"; return 1; }
+
+  # Se --cstv não foi passado, lê da coluna cstv em servers.list
+  if [ "$cstv" -eq 0 ]; then
+    local cstv_from_list
+    cstv_from_list=$(awk -v id="$id" '$1==id{print $9}' "${SERVERS_LIST}" 2>/dev/null)
+    [ "$cstv_from_list" = "yes" ] && cstv=1
+  fi
 
   cmd_init || return 1
   cmd_compose || return 1
@@ -741,6 +785,8 @@ cmd_unprovision() {
     ok "serviços de espectador de ${id} removidos"
   fi
 
+  rm -rf "${ROOT}/config/watch/${id}" "${ROOT}/live/watch/${id}" 2>/dev/null || true
+
   local svc
   [ "$id" = "main" ] && svc="cs16" || svc="cs16${id}"
   docker compose "${COMPOSE_FILES[@]}" rm -sf "${svc}" 2>/dev/null || true
@@ -761,15 +807,16 @@ cmd_status() {
   info "=== Servidores configurados (${SERVERS_LIST}) ==="
   # Larguras dinâmicas por coluna (max entre cabeçalho e valores) para nunca desalinhar.
   local -a s_rows=()
-  local -i w_id=2 w_name=4 w_port=9 w_map=4 w_rot=3 w_max=3
+  local -i w_id=2 w_name=4 w_port=9 w_map=4 w_rot=3 w_max=3 w_cstv=4
   local line
   while read -r line; do
-    local id name host_port map maxplayers rotate context mode
-    IFS='|' read -r id name host_port map maxplayers rotate context mode <<< "$line"
+    local id name host_port map maxplayers rotate context mode cstv
+    IFS='|' read -r id name host_port map maxplayers rotate context mode cstv <<< "$line"
     : "${rotate:=yes}"
     : "${context:=$(slugify "$name")}"
     : "${mode:=standard}"
-    s_rows+=("${id}|${name}|${host_port}|${map}|${rotate}|${maxplayers}|${context}|${mode}")
+    : "${cstv:=no}"
+    s_rows+=("${id}|${name}|${host_port}|${map}|${rotate}|${maxplayers}|${context}|${cstv}")
     ((${#id} > w_id)) && w_id=${#id}
     ((${#name} > w_name)) && w_name=${#name}
     ((${#host_port} > w_port)) && w_port=${#host_port}
@@ -777,15 +824,16 @@ cmd_status() {
     ((${#rotate} > w_rot)) && w_rot=${#rotate}
     ((${#maxplayers} > w_max)) && w_max=${#maxplayers}
   done < <(parse_servers)
-  printf '%-*s %-*s %-*s %-*s %-*s %-*s %s\n' \
+  local w_ctx=7
+  printf '%-*s %-*s %-*s %-*s %-*s %-*s %-*s %-*s %s\n' \
     "$w_id" "ID" "$w_name" "NOME" "$w_port" "HOST_PORT" "$w_map" "MAPA" \
-    "$w_rot" "ROT" "$w_max" "MAX" "CONTEXT"
+    "$w_rot" "ROT" "$w_max" "MAX" "$w_ctx" "CONTEXT" "$w_cstv" "CSTV"
   for line in "${s_rows[@]}"; do
-    local id name host_port map rotate maxplayers context
-    IFS='|' read -r id name host_port map rotate maxplayers context <<< "$line"
-    printf '%-*s %-*s %-*s %-*s %-*s %-*s %s\n' \
+    local id name host_port map rotate maxplayers context cstv
+    IFS='|' read -r id name host_port map rotate maxplayers context cstv <<< "$line"
+    printf '%-*s %-*s %-*s %-*s %-*s %-*s %-*s %-*s %s\n' \
       "$w_id" "$id" "$w_name" "$name" "$w_port" "$host_port" "$w_map" "$map" \
-      "$w_rot" "$rotate" "$w_max" "$maxplayers" "$context"
+      "$w_rot" "$rotate" "$w_max" "$maxplayers" "$w_ctx" "$context" "$w_cstv" "$cstv"
   done
   info ""
   info "=== Containers (por tipo de serviço) ==="
@@ -939,6 +987,8 @@ cmd_prune() {
   for id in "${ids[@]}"; do
     [ -d "${ROOT}/config/servers/${id}" ] && rm -rf "${ROOT}/config/servers/${id}" && ok "apagado config/servers/${id}"
     [ -d "${ROOT}/live/${id}" ] && rm -rf "${ROOT}/live/${id}" && ok "apagado live/${id}"
+    [ -d "${ROOT}/config/watch/${id}" ] && rm -rf "${ROOT}/config/watch/${id}" && ok "apagado config/watch/${id}"
+    [ -d "${ROOT}/live/watch/${id}" ] && rm -rf "${ROOT}/live/watch/${id}" && ok "apagado live/watch/${id}"
   done
 
   if [ "$metrics" -eq 1 ]; then

@@ -42,7 +42,7 @@ const { readLiveFile, withTimeout } = require('./helpers')
 
 // --- Config de servidores em tempo de execução ---
 // Fonte de verdade: config/servers.list (mesmo formato do scripts/servers.sh:
-// id name host_port map maxplayers rotate context; 1ª linha = main). A lista é
+// id name host_port map maxplayers rotate context mode cstv; 1ª linha = main). A lista é
 // recarregada por poll (startConfigWatch), então add/remove de servidor NÃO
 // exige recriar o container da api — o serviço api fica estático no compose e
 // o provisionamento não recria mais nada em cascata.
@@ -56,9 +56,9 @@ function parseServersList(text) {
   for (const line of String(text).split('\n')) {
     const parts = String(line).trim().split(/\s+/)
     if (!parts[0] || parts[0].startsWith('#')) continue
-    const [id, name, host_port, map, maxplayers, rotate = 'yes', context = slugifyContext(name), mode = 'standard'] = parts
+    const [id, name, host_port, map, maxplayers, rotate = 'yes', context = slugifyContext(name), mode = 'standard', cstv = 'no'] = parts
     if (!id || !name) continue
-    out.push({ id, name, host_port, map, maxplayers, rotate, context, mode })
+    out.push({ id, name, host_port, map, maxplayers, rotate, context, mode, cstv })
   }
   return out
 }
@@ -82,7 +82,8 @@ function buildConfigs(entries) {
       maxplayers: parseInt(s.maxplayers, 10) || undefined,
       rotate: s.rotate,
       context: s.context,
-      mode: s.mode || 'standard'
+      mode: s.mode || 'standard',
+      cstv: s.cstv || 'no'
     }
   })
 }
