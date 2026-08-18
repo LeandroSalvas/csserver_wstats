@@ -40,6 +40,10 @@ Além destes, há os serviços **opt-in** do espectador web (`profiles: ["watch"
 
 O **swag** (proxy TLS) e o **duckdns** (DNS dinâmico) são **parte da stack** (`docker-compose.duckdns.yml`, incluído no `COMPOSE_FILE`): expõem o site principal em `https://zueiracstrike.duckdns.org:4443` e cada espectador em `https://zueiracstrike.duckdns.org:4445/<context>/`.
 
+### Instalação
+
+> Para um guia completo de instalação do zero, incluindo pré-requisitos, configuração do `.env`, servidores de jogo, HTTPS, espectadores, bot Discord e troubleshooting, veja **[INSTALL.md](INSTALL.md)**.
+
 ### Funcionalidades
 
 #### Servidor de Jogo
@@ -865,6 +869,10 @@ On top of these, there are **opt-in** spectator services (`profiles: ["watch"]`,
 | `watch-hltv-<id>` | HLTV relay per server: between the game server (`127.0.0.1:<host_port>`) and the browser spectator |
 
 The **swag** (TLS proxy) and **duckdns** (dynamic DNS) are **part of the stack** (`docker-compose.duckdns.yml`, included in `COMPOSE_FILE`): they expose the main site at `https://zueiracstrike.duckdns.org:4443` and each spectator at `https://zueiracstrike.duckdns.org:4445/<context>/`.
+
+### Installation
+
+> For a complete installation guide from scratch, including prerequisites, `.env` configuration, game servers, HTTPS, spectators, Discord bot, and troubleshooting, see **[INSTALL.md](INSTALL.md)**.
 
 ### Features
 
