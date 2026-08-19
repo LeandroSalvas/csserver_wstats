@@ -38,6 +38,22 @@ const commandLimiter = rateLimit({
   message: { success: false, error: 'Muitos comandos. Tente novamente em 1 minuto.' }
 })
 
+const publicApiLimiter = rateLimit({
+  windowMs: 60 * 1000,
+  limit: 200,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { error: 'Muitas requisições. Reduza a frequência.' }
+})
+
+const searchLimiter = rateLimit({
+  windowMs: 60 * 1000,
+  limit: 60,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { error: 'Muitas buscas. Tente novamente em 1 minuto.' }
+})
+
 // Basic Auth para /metrics (protege métricas de scrapers/curl na LAN).
 // Sem METRICS_USER/METRICS_PASS configurados, /metrics permanece aberto com aviso.
 if (!metricsUser || !metricsPass) {
@@ -195,6 +211,8 @@ function requireCsrf(req, res, next) {
 module.exports = {
   loginLimiter,
   commandLimiter,
+  publicApiLimiter,
+  searchLimiter,
   requireMetricsAuth,
   setupSession,
   getSessionMiddleware,

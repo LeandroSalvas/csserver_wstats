@@ -8,6 +8,7 @@ const {
   getPagination,
   getServerFilter,
   handleError,
+  searchLimiter,
   NOT_BOT,
   NOT_BOT_WHERE
 } = require('../core')
@@ -362,7 +363,7 @@ function register(app) {
   })
 
   // BUSCA DE JOGADOR
-  app.get('/player-search', async (req, res) => {
+  app.get('/player-search', searchLimiter, async (req, res) => {
     try {
       const q = String(req.query.q || '').trim()
       if (!q) {

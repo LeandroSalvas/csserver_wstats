@@ -19,6 +19,16 @@ const dbConfig = {
   database: process.env.DB_NAME || 'csstats'
 }
 
+if (process.env.NODE_ENV === 'production') {
+  const missing = []
+  if (!process.env.SESSION_SECRET) missing.push('SESSION_SECRET')
+  if (!process.env.DB_PASSWORD && !process.env.MYSQL_PASSWORD) missing.push('DB_PASSWORD')
+  if (missing.length > 0) {
+    console.error(`[CONFIG FATAL] Variáveis de ambiente obrigatórias não definidas em produção: ${missing.join(', ')}`)
+    process.exit(1)
+  }
+}
+
 const sessionSecret = process.env.SESSION_SECRET
 
 const sessionStoreType = (process.env.SESSION_STORE || 'redis').toLowerCase()

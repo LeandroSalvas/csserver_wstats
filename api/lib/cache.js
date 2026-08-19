@@ -6,6 +6,7 @@ const { CACHE_RANKING_TTL, CACHE_STATS_TTL } = require('./config')
 const { withTimeout } = require('./helpers')
 
 let redisClient = null
+const inFlightRequests = new Map()
 
 function setRedisClient(client) {
   redisClient = client
@@ -25,15 +26,27 @@ async function getCached(key, ttlMs, fn) {
     console.error(`Cache get falhou (${key}):`, err.message)
   }
 
-  const value = await fn()
-
-  try {
-    await withTimeout(redisClient.setEx(key, Math.ceil(ttlMs / 1000), JSON.stringify(value)), 2000)
-  } catch (err) {
-    console.error(`Cache set falhou (${key}):`, err.message)
+  // Singleflight: se outra requisição já estiver recalculando a mesma chave, reusa a mesma Promise
+  if (inFlightRequests.has(key)) {
+    return inFlightRequests.get(key)
   }
 
-  return value
+  const queryPromise = (async () => {
+    try {
+      const value = await fn()
+      try {
+        await withTimeout(redisClient.setEx(key, Math.ceil(ttlMs / 1000), JSON.stringify(value)), 2000)
+      } catch (err) {
+        console.error(`Cache set falhou (${key}):`, err.message)
+      }
+      return value
+    } finally {
+      inFlightRequests.delete(key)
+    }
+  })()
+
+  inFlightRequests.set(key, queryPromise)
+  return queryPromise
 }
 
 module.exports = {

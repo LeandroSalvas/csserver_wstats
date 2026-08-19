@@ -159,6 +159,39 @@ tbody tr:nth-child(even) {
   color: var(--text-muted);
 }
 
+.error-row td {
+  text-align: center;
+  padding: 20px;
+  color: #f87171;
+  background: rgba(239, 68, 68, 0.06);
+}
+
+.error-cell {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+}
+
+.btn-retry {
+  padding: 6px 14px;
+  font-size: 0.85rem;
+  font-weight: 600;
+  border-radius: 6px;
+  border: 1px solid rgba(239, 68, 68, 0.4);
+  background: rgba(239, 68, 68, 0.15);
+  color: #fca5a5;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.btn-retry:hover {
+  background: rgba(239, 68, 68, 0.3);
+  color: #fff;
+  border-color: #ef4444;
+}
+
 .skeleton-row td {
   padding: 12px 14px;
 }

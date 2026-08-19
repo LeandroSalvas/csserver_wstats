@@ -178,6 +178,8 @@ function setStatus(message, type = 'info') {
   if (!el) return
   el.textContent = message
   el.className = `status-message visible ${type}`
+  el.setAttribute('role', 'status')
+  el.setAttribute('aria-live', 'polite')
 }
 
 function clearStatus() {
@@ -479,6 +481,39 @@ function showEmptyRow(table, columns = 6, text) {
   if (!table) return
   const emptyText = text || i18nUtils.t('labels.noData')
   table.innerHTML = `\n    <tr class="empty-row">\n      <td colspan="${columns}">${escapeHtml(emptyText)}</td>\n    </tr>\n  `
+}
+
+function showErrorRow(table, columns = 6, text, onRetry) {
+  if (!table) return
+  const errorText = text || (window.i18nUtils ? i18nUtils.t('errors.generic') : 'Erro ao carregar dados')
+  table.innerHTML = ''
+
+  const tr = document.createElement('tr')
+  tr.className = 'error-row'
+
+  const td = document.createElement('td')
+  td.colSpan = columns
+  td.className = 'error-cell'
+
+  const span = document.createElement('span')
+  span.className = 'error-text'
+  span.textContent = `⚠️ ${errorText}`
+  td.appendChild(span)
+
+  if (typeof onRetry === 'function') {
+    const btn = document.createElement('button')
+    btn.type = 'button'
+    btn.className = 'btn-retry'
+    btn.textContent = `🔄 ${window.i18nUtils ? i18nUtils.t('actions.retry') || 'Tentar novamente' : 'Tentar novamente'}`
+    btn.onclick = () => {
+      showSkeletonRows(table, columns, 4)
+      onRetry()
+    }
+    td.appendChild(btn)
+  }
+
+  tr.appendChild(td)
+  table.appendChild(tr)
 }
 
 // Re-renderiza uma tabela a partir de um array de linhas. Cada item passa por

@@ -7,6 +7,7 @@ const {
   getPagination,
   getServerFilter,
   handleError,
+  publicApiLimiter,
   NOT_BOT,
   NOT_BOT_WHERE
 } = require('../core')
@@ -88,7 +89,7 @@ function register(app) {
     }
   })
 
-  app.get('/map-ranking/:map', async (req, res) => {
+  app.get('/map-ranking/:map', publicApiLimiter, async (req, res) => {
     try {
       const { limit, offset } = getPagination(req, 20)
       const sf = getServerFilter(req)
@@ -105,7 +106,7 @@ function register(app) {
     }
   })
 
-  app.get('/ranking/weekly', async (req, res) => {
+  app.get('/ranking/weekly', publicApiLimiter, async (req, res) => {
     try {
       const { limit, offset } = getPagination(req)
       const sf = getServerFilter(req)
@@ -182,7 +183,7 @@ function register(app) {
     }
   })
 
-  app.get('/ranking/monthly', async (req, res) => {
+  app.get('/ranking/monthly', publicApiLimiter, async (req, res) => {
     try {
       const { limit, offset } = getPagination(req)
       const sf = getServerFilter(req)
@@ -217,9 +218,9 @@ function register(app) {
           ),
           ordered AS (
             SELECT steamid, name, map, kills, deaths, hs, skill, created_at,
-              LAG(kills) OVER (PARTITION BY steamid, server_name ORDER BY created_at) AS prev_kills,
-              LAG(deaths) OVER (PARTITION BY steamid, server_name ORDER BY created_at) AS prev_deaths,
-              LAG(hs) OVER (PARTITION BY steamid, server_name ORDER BY created_at) AS prev_hs
+            LAG(kills) OVER (PARTITION BY steamid, server_name ORDER BY created_at) AS prev_kills,
+            LAG(deaths) OVER (PARTITION BY steamid, server_name ORDER BY created_at) AS prev_deaths,
+            LAG(hs) OVER (PARTITION BY steamid, server_name ORDER BY created_at) AS prev_hs
             FROM combined
           ),
           deltas AS (
@@ -257,7 +258,7 @@ function register(app) {
     }
   })
 
-  app.get('/ranking/period', async (req, res) => {
+  app.get('/ranking/period', publicApiLimiter, async (req, res) => {
     try {
       const { limit, offset } = getPagination(req)
       const sf = getServerFilter(req)
