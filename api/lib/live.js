@@ -15,17 +15,23 @@ const sseClients = new Set()
 let ssePingTimer = null
 
 function checkLiveChanges() {
+  const byDir = new Map()
   for (const client of sseClients) {
-    const scoreboard = readLiveFile('live_scoreboard.json', client.dir)
-    const killfeed = readLiveFile('live_killfeed.json', client.dir)
-    if (scoreboard) client.res.write(`event: scoreboard\ndata: ${JSON.stringify(scoreboard)}\n\n`)
-    if (killfeed) client.res.write(`event: killfeed\ndata: ${JSON.stringify(killfeed)}\n\n`)
-    client.res.write(': ping\n\n')
+    if (!byDir.has(client.dir)) byDir.set(client.dir, [])
+    byDir.get(client.dir).push(client)
   }
 
   const servers = getServerList()
   for (const srv of servers) {
-    const scoreboard = readLiveFile('live_scoreboard.json', resolveLiveDir(srv.id))
+    const dir = resolveLiveDir(srv.id)
+    const scoreboard = readLiveFile('live_scoreboard.json', dir)
+    const killfeed = readLiveFile('live_killfeed.json', dir)
+    const clients = byDir.get(dir) || []
+    for (const client of clients) {
+      if (scoreboard) client.res.write(`event: scoreboard\ndata: ${JSON.stringify(scoreboard)}\n\n`)
+      if (killfeed) client.res.write(`event: killfeed\ndata: ${JSON.stringify(killfeed)}\n\n`)
+      client.res.write(': ping\n\n')
+    }
     if (scoreboard && Array.isArray(scoreboard.players)) {
       playersOnlineGauge.set({ server: srv.id }, scoreboard.players.length)
     }

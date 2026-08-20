@@ -37,11 +37,16 @@ function register(app) {
     }
   })
 
+  const VALID_STATUSES = ['active', 'rejected', 'disabled']
+
   async function setStatus(req, res, status) {
     try {
       const id = parseInt(req.params.id, 10)
       if (!Number.isInteger(id) || id <= 0) {
         return res.status(400).json({ error: 'ID inválido' })
+      }
+      if (!VALID_STATUSES.includes(status)) {
+        return res.status(400).json({ error: `Status inválido: ${status}` })
       }
       const [rows] = await db.query(
         'SELECT id, provider, username, display_name, email, role FROM users WHERE id = ?',

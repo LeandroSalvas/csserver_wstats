@@ -11,18 +11,18 @@ const {
 // Mapa id -> nome de exibição. A coluna cs_matches.server guarda o id; o nome
 // (ex.: "Zueira") vive apenas na config servers.list. Usamos o mapa para anexar
 // `serverName` às respostas sem trocar o `server` (id), que serve de filtro/link.
-function buildServerNameMap() {
+
+function getServerNameMap() {
   const list = getServerList()
   const map = {}
   for (const srv of list) map[srv.id] = srv.name || srv.id
   return map
 }
 
-const serverNameById = buildServerNameMap()
-
-function withServerName(row) {
+function getServerName(row) {
   if (!row) return row
-  return { ...row, serverName: serverNameById[row.server] || row.server }
+  const map = getServerNameMap()
+  return { ...row, serverName: map[row.server] || row.server }
 }
 
 function register(app) {
@@ -32,6 +32,11 @@ function register(app) {
       const sf = getServerFilter(req)
       if (sf && sf.invalid) return res.status(400).json({ error: `Servidor não configurado: ${sf.invalid}` })
 
+      const countQry = sf
+        ? 'SELECT COUNT(*) AS total FROM cs_matches WHERE server = ?'
+        : 'SELECT COUNT(*) AS total FROM cs_matches'
+      const [[{ total }]] = await db.query(countQry, sf ? sf.params : [])
+
       const [rows] = await db.query(`
         SELECT id, server, map, round_t, round_ct, winner, duration_sec, started_at, ended_at
         FROM cs_matches
@@ -40,7 +45,7 @@ function register(app) {
         LIMIT ? OFFSET ?
       `, [...(sf ? sf.params : []), limit, offset])
 
-      res.json(rows.map(withServerName))
+      res.json({ matches: rows.map(getServerName), total })
     } catch (err) {
       handleError(res, err, 'listagem de partidas')
     }
@@ -59,7 +64,7 @@ function register(app) {
         LIMIT 1
       `, sf ? sf.params : [])
 
-      res.json(withServerName(rows[0] || null))
+      res.json(getServerName(rows[0] || null))
     } catch (err) {
       handleError(res, err, 'última partida')
     }
@@ -67,13 +72,17 @@ function register(app) {
 
   app.get('/matches/:id', async (req, res) => {
     try {
+      const id = parseInt(req.params.id, 10)
+      if (!Number.isFinite(id) || id <= 0) {
+        return res.status(400).json({ error: 'ID de partida inválido' })
+      }
       const [rows] = await db.query(`
         SELECT id, server, map, round_t, round_ct, winner, duration_sec, started_at, ended_at
         FROM cs_matches
         WHERE id = ?
-      `, [req.params.id])
+      `, [id])
 
-      res.json(withServerName(rows[0] || null))
+      res.json(getServerName(rows[0] || null))
     } catch (err) {
       handleError(res, err, 'partida')
     }

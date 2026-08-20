@@ -9,7 +9,9 @@ const db = mysql.createPool({
   host: dbConfig.host,
   user: dbConfig.user,
   password: dbConfig.password,
-  database: dbConfig.database
+  database: dbConfig.database,
+  connectionLimit: 20,
+  waitForConnections: true
 })
 
 // Wrap de db.query para contabilizar erros de query sem quebrar o pool.

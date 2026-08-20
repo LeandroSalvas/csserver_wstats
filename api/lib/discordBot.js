@@ -19,37 +19,16 @@ const {
   withTimeout,
   sendAlert,
   db,
-  serverRepoDir
+  serverRepoDir,
+  stackServiceLabel,
+  NOT_BOT
 } = require('./core')
 
 const execFileAsync = promisify(execFile)
 const STACK_PROJECT = process.env.STACK_PROJECT || 'csserver_wstats'
-const NOT_BOT = "steamid NOT LIKE 'BOT%'"
 
 const PREFIX = '!'
 const MAX_REPLY = 1900
-
-const STACK_SERVICE_NAMES = {
-  api: 'API (Node.js)',
-  db: 'Banco (MariaDB)',
-  redis: 'Cache (Redis)',
-  web: 'Frontend (Nginx)',
-  prometheus: 'Prometheus',
-  grafana: 'Grafana',
-  'node-exporter': 'Node Exporter (host)',
-  cadvisor: 'cAdvisor',
-  'nginx-exporter': 'Nginx Exporter',
-  'nginxlog-exporter': 'Nginxlog Exporter',
-  swag: 'Swag (TLS/proxy)',
-  duckdns: 'DuckDNS'
-}
-
-function stackLabel(service) {
-  if (STACK_SERVICE_NAMES[service]) return STACK_SERVICE_NAMES[service]
-  if (/^watch-main-/.test(service)) return `Espectador ${service.replace(/^watch-main-/, '')}`
-  if (/^watch-hltv-/.test(service)) return `HLTV ${service.replace(/^watch-hltv-/, '')}`
-  return service
-}
 
 function splitList(val) {
   return String(val || '').split(',').map((s) => s.trim()).filter(Boolean)
@@ -118,8 +97,8 @@ async function stackStatus() {
   const up = keys.filter((k) => stackHealthState[k] === true).sort()
   const down = keys.filter((k) => stackHealthState[k] !== true).sort()
   const lines = []
-  if (down.length) lines.push(`🔴 ${down.map((k) => stackLabel(k)).join(', ')}`)
-  lines.push(`🟢 ${up.map((k) => stackLabel(k)).join(', ')}`)
+  if (down.length) lines.push(`🔴 ${down.map((k) => stackServiceLabel(k)).join(', ')}`)
+  lines.push(`🟢 ${up.map((k) => stackServiceLabel(k)).join(', ')}`)
   return `**Stack (${up.length}/${keys.length} no ar)**\n${lines.join('\n')}`
 }
 
@@ -139,12 +118,19 @@ async function runServerCommand(action, id, msg) {
   }
 }
 
+const RCON_WHITELIST = /^(status|map|changelevel|mp_|sv_|amx_cfg|amx_reloadadmins|say|difficulty|sv_gravity|sv_maxspeed|sv_airaccelerate|mp_buytime|mp_freezetime|mp_roundtime|mp_timelimit|mp_maxrounds|mp_winlimit|mp_fraglimit|restart|quit)$/i
+
+function isRconAllowed(command) {
+  return RCON_WHITELIST.test(command.trim().split(/\s+/)[0])
+}
+
 async function rconCommand(id, command, msg) {
   const rconPassword = process.env.RCON_PASSWORD
   if (!rconPassword) return 'RCON não configurado (RCON_PASSWORD).'
   const servers = await getProvider().list()
   const known = servers.find((s) => s.id === id)
   if (!known) return `Servidor \`${id}\` não encontrado.`
+  if (!isRconAllowed(command)) return `❌ Comando não permitido via bot: \`${command.split(/\s+/)[0]}\``
   try {
     const output = await runRconCommand(rconPassword, command, id)
     await sendAlert(`🤖 Discord: RCON \`${command}\` em **${known.name || id}** (por ${msg.author.username})`)
@@ -434,7 +420,7 @@ async function handleMessage(msg) {
     return msg.reply(`Comando desconhecido.\n${HELP}`)
   } catch (err) {
     console.error('discordBot: erro no comando:', err.message)
-    return msg.reply(`❌ Erro interno: ${err.message}`)
+    return msg.reply('❌ Erro interno ao processar comando.')
   }
 }
 

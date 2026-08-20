@@ -1,8 +1,5 @@
 // Rotas LIVE: killfeed, estado ao vivo e SSE (eventos em tempo real).
 
-const fs = require('fs')
-const path = require('path')
-
 const {
   findServer,
   resolveLiveDir,
@@ -17,15 +14,7 @@ function register(app) {
       if (req.query.server && !findServer(req.query.server)) {
         return res.status(400).json({ error: `Servidor não configurado: ${req.query.server}` })
       }
-      const filePath = path.join(resolveLiveDir(req.query.server), 'live_killfeed.json')
-
-      if (!fs.existsSync(filePath)) {
-        return res.json([])
-      }
-
-      const raw = fs.readFileSync(filePath, 'utf8')
-      const data = JSON.parse(raw)
-
+      const data = readLiveFile('live_killfeed.json', resolveLiveDir(req.query.server))
       res.json(Array.isArray(data) ? data : [])
     } catch (err) {
       console.error('Erro ao ler live_killfeed.json:', err)
@@ -38,20 +27,8 @@ function register(app) {
       if (req.query.server && !findServer(req.query.server)) {
         return res.status(400).json({ error: `Servidor não configurado: ${req.query.server}` })
       }
-      const filePath = path.join(resolveLiveDir(req.query.server), 'live_scoreboard.json')
-
-      if (!fs.existsSync(filePath)) {
-        return res.json({
-          hostname: 'Servidor offline',
-          map: '-',
-          players: []
-        })
-      }
-
-      const raw = fs.readFileSync(filePath, 'utf8')
-      const data = JSON.parse(raw)
-
-      res.json(data)
+      const data = readLiveFile('live_scoreboard.json', resolveLiveDir(req.query.server))
+      res.json(data || { hostname: 'Servidor offline', map: '-', players: [] })
     } catch (err) {
       console.error('Erro ao ler live_scoreboard.json:', err)
       res.status(500).json({ error: 'Erro ao ler scoreboard ao vivo' })

@@ -6,7 +6,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>🎮 CS 1.6 Server Stats</title>
 <link rel="icon" type="image/svg+xml" href="/favicon.svg">
-<link rel="stylesheet" href="/style.css?v=11">
+<link rel="stylesheet" href="/style.css?v=13">
 </head>
 
 <body data-requires-admin>
@@ -63,20 +63,20 @@
     </div>
   </div>
 
+  <details class="card info-card" open>
+    <summary data-i18n="system.info">Informações</summary>
+    <p data-i18n="system.infoDescription">Esta página mostra o estado atual dos principais subsistemas: API, banco de dados, cache Redis e servidor Counter-Strike.</p>
+    <p data-i18n="system.infoAutoUpdate">Os indicadores atualizam automaticamente enquanto a página estiver visível.</p>
+  </details>
+
   <div class="card">
     <h2 data-i18n="system.alerts">Alertas</h2>
     <ul id="alertsList" class="alert-list"></ul>
   </div>
-
-  <div class="card">
-    <h2 data-i18n="system.info">Informações</h2>
-    <p data-i18n="system.infoDescription">Esta página mostra o estado atual dos principais subsistemas: API, banco de dados, cache Redis e servidor Counter-Strike.</p>
-    <p data-i18n="system.infoAutoUpdate">Os indicadores atualizam automaticamente enquanto a página estiver visível.</p>
-  </div>
 </div>
 
 <script src="/i18n/translations.js?v=7" defer></script>
-<script src="/common.js?v=8" defer></script>
+<script src="/common.js?v=10" defer></script>
 <script src="/system.js?v=4" defer></script>
 </body>
 

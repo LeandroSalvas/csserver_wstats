@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>🎮 CS 1.6 Server Stats</title>
   <link rel="icon" type="image/svg+xml" href="/favicon.svg">
-  <link rel="stylesheet" href="/style.css?v=11">
+  <link rel="stylesheet" href="/style.css?v=13">
 </head>
 <body class="body-font-default">
 
@@ -24,59 +24,56 @@
 
     <div id="statusMessage" class="status-message"></div>
 
-    <div class="card">
-      <h2 data-i18n="server.address">Endereço do servidor</h2>
-      <p data-i18n="server.addressDesc">Conecte-se ao nosso servidor principal. Temos diversos servidores disponíveis com diferentes modos de jogo.</p>
-      <p><strong data-i18n="server.host">Host:</strong> <span data-connect-host>zueiracstrike.duckdns.org</span> &nbsp;·&nbsp; <strong data-i18n="server.port">Porta:</strong> <span data-connect-port>27015</span></p>
-      <p><strong data-i18n="server.fullConnect">Conexão completa:</strong> <code data-connect-address>zueiracstrike.duckdns.org:27015</code></p>
+    <div class="connect-carousel-track" id="connectTrack">
+      <div class="card">
+        <h2 data-i18n="server.address">Endereço do servidor</h2>
+        <p data-i18n="server.addressDesc">Conecte-se ao nosso servidor principal. Temos diversos servidores disponíveis com diferentes modos de jogo.</p>
+        <p><strong data-i18n="server.host">Host:</strong> <span data-connect-host>zueiracstrike.duckdns.org</span> &nbsp;·&nbsp; <strong data-i18n="server.port">Porta:</strong> <span data-connect-port>27015</span></p>
+        <p><strong data-i18n="server.fullConnect">Conexão completa:</strong> <code data-connect-address>zueiracstrike.duckdns.org:27015</code></p>
 
-      <h2 data-i18n="server.openSteamRecommended">Abrir pelo Steam (recomendado se você tem CS 1.6 na biblioteca)</h2>
-      <p data-i18n="server.openDescription">Este botão pede ao Steam para iniciar o Counter-Strike 1.6 e passar o comando +connect na linha de lançamento.</p>
-      <a class="button" data-connect-steam href="steam://rungameid/10//%2Bconnect%20zueiracstrike.duckdns.org:27015" data-i18n="server.openCsAndConnect">Abrir CS 1.6 e conectar</a>
-      <p class="connect-browser-note" data-i18n="server.browserNote">Em alguns PCs o protocolo só traz o Steam à frente ou não inicia o jogo; nesse caso use o passo a passo abaixo.</p>
+        <h2 data-i18n="server.manualConnect">Conectar manualmente (funciona com Steam e não-Steam)</h2>
+        <ol>
+          <li data-i18n="server.step1">Abra o CS 1.6.</li>
+          <li data-i18n="server.step2">Abra o console com ~ ou º (tecla ao lado do 1).</li>
+          <li data-i18n="server.step3">Digite o comando (Enter para enviar):</li>
+        </ol>
+        <pre><span data-connect-command>connect zueiracstrike.duckdns.org:27015</span></pre>
+        <button type="button" class="button" data-copy-command data-i18n="server.copy">Copiar</button>
+        <p><strong data-i18n="server.alternative">Outra opção:</strong></p>
+        <ul>
+          <li data-i18n="server.findServers">No jogo, acesse Find Servers / Internet.</li>
+          <li data-i18n="server.addFavorites">Adicione o servidor aos favoritos usando <strong><span data-connect-address>zueiracstrike.duckdns.org:27015</span></strong>.</li>
+        </ul>
+      </div>
 
-      <h2 data-i18n="server.manualConnect">Conectar manualmente (funciona com Steam e não-Steam)</h2>
-      <ol>
-        <li data-i18n="server.step1">Abra o CS 1.6.</li>
-        <li data-i18n="server.step2">Abra o console com ~ ou º (tecla ao lado do 1).</li>
-        <li data-i18n="server.step3">Digite o comando (Enter para enviar):</li>
-      </ol>
-      <pre><span data-connect-command>connect zueiracstrike.duckdns.org:27015</span></pre>
-      <button type="button" class="button" data-copy-command data-i18n="server.copy">Copiar</button>
-      <p><strong data-i18n="server.alternative">Outra opção:</strong></p>
-      <ul>
-        <li data-i18n="server.findServers">No jogo, acesse Find Servers / Internet.</li>
-        <li data-i18n="server.addFavorites">Adicione o servidor aos favoritos usando <strong><span data-connect-address>zueiracstrike.duckdns.org:27015</span></strong>.</li>
-      </ul>
-    </div>
-
-    <div class="card">
-      <h2 data-i18n="server.availableServers">Servidores disponíveis</h2>
-      <div class="table-responsive">
-        <table class="servers-table">
-          <thead>
-            <tr>
-              <th data-i18n="labels.name">Nome</th>
-              <th data-i18n="labels.port">Porta</th>
-              <th data-i18n="labels.map">Mapa</th>
-              <th data-i18n="labels.players">Players</th>
-              <th data-i18n="labels.status">Status</th>
-            </tr>
-          </thead>
-          <tbody id="connectServersBody"></tbody>
-        </table>
+      <div class="card">
+        <h2 data-i18n="server.availableServers">Servidores disponíveis</h2>
+        <div class="table-responsive">
+          <table class="servers-table">
+            <thead>
+              <tr>
+                <th data-i18n="labels.name">Nome</th>
+                <th data-i18n="labels.port">Porta</th>
+                <th data-i18n="labels.map">Mapa</th>
+                <th data-i18n="labels.players">Players</th>
+                <th data-i18n="labels.status">Status</th>
+              </tr>
+            </thead>
+            <tbody id="connectServersBody"></tbody>
+          </table>
+        </div>
       </div>
     </div>
 
-    <div class="card">
-      <h2><span aria-hidden="true">👁️</span> <span data-i18n="server.watchBrowser">Assistir ao vivo no navegador</span></h2>
-      <p data-i18n="server.watchDescription">Abre um espectador ao vivo direto no navegador, sem instalar o CS. Funciona em Chrome/Firefox/Edge.</p>
-      <a class="button" data-watch-link data-watch-server="main" href="#" target="_blank" rel="noopener" data-i18n="server.watchLaunch">Abrir espectador (browser)</a>
+    <div class="connect-carousel-nav">
+      <button type="button" class="connect-carousel-btn" id="connectPrev" aria-label="Anterior">‹</button>
+      <button type="button" class="connect-carousel-btn" id="connectNext" aria-label="Próximo">›</button>
     </div>
 
   </div>
 
   <script src="/i18n/translations.js?v=8" defer></script>
-  <script src="/common.js?v=9" defer></script>
+  <script src="/common.js?v=10" defer></script>
+  <script src="/connect.js?v=2" defer></script>
 </body>
 </html>

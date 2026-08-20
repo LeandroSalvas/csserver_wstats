@@ -1,6 +1,6 @@
 const urlParams = new URLSearchParams(window.location.search)
 let matchesPage = Math.max(1, Number.parseInt(urlParams.get('page') || '1', 10) || 1)
-const MATCHES_LIMIT = 20
+const MATCHES_LIMIT = 10
 
 function updateUrl() {
   const url = new URL(window.location.href)
@@ -18,9 +18,9 @@ async function loadMatches(page = 1) {
   setStatus(i18nUtils.t('status.loadingMatches'))
 
   try {
-    const rows = await fetchJson(`/matches?limit=${MATCHES_LIMIT}&page=${page}${serverParam()}`)
+    const { matches: rows, total } = await fetchJson(`/matches?limit=${MATCHES_LIMIT}&page=${page}${serverParam()}`)
     renderMatches(tbody, rows)
-    updateMatchesPagination(rows.length)
+    updateMatchesPagination(rows.length, total)
     clearStatus()
   } catch (err) {
     console.error('Erro ao carregar partidas:', err)
@@ -71,15 +71,16 @@ function formatMatchDate(value) {
   return date.toLocaleString(i18nUtils.currentLang === 'pt' ? 'pt-BR' : 'en-GB')
 }
 
-function updateMatchesPagination(rowsCount) {
+function updateMatchesPagination(rowsCount, total) {
   const pageInfo = document.getElementById('pageInfo')
   const prevBtn = document.getElementById('prevPage')
   const nextBtn = document.getElementById('nextPage')
   if (!pageInfo || !prevBtn || !nextBtn) return
 
-  pageInfo.textContent = matchesPage
+  const totalPages = Math.max(1, Math.ceil((total || 0) / MATCHES_LIMIT))
+  pageInfo.textContent = `${matchesPage} / ${totalPages}`
   prevBtn.disabled = matchesPage <= 1
-  nextBtn.disabled = rowsCount < MATCHES_LIMIT
+  nextBtn.disabled = matchesPage >= totalPages
 }
 
 function initMatchesPage() {

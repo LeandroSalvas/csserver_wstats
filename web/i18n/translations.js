@@ -9,6 +9,7 @@ const i18n = {
       connect: '🔗 Conectar',
       live: '📡 Live Match',
       cstv: '📹 CSTV',
+      modes: '🎯 Modos de Jogo',
       duel: '⚔️ Duelo',
       admin: '🛠️ Painel RCON',
       system: '🛡️ Sistema',
@@ -28,6 +29,7 @@ const i18n = {
       connect: 'Como entrar no servidor',
       live: 'Painel ao vivo com placar, jogadores e kill feed em tempo real',
       cstv: 'Assista a partida ao vivo pelo CSTV',
+      modes: 'Conheça os modos de jogo disponíveis nos servidores',
       duel: 'Compare dois jogadores lado a lado',
       admin: 'Execute comandos RCON nos servidores',
       system: 'Status dos serviços e dependências da infraestrutura',
@@ -494,6 +496,18 @@ const i18n = {
       lastTitle: 'Última Partida',
       viewHistory: 'Ver histórico →',
       noMatches: 'Nenhuma partida registrada ainda.'
+    },
+    modes: {
+      title: 'Modos de Jogo',
+      subtitle: 'Cada servidor oferece uma experiência diferente. Veja como cada modo funciona:',
+      standard: '💣 Standard',
+      standardDesc: 'O modo clássico do Counter-Strike. Dois times se enfrentam em rounds táticos — um lado atacante, o outro defensor. Os atacantes precisam plantar a bomba em um dos pontos de explosão ou eliminar toda a equipe adversária. Os defensores devem impedir a detonação, desarmar a bomba plantada, ou resgatar reféns em mapas de rescue. Cada jogador ganha dinheiro a cada rodada para comprar armas, coletes e granadas — a economia é parte essencial da estratégia. Quem morre só renasce no próximo round. O time que primeiro atingir o número de vitórias definido vence a partida.',
+      gungame: '🔫 GunGame',
+      gungameDesc: 'Sem times, sem compra de armas — cada jogador por si. Todos começam com a primeira arma de uma sequência fixa. Cada eliminação avança automaticamente para a próxima arma (pistola → shotgun → fuzil → sniper → e por aí vai). Renascimento imediato ao morrer, sem penalidade. Não existe economia nem estratégia de compra — o foco é a habilidade pura com cada tipo de arma. Vence o primeiro jogador que completar toda a sequência e conseguir a eliminação final com a faca.',
+      deathmatch: '💀 Deathmatch',
+      deathmatchDesc: 'Modo free-for-all sem times e sem objetivos táticos. Não há bomba nem reféns — o objetivo é apenas eliminar o máximo de adversários possível. Ao morrer, o jogador renasce instantaneamente em uma posição aleatória do mapa, com todas as armas disponíveis para escolher livremente. Ideal para treinar pontaria, movimentação e reflexos, já que o ritmo é intenso e não para. A pontuação é baseada exclusivamente em eliminações.',
+      zombies: '🧟 Zombies',
+      zombiesDesc: 'Modo cooperativo baseado em sobrevivência. Um jogador é aleatoriamente selecionado como zumbi no início de cada round. O zumbi contamina humanos ao tocá-los — contaminados se tornam zumbis também. Os humanos sobreviventes recebem armas e recursos especiais para se defender, enquanto os zumbis possuem habilidades especiais como pulo alto, velocidade aumentada e regeneração de vida. Rounds continuam até que todos os humanos sejam contaminados ou o tempo acabe. Quanto mais tempo o time de humanos sobreviver, mais pontos ganha.'
     }
   },
 
@@ -507,6 +521,7 @@ const i18n = {
       connect: '🔗 Connect',
       live: '📡 Live Match',
       cstv: '📹 CSTV',
+      modes: '🎯 Game Modes',
       duel: '⚔️ Duel',
       admin: '🛠️ RCON Panel',
       system: '🛡️ System',
@@ -526,6 +541,7 @@ const i18n = {
       connect: 'How to join the server and watch live in the browser',
       live: 'Live panel with scoreboard, players and real-time kill feed',
       cstv: 'Watch the live match via Counter-Strike TV',
+      modes: 'Explore the game modes available on the servers',
       duel: 'Compare two players side by side',
       admin: 'Run RCON commands on the servers',
       system: 'Status of the infrastructure services and dependencies',
@@ -989,6 +1005,18 @@ const i18n = {
       lastTitle: 'Last Match',
       viewHistory: 'View history →',
       noMatches: 'No matches recorded yet.'
+    },
+    modes: {
+      title: 'Game Modes',
+      subtitle: 'Each server offers a different experience. See how each mode works:',
+      standard: '💣 Standard',
+      standardDesc: 'The classic Counter-Strike mode. Two teams face off in tactical rounds — one side attacks, the other defends. Attackers must plant the bomb at one of two explosion sites or eliminate the entire enemy team. Defenders must prevent the detonation, defuse a planted bomb, or rescue hostages on rescue maps. Each player earns money every round to buy weapons, armor, and grenades — economy is an essential part of the strategy. When you die, you only respawn in the next round. The first team to reach the set number of round wins takes the match.',
+      gungame: '🔫 GunGame',
+      gungameDesc: 'No teams, no weapon buying — every player for themselves. Everyone starts with the first weapon in a fixed sequence. Each kill automatically advances to the next weapon (pistol → shotgun → rifle → sniper → and so on). Immediate respawn on death with no penalty. There is no economy or buying strategy — the focus is pure skill with each weapon type. The first player to complete the entire sequence and get the final kill with the knife wins.',
+      deathmatch: '💀 Deathmatch',
+      deathmatchDesc: 'Free-for-all mode with no teams and no tactical objectives. No bombs or hostages — the goal is simply to eliminate as many opponents as possible. When you die, you respawn instantly at a random position on the map, with all weapons available to choose freely. Ideal for practicing aim, movement, and reflexes, as the pace is intense and never stops. Scoring is based purely on kills.',
+      zombies: '🧟 Zombies',
+      zombiesDesc: 'Cooperative survival-based mode. One player is randomly selected as a zombie at the start of each round. The zombie infects humans by touching them — infected players become zombies too. Surviving humans receive special weapons and resources to defend themselves, while zombies have special abilities such as high jump, increased speed, and health regeneration. Rounds continue until all humans are infected or time runs out. The longer the human team survives, the more points they earn.'
     }
   }
 }

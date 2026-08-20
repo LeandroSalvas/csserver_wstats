@@ -16,7 +16,8 @@ const {
   SNAPSHOT_STALE_MS,
   alertWebhookUrl,
   serverRepoDir,
-  watchPublicBase
+  watchPublicBase,
+  stackServiceLabel
 } = require('./config')
 const { db } = require('./db')
 const {
@@ -188,19 +189,27 @@ function resolveLiveDir(id) {
   return srv.liveDir || LIVE_DATA_DIR
 }
 
-function queryServer(srv) {
+const queryCache = new Map()
+const QUERY_CACHE_TTL = 10000
+
+function queryServer(srv, { useCache = true } = {}) {
+  const cacheKey = `${srv.host}:${srv.port}`
+  if (useCache) {
+    const cached = queryCache.get(cacheKey)
+    if (cached && Date.now() - cached.ts < QUERY_CACHE_TTL) {
+      return Promise.resolve({ ...cached.data, _cached: true })
+    }
+  }
+
   return GameDig.query({
     type: 'counterstrike16',
     host: srv.host,
     port: parseInt(srv.port, 10)
   }).then((state) => {
-    // O HLTV conecta como um player normal (não é flagado como bot pelo
-    // protocolo) e entraria em state.players, inflando a contagem de ocupados.
-    // Os relays usam nome "<context>-hltv" (config/watch/<id>/hltv.cfg), então
-    // filtrar pelo sufixo cobre todos os servidores.
     if (Array.isArray(state.players)) {
       state.players = state.players.filter((p) => !/^.*-hltv$/i.test(String(p.name || '')))
     }
+    queryCache.set(cacheKey, { ts: Date.now(), data: state })
     return state
   })
 }
@@ -394,50 +403,17 @@ async function collectDbStats() {
         statsTotalGauge.set({ server: srv.id, stat }, Number(value))
       }
 
-      const [[{ active7d }]] = await db.query(`
-        SELECT COUNT(DISTINCT steamid) AS active7d
-        FROM csstats_snapshots
-        WHERE server_name = ? AND created_at >= DATE_SUB(NOW(), INTERVAL 7 DAY) AND ${NOT_BOT}
-      `, [srv.id])
-      const [[{ active30d }]] = await db.query(`
-        SELECT COUNT(DISTINCT steamid) AS active30d
+      const [[active]] = await db.query(`
+        SELECT
+          COUNT(DISTINCT CASE WHEN created_at >= DATE_SUB(NOW(), INTERVAL 7 DAY) THEN steamid END) AS active7d,
+          COUNT(DISTINCT CASE WHEN created_at >= DATE_SUB(NOW(), INTERVAL 30 DAY) THEN steamid END) AS active30d
         FROM csstats_snapshots
         WHERE server_name = ? AND created_at >= DATE_SUB(NOW(), INTERVAL 30 DAY) AND ${NOT_BOT}
       `, [srv.id])
-      activePlayersGauge.set({ server: srv.id, period: '7d' }, active7d)
-      activePlayersGauge.set({ server: srv.id, period: '30d' }, active30d)
+      activePlayersGauge.set({ server: srv.id, period: '7d' }, active.active7d)
+      activePlayersGauge.set({ server: srv.id, period: '30d' }, active.active30d)
 
-      const [[{ kills7d }]] = await db.query(`
-        WITH baseline AS (
-          SELECT s.steamid, s.server_name, s.kills, s.created_at
-          FROM csstats_snapshots s
-          JOIN (
-            SELECT steamid, server_name, MAX(created_at) AS max_created
-            FROM csstats_snapshots
-            WHERE server_name = ? AND created_at < DATE_SUB(NOW(), INTERVAL 7 DAY) AND ${NOT_BOT}
-            GROUP BY steamid, server_name
-          ) b ON b.steamid = s.steamid AND b.server_name = s.server_name AND b.max_created = s.created_at
-        ),
-        windowed AS (
-          SELECT steamid, server_name, kills, created_at
-          FROM csstats_snapshots
-          WHERE server_name = ? AND created_at >= DATE_SUB(NOW(), INTERVAL 7 DAY) AND ${NOT_BOT}
-        ),
-        combined AS (
-          SELECT steamid, kills, created_at FROM windowed
-          UNION ALL
-          SELECT steamid, kills, created_at FROM baseline
-        ),
-        ordered AS (
-          SELECT kills, created_at,
-            LAG(kills) OVER (PARTITION BY steamid, server_name ORDER BY created_at) AS prev_kills
-          FROM combined
-        )
-        SELECT COALESCE(SUM(GREATEST(kills - COALESCE(prev_kills, 0), 0)), 0) AS kills7d
-        FROM ordered
-        WHERE created_at >= DATE_SUB(NOW(), INTERVAL 7 DAY)
-      `, [srv.id, srv.id])
-      const [[{ kills30d }]] = await db.query(`
+      const [[killsRow]] = await db.query(`
         WITH baseline AS (
           SELECT s.steamid, s.server_name, s.kills, s.created_at
           FROM csstats_snapshots s
@@ -459,16 +435,18 @@ async function collectDbStats() {
           SELECT steamid, kills, created_at FROM baseline
         ),
         ordered AS (
-          SELECT kills, created_at,
+          SELECT steamid, kills, created_at,
             LAG(kills) OVER (PARTITION BY steamid, server_name ORDER BY created_at) AS prev_kills
           FROM combined
         )
-        SELECT COALESCE(SUM(GREATEST(kills - COALESCE(prev_kills, 0), 0)), 0) AS kills30d
+        SELECT
+          COALESCE(SUM(CASE WHEN created_at >= DATE_SUB(NOW(), INTERVAL 7 DAY) THEN GREATEST(kills - COALESCE(prev_kills, 0), 0) END), 0) AS kills7d,
+          COALESCE(SUM(GREATEST(kills - COALESCE(prev_kills, 0), 0)), 0) AS kills30d
         FROM ordered
         WHERE created_at >= DATE_SUB(NOW(), INTERVAL 30 DAY)
       `, [srv.id, srv.id])
-      killsGauge.set({ server: srv.id, period: '7d' }, Number(kills7d))
-      killsGauge.set({ server: srv.id, period: '30d' }, Number(kills30d))
+      killsGauge.set({ server: srv.id, period: '7d' }, Number(killsRow.kills7d))
+      killsGauge.set({ server: srv.id, period: '30d' }, Number(killsRow.kills30d))
 
       const [mapRows] = await db.query(`
         SELECT map, COUNT(*) AS snapshots
@@ -541,7 +519,7 @@ function runRconCommand(password, command, serverId) {
     }
 
     setTimeout(() => {
-      if (!settled) finishOk(output)
+      if (!settled) finishErr(new Error('RCON timeout (5s)'))
     }, 5000)
   })
 }
@@ -624,28 +602,6 @@ function updateLiveServerGauges(srv, state) {
 // Os servidores de jogo (serviços cs16*) ficam de fora — já têm alerta próprio
 // via GameDig (checkServerAlerts). O projeto é filtrado pelo label do compose.
 const STACK_PROJECT = process.env.STACK_PROJECT || 'csserver_wstats'
-
-const STACK_SERVICE_NAMES = {
-  api: 'API (Node.js)',
-  db: 'Banco (MariaDB)',
-  redis: 'Cache (Redis)',
-  web: 'Frontend (Nginx)',
-  prometheus: 'Prometheus',
-  grafana: 'Grafana',
-  'node-exporter': 'Node Exporter (host)',
-  cadvisor: 'cAdvisor',
-  'nginx-exporter': 'Nginx Exporter',
-  'nginxlog-exporter': 'Nginxlog Exporter',
-  swag: 'Swag (TLS/proxy)',
-  duckdns: 'DuckDNS'
-}
-
-function stackServiceLabel(service) {
-  if (STACK_SERVICE_NAMES[service]) return STACK_SERVICE_NAMES[service]
-  if (/^watch-main-/.test(service)) return `Espectador ${service.replace(/^watch-main-/, '')}`
-  if (/^watch-hltv-/.test(service)) return `HLTV ${service.replace(/^watch-hltv-/, '')}`
-  return service
-}
 
 function isGameServerService(service) {
   return service === 'cs16' || /^cs16[a-z0-9_-]+$/.test(service)

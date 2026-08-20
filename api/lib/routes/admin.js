@@ -5,6 +5,7 @@
 const {
   commandLimiter,
   requireAdmin,
+  requireAuth,
   requireCsrf,
   getCsrfToken,
   runRconCommand,
@@ -18,6 +19,9 @@ function register(app) {
 
       if (!command || !command.trim()) {
         return res.status(400).json({ error: 'Comando obrigatório' })
+      }
+      if (command.trim().length > 256) {
+        return res.status(400).json({ error: 'Comando muito longo (máx 256 caracteres)' })
       }
 
       const rconPassword = process.env.RCON_PASSWORD
@@ -49,7 +53,7 @@ function register(app) {
     })
   })
 
-  app.get('/admin/session', (req, res) => {
+  app.get('/admin/session', requireAuth, (req, res) => {
     res.json({
       authenticated: !!req.session?.user,
       user: req.session?.user || null,

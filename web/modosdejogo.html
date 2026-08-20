@@ -1,0 +1,67 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>🎯 Modos de Jogo - CS 1.6 Server Stats</title>
+  <link rel="icon" type="image/svg+xml" href="/favicon.svg">
+  <link rel="stylesheet" href="/style.css?v=13">
+</head>
+<body>
+
+<noscript>
+  <div class="noscript-warn" role="alert">
+    <strong>JavaScript desativado.</strong> Esta página precisa de JavaScript para funcionar corretamente.
+  </div>
+</noscript>
+
+  <div class="container">
+    <div class="header">
+      <h1><span aria-hidden="true">🎮</span> CS 1.6 Server Stats</h1>
+    </div>
+
+    <div class="page-nav"></div>
+
+    <div id="statusMessage" class="status-message"></div>
+
+    <div class="card modes-header">
+      <h2 data-i18n="modes.title">Modos de Jogo</h2>
+      <p data-i18n="modes.subtitle">Cada servidor oferece uma experiência diferente. Veja como cada modo funciona:</p>
+    </div>
+
+    <div class="modes-carousel-track" id="modesTrack">
+      <div class="card">
+        <h2 data-i18n="modes.standard">Standard</h2>
+        <p data-i18n-html="modes.standardDesc">O modo clássico do Counter-Strike. Dois times se enfrentam em rounds táticos — um lado atacante, o outro defensor. Os atacantes precisam plantar a bomba em um dos pontos de explosão ou eliminar toda a equipe adversária. Os defensores devem impedir a detonação, desarmar a bomba plantada, ou resgatar reféns em mapas de rescue. Cada jogador ganha dinheiro a cada rodada para comprar armas, coletes e granadas — a economia é parte essencial da estratégia. Quem morre só renasce no próximo round. O time que primeiro atingir o número de vitórias definido vence a partida.</p>
+      </div>
+
+      <div class="card">
+        <h2 data-i18n="modes.gungame">GunGame</h2>
+        <p data-i18n-html="modes.gungameDesc">Sem times, sem compra de armas — cada jogador por si. Todos começam com a primeira arma de uma sequência fixa. Cada eliminação avança automaticamente para a próxima arma (pistola → shotgun → fuzil → sniper → e por aí vai). Renascimento imediato ao morrer, sem penalidade. Não existe economia nem estratégia de compra — o foco é a habilidade pura com cada tipo de arma. Vence o primeiro jogador que completar toda a sequência e conseguir a eliminação final com a faca.</p>
+      </div>
+
+      <div class="card">
+        <h2 data-i18n="modes.deathmatch">Deathmatch</h2>
+        <p data-i18n-html="modes.deathmatchDesc">Modo free-for-all sem times e sem objetivos táticos. Não há bomba nem reféns — o objetivo é apenas eliminar o máximo de adversários possível. Ao morrer, o jogador renasce instantaneamente em uma posição aleatória do mapa, com todas as armas disponíveis para escolher livremente. Ideal para treinar pontaria, movimentação e reflexos, já que o ritmo é intenso e não para. A pontuação é baseada exclusivamente em eliminações.</p>
+      </div>
+
+      <div class="card">
+        <h2 data-i18n="modes.zombies">Zombies</h2>
+        <p data-i18n-html="modes.zombiesDesc">Modo cooperativo baseado em sobrevivência. Um jogador é aleatoriamente selecionado como zumbi no início de cada round. O zumbi contamina humanos ao tocá-los — contaminados se tornam zumbis também. Os humanos sobreviventes recebem armas e recursos especiais para se defender, enquanto os zumbis possuem habilidades especiais como pulo alto, velocidade aumentada e regeneração de vida. Rounds continuam até que todos os humanos sejam contaminados ou o tempo acabe. Quanto mais tempo o time de humanos sobreviver, mais pontos ganha.</p>
+      </div>
+    </div>
+
+    <div class="modes-carousel-dots" id="modesDots">
+      <span class="active"></span>
+      <span></span>
+      <span></span>
+      <span></span>
+    </div>
+
+  </div>
+
+  <script src="/i18n/translations.js?v=8" defer></script>
+  <script src="/common.js?v=10" defer></script>
+  <script src="/modosdejogo.js" defer></script>
+</body>
+</html>

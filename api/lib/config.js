@@ -27,6 +27,9 @@ if (process.env.NODE_ENV === 'production') {
     console.error(`[CONFIG FATAL] Variáveis de ambiente obrigatórias não definidas em produção: ${missing.join(', ')}`)
     process.exit(1)
   }
+  if (!process.env.RCON_PASSWORD) {
+    console.warn('[CONFIG] RCON_PASSWORD não configurado — RCON indisponível')
+  }
 }
 
 const sessionSecret = process.env.SESSION_SECRET
@@ -69,6 +72,28 @@ const seedAdminEnabled = process.env.SEED_ADMIN !== '0'
 const metricsUser = process.env.METRICS_USER || ''
 const metricsPass = process.env.METRICS_PASS || ''
 
+const STACK_SERVICE_NAMES = {
+  api: 'API (Node.js)',
+  db: 'Banco (MariaDB)',
+  redis: 'Cache (Redis)',
+  web: 'Frontend (Nginx)',
+  prometheus: 'Prometheus',
+  grafana: 'Grafana',
+  'node-exporter': 'Node Exporter (host)',
+  cadvisor: 'cAdvisor',
+  'nginx-exporter': 'Nginx Exporter',
+  'nginxlog-exporter': 'Nginxlog Exporter',
+  swag: 'Swag (TLS/proxy)',
+  duckdns: 'DuckDNS'
+}
+
+function stackServiceLabel(service) {
+  if (STACK_SERVICE_NAMES[service]) return STACK_SERVICE_NAMES[service]
+  if (/^watch-main-/.test(service)) return `Espectador ${service.replace(/^watch-main-/, '')}`
+  if (/^watch-hltv-/.test(service)) return `HLTV ${service.replace(/^watch-hltv-/, '')}`
+  return service
+}
+
 module.exports = {
   LIVE_DATA_DIR,
   corsOrigins,
@@ -95,5 +120,7 @@ module.exports = {
   watchPublicBase,
   seedAdminEnabled,
   metricsUser,
-  metricsPass
+  metricsPass,
+  STACK_SERVICE_NAMES,
+  stackServiceLabel
 }

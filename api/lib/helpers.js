@@ -12,9 +12,13 @@ function handleError(res, err, context) {
 }
 
 function timingSafeEqualStr(a, b) {
-  const hashA = crypto.createHash('sha256').update(String(a)).digest()
-  const hashB = crypto.createHash('sha256').update(String(b)).digest()
-  return crypto.timingSafeEqual(hashA, hashB)
+  const bufA = Buffer.from(String(a), 'utf8')
+  const bufB = Buffer.from(String(b), 'utf8')
+  if (bufA.length !== bufB.length) {
+    crypto.timingSafeEqual(bufA, bufA)
+    return false
+  }
+  return crypto.timingSafeEqual(bufA, bufB)
 }
 
 function withTimeout(promise, ms) {

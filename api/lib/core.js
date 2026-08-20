@@ -13,6 +13,17 @@ const auth = require('./auth')
 const serverManager = require('./serverManager')
 const alerts = require('./alerts')
 
+const modules = [config, metrics, db, cache, helpers, security, serverCtx, live, auth, serverManager, alerts]
+const seen = new Set()
+for (const mod of modules) {
+  for (const key of Object.keys(mod)) {
+    if (seen.has(key)) {
+      console.warn(`[core.js] Export duplicado detectado: "${key}" — segunda definição ignorada`)
+    }
+    seen.add(key)
+  }
+}
+
 module.exports = {
   config,
   metrics,

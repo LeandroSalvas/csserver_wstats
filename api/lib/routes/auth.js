@@ -216,7 +216,7 @@ function register(app) {
     }
 
     const { code, state, error } = req.query
-    if (error) return res.status(403).send(`Erro do Google: ${error}`)
+    if (error) return res.status(403).send('Login com Google cancelado ou com erro')
 
     const expectedState = req.session?.oauthState
     const next = sanitizeNext(req.session?.oauthNext || '/')

@@ -69,85 +69,107 @@ window.addEventListener('pageshow', (event) => {
   loadAuthSession().then(() => {
     guardPage()
     renderPageNav()
+    renderTopbar()
     renderLanguageToggle()
     renderAuthBadge()
     applyActiveNav()
   })
 })
 
+function renderTopbar() {
+  let topbar = document.querySelector('.page-topbar')
+  if (!topbar) {
+    topbar = document.createElement('div')
+    topbar.className = 'page-topbar'
+    document.body.appendChild(topbar)
+  }
+  topbar.innerHTML = ''
+
+  const langSlot = document.createElement('div')
+  langSlot.className = 'lang-toggle-slot'
+  topbar.appendChild(langSlot)
+
+  const authSlot = document.createElement('div')
+  authSlot.className = 'auth-badge-slot'
+  topbar.appendChild(authSlot)
+}
+
 function renderAuthBadge() {
-  document.querySelectorAll('.page-nav-utils').forEach((utils) => {
-    let slot = utils.querySelector('.auth-badge-slot')
-    if (!slot) {
-      slot = document.createElement('div')
-      slot.className = 'auth-badge-slot'
-      utils.appendChild(slot)
-    }
-    slot.innerHTML = ''
-    slot.classList.toggle('is-auth', !!currentUser)
+  const topbar = document.querySelector('.page-topbar')
+  if (!topbar) return
 
-    if (!currentUser) {
-      const link = document.createElement('a')
-      link.href = '/login'
-      link.className = 'auth-link'
-      link.dataset.tooltip = i18nUtils.t('nav.login')
-      link.textContent = '🔑 ' + i18nUtils.t('nav.login')
-      slot.appendChild(link)
-      return
-    }
+  let slot = topbar.querySelector('.auth-badge-slot')
+  if (!slot) {
+    slot = document.createElement('div')
+    slot.className = 'auth-badge-slot'
+    topbar.appendChild(slot)
+  }
+  slot.innerHTML = ''
+  slot.classList.toggle('is-auth', !!currentUser)
 
-    const wrap = document.createElement('span')
-    wrap.className = 'auth-user'
-    const fullName = currentUser.displayName || currentUser.username || currentUser.provider
-    const firstName = String(fullName).trim().split(/\s+/)[0] || currentUser.provider
+  if (!currentUser) {
+    const link = document.createElement('a')
+    link.href = '/login'
+    link.className = 'auth-link'
+    link.dataset.tooltip = i18nUtils.t('nav.login')
+    link.textContent = '🔑 ' + i18nUtils.t('nav.login')
+    slot.appendChild(link)
+    return
+  }
 
-    const avatar = document.createElement(currentUser.avatarUrl ? 'img' : 'span')
-    avatar.className = 'auth-user-avatar'
-    if (currentUser.avatarUrl) {
-      avatar.src = currentUser.avatarUrl
-      avatar.alt = ''
-      avatar.addEventListener('error', () => {
-        const fallback = document.createElement('span')
-        fallback.className = 'auth-user-avatar auth-user-avatar-fallback'
-        fallback.textContent = firstName.charAt(0).toUpperCase()
-        avatar.replaceWith(fallback)
+  const wrap = document.createElement('span')
+  wrap.className = 'auth-user'
+  const fullName = currentUser.displayName || currentUser.username || currentUser.provider
+  const firstName = String(fullName).trim().split(/\s+/)[0] || currentUser.provider
+
+  const avatar = document.createElement(currentUser.avatarUrl ? 'img' : 'span')
+  avatar.className = 'auth-user-avatar'
+  if (currentUser.avatarUrl) {
+    avatar.src = currentUser.avatarUrl
+    avatar.alt = ''
+    avatar.addEventListener('error', () => {
+      const fallback = document.createElement('span')
+      fallback.className = 'auth-user-avatar auth-user-avatar-fallback'
+      fallback.textContent = firstName.charAt(0).toUpperCase()
+      avatar.replaceWith(fallback)
+    })
+  } else {
+    avatar.classList.add('auth-user-avatar-fallback')
+    avatar.textContent = firstName.charAt(0).toUpperCase()
+  }
+  wrap.appendChild(avatar)
+
+  const name = document.createElement('span')
+  name.className = 'auth-user-name'
+  name.textContent = firstName
+  name.dataset.tooltip = currentUser.role === 'superadmin' ? 'Superadmin' : 'Admin'
+  wrap.appendChild(name)
+
+  const logout = document.createElement('button')
+  logout.type = 'button'
+  logout.className = 'auth-logout'
+  logout.textContent = i18nUtils.t('auth.logout')
+  logout.onclick = async () => {
+    try {
+      await fetch(`${API}/auth/logout`, {
+        method: 'POST',
+        headers: { 'x-csrf-token': csrfToken || '' },
+        credentials: 'include'
       })
-    } else {
-      avatar.classList.add('auth-user-avatar-fallback')
-      avatar.textContent = firstName.charAt(0).toUpperCase()
+    } catch (err) {
+      console.error('Erro ao sair:', err)
     }
-    wrap.appendChild(avatar)
-
-    const name = document.createElement('span')
-    name.className = 'auth-user-name'
-    name.textContent = firstName
-    name.dataset.tooltip = currentUser.role === 'superadmin' ? 'Superadmin' : 'Admin'
-    wrap.appendChild(name)
-
-    const logout = document.createElement('button')
-    logout.type = 'button'
-    logout.className = 'auth-logout'
-    logout.textContent = i18nUtils.t('auth.logout')
-    logout.onclick = async () => {
-      try {
-        await fetch(`${API}/auth/logout`, {
-          method: 'POST',
-          headers: { 'x-csrf-token': csrfToken || '' },
-          credentials: 'include'
-        })
-      } catch (err) {
-        console.error('Erro ao sair:', err)
-      }
-      currentUser = null
-      csrfToken = null
-      renderPageNav()
-      renderLanguageToggle()
-      applyActiveNav()
-      window.location.href = '/'
-    }
-    wrap.appendChild(logout)
-    slot.appendChild(wrap)
-  })
+    currentUser = null
+    csrfToken = null
+    renderPageNav()
+    renderTopbar()
+    renderLanguageToggle()
+    renderAuthBadge()
+    applyActiveNav()
+    window.location.href = '/'
+  }
+  wrap.appendChild(logout)
+  slot.appendChild(wrap)
 }
 
 // Endereço público do servidor de jogo — edite aqui (usado na página "Conectar")
@@ -342,6 +364,7 @@ async function initServerSelector() {
       // gravar um default silencioso no localStorage) e limpa seleção inválida.
       if (selected) setSelectedServer('')
       select.value = visible[0].id
+      setSelectedServer(visible[0].id)
     }
 
     if (!select.dataset.listenerAttached) {
@@ -354,20 +377,38 @@ async function initServerSelector() {
   })
 }
 
+const NAV_ICONS = {
+  home: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>',
+  maps: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="1 6 1 22 8 18 16 22 23 18 23 2 16 6 8 2 1 6"/><line x1="8" y1="2" x2="8" y2="18"/><line x1="16" y1="6" x2="16" y2="22"/></svg>',
+  rankings: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9H4.5a2.5 2.5 0 0 1 0-5H6"/><path d="M18 9h1.5a2.5 2.5 0 0 0 0-5H18"/><path d="M4 22h16"/><path d="M10 14.66V17c0 .55-.47.98-.97 1.21C7.85 18.75 7 20.24 7 22"/><path d="M14 14.66V17c0 .55.47.98.97 1.21C16.15 18.75 17 20.24 17 22"/><path d="M18 2H6v7a6 6 0 0 0 12 0V2Z"/></svg>',
+  advanced: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>',
+  matches: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="6" y1="12" x2="10" y2="12"/><line x1="8" y1="10" x2="8" y2="14"/><line x1="15" y1="13" x2="15.01" y2="13"/><line x1="18" y1="11" x2="18.01" y2="11"/><rect x="2" y="6" width="20" height="12" rx="2"/></svg>',
+  connect: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg>',
+  live: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>',
+  cstv: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="7" width="20" height="15" rx="2" ry="2"/><polyline points="17 2 12 7 7 2"/></svg>',
+  modes: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="22" y1="12" x2="18" y2="12"/><line x1="6" y1="12" x2="2" y2="12"/><line x1="12" y1="6" x2="12" y2="2"/><line x1="12" y1="22" x2="12" y2="18"/></svg>',
+  duel: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="8" cy="18" r="3"/><circle cx="16" cy="6" r="3"/><path d="M12.5 8 8 18"/><path d="M11.5 16 16 6"/></svg>',
+  admin: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"/></svg>',
+  servers: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="2" width="20" height="8" rx="2" ry="2"/><rect x="2" y="14" width="20" height="8" rx="2" ry="2"/><line x1="6" y1="6" x2="6.01" y2="6"/><line x1="6" y1="18" x2="6.01" y2="18"/></svg>',
+  users: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>',
+  system: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>'
+}
+
 const pageNavItems = [
-  { path: '/', labelKey: 'nav.home', tooltipKey: 'navTooltip.home' },
-  { path: '/mapas', labelKey: 'nav.maps', tooltipKey: 'navTooltip.maps' },
-  { path: '/ranking', labelKey: 'nav.rankings', tooltipKey: 'navTooltip.rankings' },
-  { path: '/avancadas', labelKey: 'nav.advanced', tooltipKey: 'navTooltip.advanced' },
-  { path: '/partidas', labelKey: 'nav.matches', tooltipKey: 'navTooltip.matches' },
-  { path: '/conectar', labelKey: 'nav.connect', tooltipKey: 'navTooltip.connect' },
-  { path: '/ao-vivo', labelKey: 'nav.live', tooltipKey: 'navTooltip.live' },
-  { path: '/cstv', labelKey: 'nav.cstv', tooltipKey: 'navTooltip.cstv' },
-  { path: '/duelo', labelKey: 'nav.duel', tooltipKey: 'navTooltip.duel' },
-  { path: '/admin', labelKey: 'nav.admin', tooltipKey: 'navTooltip.admin', adminOnly: true },
-  { path: '/servidores', labelKey: 'nav.servers', tooltipKey: 'navTooltip.servers', adminOnly: true },
-  { path: '/usuarios', labelKey: 'nav.users', tooltipKey: 'navTooltip.users', adminOnly: true },
-  { path: '/sistema', labelKey: 'nav.system', tooltipKey: 'navTooltip.system', adminOnly: true }
+  { path: '/', labelKey: 'nav.home', tooltipKey: 'navTooltip.home', icon: NAV_ICONS.home },
+  { path: '/mapas', labelKey: 'nav.maps', tooltipKey: 'navTooltip.maps', icon: NAV_ICONS.maps },
+  { path: '/ranking', labelKey: 'nav.rankings', tooltipKey: 'navTooltip.rankings', icon: NAV_ICONS.rankings },
+  { path: '/avancadas', labelKey: 'nav.advanced', tooltipKey: 'navTooltip.advanced', icon: NAV_ICONS.advanced },
+  { path: '/partidas', labelKey: 'nav.matches', tooltipKey: 'navTooltip.matches', icon: NAV_ICONS.matches },
+  { path: '/conectar', labelKey: 'nav.connect', tooltipKey: 'navTooltip.connect', icon: NAV_ICONS.connect },
+  { path: '/ao-vivo', labelKey: 'nav.live', tooltipKey: 'navTooltip.live', icon: NAV_ICONS.live },
+  { path: '/cstv', labelKey: 'nav.cstv', tooltipKey: 'navTooltip.cstv', icon: NAV_ICONS.cstv },
+  { path: '/modosdejogo', labelKey: 'nav.modes', tooltipKey: 'navTooltip.modes', icon: NAV_ICONS.modes },
+  { path: '/duelo', labelKey: 'nav.duel', tooltipKey: 'navTooltip.duel', icon: NAV_ICONS.duel },
+  { path: '/admin', labelKey: 'nav.admin', tooltipKey: 'navTooltip.admin', icon: NAV_ICONS.admin, adminOnly: true },
+  { path: '/servidores', labelKey: 'nav.servers', tooltipKey: 'navTooltip.servers', icon: NAV_ICONS.servers, adminOnly: true },
+  { path: '/usuarios', labelKey: 'nav.users', tooltipKey: 'navTooltip.users', icon: NAV_ICONS.users, adminOnly: true },
+  { path: '/sistema', labelKey: 'nav.system', tooltipKey: 'navTooltip.system', icon: NAV_ICONS.system, adminOnly: true }
 ]
 
 // Diz se um item da nav deve ficar ativo dado o pathname atual.
@@ -399,10 +440,13 @@ function renderPageNav() {
       .forEach((item) => {
         const link = document.createElement('a')
         link.href = item.path
-        link.textContent = i18nUtils.t(item.labelKey)
+        if (item.icon) {
+          const iconSpan = document.createElement('span')
+          iconSpan.className = 'nav-icon'
+          iconSpan.innerHTML = item.icon
+          link.appendChild(iconSpan)
+        }
 
-        // Tooltip: balão CSS em dispositivos com hover (data-tooltip); em touch,
-        // sem hover, usamos o title nativo (long-press) para não duplicar.
         const tooltip = i18nUtils.t(item.tooltipKey)
         link.dataset.tooltip = tooltip
         if (window.matchMedia('(hover: none)').matches) {
@@ -418,41 +462,32 @@ function renderPageNav() {
       })
 
     container.appendChild(row)
-
-    const utils = document.createElement('div')
-    utils.className = 'page-nav-utils'
-
-    const langSlot = document.createElement('div')
-    langSlot.className = 'lang-toggle-slot'
-    utils.appendChild(langSlot)
-
-    container.appendChild(utils)
-
-    renderAuthBadge()
   })
 }
 
 function renderLanguageToggle() {
-  const slots = document.querySelectorAll('.lang-toggle-slot')
-  slots.forEach((slot) => {
-    slot.innerHTML = ''
-    const btn = document.createElement('button')
-    btn.type = 'button'
-    btn.className = 'lang-toggle'
-    btn.setAttribute('aria-label', i18nUtils.t('nav.langToggle'))
-    btn.setAttribute('aria-pressed', i18nUtils.currentLang === 'pt' ? 'true' : 'false')
-    btn.innerHTML = i18nUtils.getToggleHtml()
-    btn.onclick = () => {
-      i18nUtils.setLang(i18nUtils.currentLang === 'pt' ? 'en' : 'pt')
-      renderPageNav()
-      renderLanguageToggle()
-      renderAuthBadge()
-      applyActiveNav()
-      initPlayerSearch()
-      initServerSelector()
-    }
-    slot.appendChild(btn)
-  })
+  const topbar = document.querySelector('.page-topbar')
+  if (!topbar) return
+
+  const slot = topbar.querySelector('.lang-toggle-slot')
+  if (!slot) return
+
+  slot.innerHTML = ''
+  const btn = document.createElement('button')
+  btn.type = 'button'
+  btn.className = 'lang-toggle'
+  btn.setAttribute('aria-label', i18nUtils.t('nav.langToggle'))
+  btn.setAttribute('aria-pressed', i18nUtils.currentLang === 'pt' ? 'true' : 'false')
+  btn.innerHTML = i18nUtils.getToggleHtml()
+  btn.onclick = () => {
+    i18nUtils.setLang(i18nUtils.currentLang === 'pt' ? 'en' : 'pt')
+    renderPageNav()
+    renderLanguageToggle()
+    renderAuthBadge()
+    applyActiveNav()
+    initServerSelector()
+  }
+  slot.appendChild(btn)
 }
 
 function createSkeletonRow(columns = 4) {
@@ -690,14 +725,15 @@ async function initCommon() {
   document.querySelectorAll('.status-message').forEach((el) => el.setAttribute('aria-live', 'polite'))
   document.querySelectorAll('table th').forEach((th) => th.setAttribute('scope', 'col'))
   renderPageNav()
+  renderTopbar()
   renderLanguageToggle()
+  renderAuthBadge()
   applyActiveNav()
   guardPage()
   initConnectPage()
   initConnectServersTable()
   initWatchMobileGuard()
   initWatchLink()
-  initPlayerSearch()
   initServerSelector()
 }
 
@@ -710,11 +746,6 @@ function initConnectPage() {
   document.querySelectorAll('[data-connect-port]').forEach((el) => { el.textContent = SERVER_PORT })
   document.querySelectorAll('[data-connect-address]').forEach((el) => { el.textContent = fullAddress })
   document.querySelectorAll('[data-connect-command]').forEach((el) => { el.textContent = `connect ${fullAddress}` })
-
-  const steamLink = document.querySelector('[data-connect-steam]')
-  if (steamLink) {
-    steamLink.href = `steam://rungameid/10//%2Bconnect%20${encodeURIComponent(fullAddress)}`
-  }
 
   const copyBtn = document.querySelector('[data-copy-command]')
   if (copyBtn) {
